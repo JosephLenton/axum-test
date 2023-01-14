@@ -1,3 +1,4 @@
+use ::anyhow::Context;
 use ::anyhow::Result;
 use ::axum::body::Body;
 use ::axum::http::Method;
@@ -10,17 +11,16 @@ use ::hyper::body::to_bytes;
 use ::hyper::body::Bytes;
 use ::hyper::header;
 use ::hyper::Client;
-use ::portpicker::pick_unused_port;
 use ::serde::Deserialize;
-use ::std::net::IpAddr;
-use ::std::net::Ipv4Addr;
 use ::std::net::SocketAddr;
 use ::std::net::TcpListener;
 use ::tokio::spawn;
 use ::tokio::task::JoinHandle;
 
+use crate::new_random_socket_addr;
+
 pub struct TestServer {
-    server_task: JoinHandle<()>,
+    server_thread: JoinHandle<()>,
     server_address: String,
 }
 
@@ -33,23 +33,31 @@ where
 }
 
 impl TestServer {
-    pub fn new(app: IntoMakeService<Router>) -> Self {
-        let socket_address = new_test_socket_address();
-        let listener = TcpListener::bind(socket_address).expect("expect to be able to bind port");
-        let server_address = socket_address.to_string();
+    pub fn new_with_random_address(app: IntoMakeService<Router>) -> Result<Self> {
+        let addr = new_random_socket_addr()?;
+        let test_server = Self::new(app, addr)?;
 
-        let server_task = spawn(async move {
-            Server::from_tcp(listener)
-                .expect("Expect server to be created")
-                .serve(app)
-                .await
-                .expect("Expect server to start serving");
+        Ok(test_server)
+    }
+
+    pub fn new(app: IntoMakeService<Router>, socket_address: SocketAddr) -> Result<Self> {
+        let listener = TcpListener::bind(socket_address)
+            .with_context(|| "Failed to create TCPListener for TestServer")?;
+        let server_address = socket_address.to_string();
+        let server = Server::from_tcp(listener)
+            .with_context(|| "Failed to create ::axum::Server for TestServer")?
+            .serve(app);
+
+        let server_thread = spawn(async move {
+            server.await.expect("Expect server to start serving");
         });
 
-        Self {
-            server_task,
+        let test_server = Self {
+            server_thread,
             server_address,
-        }
+        };
+
+        Ok(test_server)
     }
 
     pub async fn get(&self, path: &str) -> Result<TestResponse<String>> {
@@ -206,6 +214,7 @@ impl TestServer {
             .await
             .expect("Expect TestResponse to come back");
 
+        println!("request ... {:?}", hyper_response);
         let (parts, response_body) = hyper_response.into_parts();
         let response_bytes = to_bytes(response_body).await?;
         let contents = String::from_utf8_lossy(&response_bytes).to_string();
@@ -238,15 +247,8 @@ impl TestServer {
 
 impl Drop for TestServer {
     fn drop(&mut self) {
-        self.server_task.abort();
+        self.server_thread.abort();
     }
-}
-
-fn new_test_socket_address() -> SocketAddr {
-    let ip_address = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
-    let port = pick_unused_port().expect("Expect a port to be available");
-
-    SocketAddr::new(ip_address, port)
 }
 
 fn build_request_path(root_path: &str, sub_path: &str) -> String {
