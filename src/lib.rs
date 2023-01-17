@@ -1,8 +1,10 @@
 mod test_server;
 pub use self::test_server::*;
 
-mod random_socket_address;
-pub use self::random_socket_address::*;
+mod test_response;
+pub use self::test_response::*;
+
+pub mod util;
 
 #[cfg(test)]
 mod test {
@@ -23,11 +25,9 @@ mod test {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::new_with_random_address(app).expect("Test server to startup");
+        let server = TestServer::new(app);
 
         // Get the request.
-        let response = server.get("/ping").await.unwrap();
-
-        assert_eq!(response.contents, "pong!");
+        server.get("/ping").await.assert_contents(&"pong!");
     }
 }

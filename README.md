@@ -1,10 +1,11 @@
 <div align="center">
   <h1>
-    Axum Test Server
+    Axum Test<br>
+    for testing Axum Servers
   </h1>
 
-  [![crate](https://img.shields.io/crates/v/axum-test-server.svg)](https://crates.io/crates/axum-test-server)
-  [![docs](https://docs.rs/axum-test-server/badge.svg)](https://docs.rs/axum-test-server)
+  [![crate](https://img.shields.io/crates/v/axum-test.svg)](https://crates.io/crates/axum-test)
+  [![docs](https://docs.rs/axum-test/badge.svg)](https://docs.rs/axum-test)
 </div>
 
 This is for spinning up an Axum service, that you can then query directly.
@@ -34,7 +35,7 @@ This is primarily for testing Axum services.
       let response = server
           .get("/ping")
           .await
-          .unwrap();
+          .assert_contents(&"pong!");
 
       assert_eq!(response.contents, "pong!");
   }

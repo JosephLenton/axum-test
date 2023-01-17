@@ -1,19 +1,19 @@
 [package]
-name = "axum-test-server"
+name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "1.0.0"
+version = "2.0.0"
 edition = "2021"
 license = "MIT"
 description = "For spinning up and testing Axum servers"
 keywords = ["testing", "test", "axum"]
 categories = ["web-programming::http-server", "development-tools::testing"]
-repository = "https://github.com/JosephLenton/axum-test-server"
-documentation = "https://docs.rs/axum-test-server/latest/axum-test-server"
+repository = "https://github.com/JosephLenton/axum-test"
+documentation = "https://docs.rs/axum-test/latest/axum-test"
 readme = "README.md"
 
 [dependencies]
 axum = "0.6.2"
-anyhow = "1"
+anyhow = "1.0.68"
 hyper = { version = "0.14.23", features = ["client", "http1"] }
 portpicker = "0.1.1"
 serde = { version = "1.0.145" }
