@@ -1,6 +1,9 @@
 mod test_server;
 pub use self::test_server::*;
 
+mod test_request;
+pub use self::test_request::*;
+
 mod test_response;
 pub use self::test_response::*;
 

@@ -1,22 +1,16 @@
 use ::anyhow::Context;
 use ::anyhow::Result;
-use ::axum::body::Body;
-use ::axum::http::Method;
-use ::axum::http::Request;
 use ::axum::routing::IntoMakeService;
 use ::axum::Router;
 use ::axum::Server;
-use ::hyper::body::to_bytes;
-use ::hyper::body::Bytes;
-use ::hyper::header;
-use ::hyper::Client;
+use ::hyper::http::Method;
 use ::std::net::SocketAddr;
 use ::std::net::TcpListener;
 use ::tokio::spawn;
 use ::tokio::task::JoinHandle;
 
 use crate::util::new_random_socket_addr;
-use crate::TestResponse;
+use crate::TestRequest;
 
 /// A means to run Axum applications within a server that you can query.
 /// This is for writing tests.
@@ -31,14 +25,11 @@ impl TestServer {
     ///
     /// The webserver is then wrapped within a `TestServer`,
     /// and returned.
-    ///
-    /// This function is for quick use. It will panic if it cannot
-    /// create the webserver.
-    pub fn new(app: IntoMakeService<Router>) -> Self {
-        let addr = new_random_socket_addr().expect("Cannot create socket address for use");
-        let test_server = Self::new_with_address(app, addr).expect("Cannot create TestServer");
+    pub fn new(app: IntoMakeService<Router>) -> Result<Self> {
+        let addr = new_random_socket_addr().context("Cannot create socket address for use")?;
+        let test_server = Self::new_with_address(app, addr).context("Cannot create TestServer")?;
 
-        test_server
+        Ok(test_server)
     }
 
     /// Creates a `TestServer` running your app on the address given.
@@ -65,152 +56,41 @@ impl TestServer {
         Ok(test_server)
     }
 
-    /// Performs a GET request to the path.
-    ///
-    /// This will presume the response is successful (a 200 status code).
-    /// If a different status code is returned, then this will panic.
-    pub async fn get(&self, path: &str) -> TestResponse {
-        self.send(Method::GET, path, &"")
-            .await
-            .with_context(|| format!("Error calling get on path {}", path))
-            .unwrap()
-            .assert_status_ok()
+    /// Creates a GET request to the path.
+    pub fn get(&self, path: &str) -> TestRequest {
+        self.send(Method::GET, path)
     }
 
-    /// Performs a GET request to the path.
-    ///
-    /// This will panic if the response is successful.
-    /// It presumes the response would have failed.
-    pub async fn get_fail(&self, path: &str) -> TestResponse {
-        self.send(Method::GET, path, &"")
-            .await
-            .with_context(|| format!("Error calling get_fail on path {}", path))
-            .unwrap()
-            .assert_status_not_ok()
+    /// Creates a POST request to the given path.
+    pub fn post(&self, path: &str) -> TestRequest {
+        self.send(Method::POST, path)
     }
 
-    /// Performs a POST request to the path.
-    ///
-    /// This will presume the response is successful (a 200 status code).
-    /// If a different status code is returned, then this will panic.
-    pub async fn post(&self, path: &str, body: &str) -> TestResponse {
-        self.send(Method::POST, path, body)
-            .await
-            .with_context(|| format!("Error calling post on path {}", path))
-            .unwrap()
-            .assert_status_ok()
+    /// Creates a PATCH request to the path.
+    pub fn patch(&self, path: &str) -> TestRequest {
+        self.send(Method::PATCH, path)
     }
 
-    /// Performs a POST request to the path.
-    ///
-    /// This will panic if the response is successful.
-    /// It presumes the response would have failed.
-    pub async fn post_fail(&self, path: &str, body: &str) -> TestResponse {
-        self.send(Method::POST, path, body)
-            .await
-            .with_context(|| format!("Error calling post_fail on path {}", path))
-            .unwrap()
-            .assert_status_not_ok()
+    /// Creates a PUT request to the path.
+    pub fn put(&self, path: &str) -> TestRequest {
+        self.send(Method::PUT, path)
     }
 
-    /// Performs a PATCH request to the path.
-    ///
-    /// This will panic if the response is successful.
-    /// It presumes the response would have failed.
-    pub async fn patch(&self, path: &str, body: &str) -> TestResponse {
-        self.send(Method::PATCH, path, body)
-            .await
-            .with_context(|| format!("Error calling patch on path {}", path))
-            .unwrap()
-            .assert_status_ok()
+    /// Creates a DELETE request to the path.
+    pub fn delete(&self, path: &str) -> TestRequest {
+        self.send(Method::DELETE, path)
     }
 
-    /// Performs a PATCH request to the path.
-    ///
-    /// This will panic if the response is successful.
-    /// It presumes the response would have failed.
-    pub async fn patch_fail(&self, path: &str, body: &str) -> TestResponse {
-        self.send(Method::PATCH, path, body)
-            .await
-            .with_context(|| format!("Error calling patch_fail on path {}", path))
-            .unwrap()
-            .assert_status_not_ok()
+    /// Creates a request to the path, using the method you provided.
+    pub fn method(&self, method: Method, path: &str) -> TestRequest {
+        self.send(method, path)
     }
 
-    /// Performs a PUT request to the path.
-    ///
-    /// This will presume the response is successful (a 200 status code).
-    /// If a different status code is returned, then this will panic.
-    pub async fn put(&self, path: &str, body: &str) -> TestResponse {
-        self.send(Method::PUT, path, body)
-            .await
-            .with_context(|| format!("Error calling put on path {}", path))
-            .unwrap()
-            .assert_status_ok()
-    }
-
-    /// Performs a PUT request to the path.
-    ///
-    /// This will panic if the response is successful.
-    /// It presumes the response would have failed.
-    pub async fn put_fail(&self, path: &str, body: &str) -> TestResponse {
-        self.send(Method::PUT, path, body)
-            .await
-            .with_context(|| format!("Error calling put_fail on path {}", path))
-            .unwrap()
-            .assert_status_not_ok()
-    }
-
-    /// Performs a DELETE request to the path.
-    ///
-    /// This will presume the response is successful (a 200 status code).
-    /// If a different status code is returned, then this will panic.
-    pub async fn delete(&self, path: &str) -> TestResponse {
-        self.send(Method::DELETE, path, &"")
-            .await
-            .with_context(|| format!("Error calling delete_fail on path {}", path))
-            .unwrap()
-            .assert_status_ok()
-    }
-
-    /// Performs a DELETE request to the path.
-    ///
-    /// This will panic if the response is successful.
-    /// It presumes the response would have failed.
-    pub async fn delete_fail(&self, path: &str) -> TestResponse {
-        self.send(Method::DELETE, path, &"")
-            .await
-            .with_context(|| format!("Error calling delete_fail on path {}", path))
-            .unwrap()
-            .assert_status_not_ok()
-    }
-
-    async fn send(&self, method: Method, path: &str, body_str: &str) -> Result<TestResponse> {
-        let request_url = path.to_string();
+    fn send(&self, method: Method, path: &str) -> TestRequest {
+        let debug_path = path.to_string();
         let request_path = build_request_path(&self.server_address, path);
-        let client = Client::new();
-        let body_bytes = Bytes::copy_from_slice(body_str.as_bytes());
-        let body: Body = body_bytes.into();
 
-        let hyper_response = client
-            .request(
-                Request::builder()
-                    .uri(request_path)
-                    .header(header::CONTENT_TYPE, "application/json")
-                    .method(method)
-                    .body(body)
-                    .expect("expect Request built to be valid"),
-            )
-            .await
-            .expect("Expect TestResponse to come back");
-
-        let (parts, response_body) = hyper_response.into_parts();
-        let response_bytes = to_bytes(response_body).await?;
-        let contents = String::from_utf8_lossy(&response_bytes).to_string();
-        let status_code = parts.status;
-        let response = TestResponse::new(request_url, contents, status_code);
-
-        Ok(response)
+        TestRequest::new(method, request_path, debug_path)
     }
 }
 
