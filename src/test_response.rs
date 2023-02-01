@@ -1,5 +1,6 @@
 use ::anyhow::Context;
-use ::axum::http::StatusCode;
+use ::hyper::body::Bytes;
+use ::hyper::http::StatusCode;
 use ::serde::Deserialize;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
@@ -13,37 +14,47 @@ use ::std::fmt::Debug;
 /// One can also also use the `assert_*` functions to test against the
 /// response.
 pub struct TestResponse {
-    pub request_url: String,
-    pub contents: String,
-    pub status_code: StatusCode,
+    request_url: String,
+    response_body: Bytes,
+    status_code: StatusCode,
 }
 
 impl TestResponse {
-    pub(crate) fn new(request_url: String, contents: String, status_code: StatusCode) -> Self {
+    pub(crate) fn new(request_url: String, response_body: Bytes, status_code: StatusCode) -> Self {
         Self {
             request_url,
-            contents,
+            response_body,
             status_code,
         }
     }
 
-    pub fn request_url(&self) -> String {
-        self.request_url.clone()
+    /// The URL that was used to produce this response.
+    pub fn request_url<'a>(&'a self) -> &'a str {
+        &self.request_url
     }
 
-    pub fn contents(&self) -> String {
-        self.contents.clone()
+    /// Returns the raw underlying response, as it's raw bytes.
+    pub fn bytes<'a>(&'a self) -> &'a [u8] {
+        &self.response_body
     }
 
+    /// Returns the underlying response, as a raw UTF-8 string.
+    pub fn text(&self) -> String {
+        String::from_utf8_lossy(&self.response_body).to_string()
+    }
+
+    /// The status_code of the response.
     pub fn status_code(&self) -> StatusCode {
         self.status_code
     }
 
+    /// Reads the response from the server as JSON text,
+    /// and then deserialise the contents into the structure given.
     pub fn json<T>(&self) -> T
     where
         for<'de> T: Deserialize<'de>,
     {
-        serde_json::from_str::<T>(&self.contents)
+        serde_json::from_slice::<T>(&self.response_body)
             .with_context(|| {
                 format!(
                     "Deserializing response from JSON for request {}",
@@ -53,12 +64,14 @@ impl TestResponse {
             .unwrap()
     }
 
-    pub fn assert_contents<C>(self, other: C) -> Self
+    /// This performs an assertion comparing the whole body of the response,
+    /// against the text provided.
+    pub fn assert_text<C>(self, other: C) -> Self
     where
         C: AsRef<str>,
     {
         let other_contents = other.as_ref();
-        assert_eq!(&self.contents, other_contents);
+        assert_eq!(&self.text(), other_contents);
 
         self
     }

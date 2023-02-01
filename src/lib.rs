@@ -1,6 +1,9 @@
 mod test_server;
 pub use self::test_server::*;
 
+mod test_request;
+pub use self::test_request::*;
+
 mod test_response;
 pub use self::test_response::*;
 
@@ -25,9 +28,9 @@ mod test {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::new(app);
+        let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get("/ping").await.assert_contents(&"pong!");
+        server.get(&"/ping").await.assert_text(&"pong!");
     }
 }
