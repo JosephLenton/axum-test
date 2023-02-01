@@ -28,9 +28,9 @@ mod test {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::new(app);
+        let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get("/ping").await.assert_contents(&"pong!");
+        server.get(&"/ping").await.assert_text(&"pong!");
     }
 }

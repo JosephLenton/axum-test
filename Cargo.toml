@@ -12,6 +12,7 @@ documentation = "https://docs.rs/axum-test/latest/axum-test"
 readme = "README.md"
 
 [dependencies]
+auto-future = "1.0.0"
 axum = "0.6.2"
 anyhow = "1.0.68"
 hyper = { version = "0.14.23", features = ["client", "http1"] }
