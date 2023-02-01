@@ -48,6 +48,8 @@ impl TestResponse {
         self.status_code
     }
 
+    /// Reads the response from the server as JSON text,
+    /// and then deserialise the contents into the structure given.
     pub fn json<T>(&self) -> T
     where
         for<'de> T: Deserialize<'de>,
