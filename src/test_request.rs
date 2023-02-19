@@ -114,7 +114,7 @@ impl TestRequest {
 
         let (parts, response_body) = hyper_response.into_parts();
         let response_bytes = to_bytes(response_body).await?;
-        let mut response = TestResponse::new(self.debug_path, response_bytes, parts.status);
+        let mut response = TestResponse::new(self.debug_path, parts, response_bytes);
 
         // Assert if ok or not.
         if self.is_expecting_failure {

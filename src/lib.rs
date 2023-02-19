@@ -9,6 +9,8 @@ pub use self::test_response::*;
 
 pub mod util;
 
+pub use ::hyper::http;
+
 #[cfg(test)]
 mod test {
     use super::*;
