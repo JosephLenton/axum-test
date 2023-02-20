@@ -2,21 +2,23 @@ use ::anyhow::Context;
 use ::anyhow::Result;
 use ::axum::routing::IntoMakeService;
 use ::axum::Router;
-use ::axum::Server;
+use ::cookie::Cookie;
+use ::cookie::CookieJar;
 use ::hyper::http::Method;
 use ::std::net::SocketAddr;
-use ::std::net::TcpListener;
-use ::tokio::spawn;
-use ::tokio::task::JoinHandle;
+use ::std::sync::Arc;
+use ::std::sync::Mutex;
 
-use crate::util::new_random_socket_addr;
 use crate::TestRequest;
+
+mod inner_test_server;
+pub(crate) use self::inner_test_server::*;
 
 /// A means to run Axum applications within a server that you can query.
 /// This is for writing tests.
+#[derive(Debug)]
 pub struct TestServer {
-    server_thread: JoinHandle<()>,
-    server_address: String,
+    inner: Arc<Mutex<InnerTestServer>>,
 }
 
 impl TestServer {
@@ -26,10 +28,9 @@ impl TestServer {
     /// The webserver is then wrapped within a `TestServer`,
     /// and returned.
     pub fn new(app: IntoMakeService<Router>) -> Result<Self> {
-        let addr = new_random_socket_addr().context("Cannot create socket address for use")?;
-        let test_server = Self::new_with_address(app, addr).context("Cannot create TestServer")?;
+        let inner_test_server = InnerTestServer::new(app)?;
 
-        Ok(test_server)
+        Self::new_with_inner(inner_test_server)
     }
 
     /// Creates a `TestServer` running your app on the address given.
@@ -37,77 +38,73 @@ impl TestServer {
         app: IntoMakeService<Router>,
         socket_address: SocketAddr,
     ) -> Result<Self> {
-        let listener = TcpListener::bind(socket_address)
-            .with_context(|| "Failed to create TCPListener for TestServer")?;
-        let server_address = socket_address.to_string();
-        let server = Server::from_tcp(listener)
-            .with_context(|| "Failed to create ::axum::Server for TestServer")?
-            .serve(app);
+        let inner_test_server = InnerTestServer::new_with_address(app, socket_address)?;
 
-        let server_thread = spawn(async move {
-            server.await.expect("Expect server to start serving");
-        });
+        Self::new_with_inner(inner_test_server)
+    }
 
-        let test_server = Self {
-            server_thread,
-            server_address,
-        };
+    fn new_with_inner(inner_test_server: InnerTestServer) -> Result<Self> {
+        let inner_mutex = Mutex::new(inner_test_server);
+        let inner = Arc::new(inner_mutex);
 
-        Ok(test_server)
+        Ok(Self { inner })
+    }
+
+    /// Adds the given cookies.
+    /// They will be included on all future requests.
+    ///
+    /// They will be stored over the top of the existing cookies.
+    pub fn add_cookies(&mut self, cookies: CookieJar) {
+        InnerTestServer::add_cookies(&mut self.inner, cookies)
+            .with_context(|| format!("Trying to add_cookies"))
+            .unwrap()
+    }
+
+    /// Adds the given cookie.
+    /// It will be included on all future requests.
+    ///
+    /// It will be stored over the top of the existing cookies.
+    pub fn add_cookie(&mut self, cookie: Cookie) {
+        InnerTestServer::add_cookie(&mut self.inner, cookie)
+            .with_context(|| format!("Trying to add_cookie"))
+            .unwrap()
     }
 
     /// Creates a GET request to the path.
     pub fn get(&self, path: &str) -> TestRequest {
-        self.send(Method::GET, path)
+        self.method(Method::GET, path)
     }
 
     /// Creates a POST request to the given path.
     pub fn post(&self, path: &str) -> TestRequest {
-        self.send(Method::POST, path)
+        self.method(Method::POST, path)
     }
 
     /// Creates a PATCH request to the path.
     pub fn patch(&self, path: &str) -> TestRequest {
-        self.send(Method::PATCH, path)
+        self.method(Method::PATCH, path)
     }
 
     /// Creates a PUT request to the path.
     pub fn put(&self, path: &str) -> TestRequest {
-        self.send(Method::PUT, path)
+        self.method(Method::PUT, path)
     }
 
     /// Creates a DELETE request to the path.
     pub fn delete(&self, path: &str) -> TestRequest {
-        self.send(Method::DELETE, path)
+        self.method(Method::DELETE, path)
     }
 
     /// Creates a request to the path, using the method you provided.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
-        self.send(method, path)
+        let debug_method = method.clone();
+        InnerTestServer::send(&self.inner, method, path)
+            .with_context(|| {
+                format!(
+                    "Trying to create internal request for {} {}",
+                    debug_method, path
+                )
+            })
+            .unwrap()
     }
-
-    fn send(&self, method: Method, path: &str) -> TestRequest {
-        let debug_path = path.to_string();
-        let request_path = build_request_path(&self.server_address, path);
-
-        TestRequest::new(method, request_path, debug_path)
-    }
-}
-
-impl Drop for TestServer {
-    fn drop(&mut self) {
-        self.server_thread.abort();
-    }
-}
-
-fn build_request_path(root_path: &str, sub_path: &str) -> String {
-    if sub_path == "" {
-        return format!("http://{}", root_path.to_string());
-    }
-
-    if sub_path.starts_with("/") {
-        return format!("http://{}{}", root_path, sub_path);
-    }
-
-    format!("http://{}/{}", root_path, sub_path)
 }
