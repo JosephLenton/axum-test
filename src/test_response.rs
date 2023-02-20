@@ -40,25 +40,30 @@ impl TestResponse {
     }
 
     /// The URL that was used to produce this response.
+    #[must_use]
     pub fn request_url<'a>(&'a self) -> &'a str {
         &self.request_url
     }
 
     /// Returns the raw underlying response, as it's raw bytes.
+    #[must_use]
     pub fn bytes<'a>(&'a self) -> &'a [u8] {
         &self.response_body
     }
 
     /// Returns the underlying response, as a raw UTF-8 string.
+    #[must_use]
     pub fn text(&self) -> String {
         String::from_utf8_lossy(&self.response_body).to_string()
     }
 
     /// The status_code of the response.
+    #[must_use]
     pub fn status_code(&self) -> StatusCode {
         self.status_code
     }
 
+    #[must_use]
     pub fn header<N>(&self, header_name: N) -> Option<HeaderValue>
     where
         N: AsHeaderName,
@@ -80,6 +85,7 @@ impl TestResponse {
         self.headers.get_all(header_name).iter()
     }
 
+    #[must_use]
     pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
         self.maybe_cookie(cookie_name)
             .with_context(|| {
@@ -91,6 +97,7 @@ impl TestResponse {
             .unwrap()
     }
 
+    #[must_use]
     pub fn maybe_cookie(&self, cookie_name: &str) -> Option<Cookie<'static>> {
         for cookie in self.iter_cookies() {
             if cookie.name() == cookie_name {
@@ -101,6 +108,7 @@ impl TestResponse {
         None
     }
 
+    #[must_use]
     pub fn cookies(&self) -> CookieJar {
         let mut cookies = CookieJar::new();
 
@@ -136,6 +144,7 @@ impl TestResponse {
 
     /// Reads the response from the server as JSON text,
     /// and then deserialise the contents into the structure given.
+    #[must_use]
     pub fn json<T>(&self) -> T
     where
         for<'de> T: Deserialize<'de>,
