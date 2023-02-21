@@ -8,7 +8,6 @@ use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::hyper::http::HeaderValue;
 use ::hyper::http::Method;
-use ::std::net::SocketAddr;
 use ::std::net::TcpListener;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
@@ -17,6 +16,8 @@ use ::tokio::task::JoinHandle;
 
 use crate::util::new_random_socket_addr;
 use crate::TestRequest;
+use crate::TestRequestConfig;
+use crate::TestServerConfig;
 
 /// A means to run Axum applications within a server that you can query.
 /// This is for writing tests.
@@ -25,30 +26,17 @@ pub(crate) struct InnerTestServer {
     server_thread: JoinHandle<()>,
     server_address: String,
     cookies: CookieJar,
+    save_cookies: bool,
 }
 
 impl InnerTestServer {
-    /// This will take the given app, and run it.
-    /// It will be run on a randomly picked port.
-    ///
-    /// The webserver is then wrapped within a `TestServer`,
-    /// and returned.
-    pub(crate) fn new(app: IntoMakeService<Router>) -> Result<Self> {
-        let addr = new_random_socket_addr().context("Cannot create socket address for use")?;
-        let test_server = Self::new_with_address(app, addr).context("Cannot create TestServer")?;
-
-        Ok(test_server)
-    }
-
-    pub(crate) fn server_address<'a>(&'a self) -> &'a str {
-        &self.server_address
-    }
-
     /// Creates a `TestServer` running your app on the address given.
-    pub(crate) fn new_with_address(
-        app: IntoMakeService<Router>,
-        socket_address: SocketAddr,
-    ) -> Result<Self> {
+    pub(crate) fn new(app: IntoMakeService<Router>, config: TestServerConfig) -> Result<Self> {
+        let socket_address = match config.socket_address {
+            Some(socket_address) => socket_address,
+            None => new_random_socket_addr().context("Cannot create socket address for use")?,
+        };
+
         let listener = TcpListener::bind(socket_address)
             .with_context(|| "Failed to create TCPListener for TestServer")?;
         let server_address = socket_address.to_string();
@@ -64,9 +52,14 @@ impl InnerTestServer {
             server_thread,
             server_address,
             cookies: CookieJar::new(),
+            save_cookies: config.save_cookies,
         };
 
         Ok(test_server)
+    }
+
+    pub(crate) fn server_address<'a>(&'a self) -> &'a str {
+        &self.server_address
     }
 
     pub(crate) fn cookies<'a>(&'a self) -> &'a CookieJar {
@@ -83,59 +76,89 @@ impl InnerTestServer {
     where
         I: Iterator<Item = &'a HeaderValue>,
     {
-        let mut this_locked = this.lock().map_err(|err| {
-            anyhow!(
-                "Failed to lock InternalTestServer for `add_cookies`, {:?}",
-                err
-            )
-        })?;
+        InnerTestServer::with_this_mut(this, "add_cookies_by_header", |this| {
+            for cookie_header in cookie_headers {
+                let cookie_header_str = cookie_header
+                    .to_str()
+                    .context(&"Reading cookie header for storing in the `TestServer`")
+                    .unwrap();
 
-        for cookie_header in cookie_headers {
-            let cookie_header_str = cookie_header
-                .to_str()
-                .context(&"Reading cookie header for storing in the `TestServer`")
-                .unwrap();
+                let cookie: Cookie<'static> = Cookie::parse(cookie_header_str)?.into_owned();
+                this.cookies.add(cookie);
+            }
 
-            let cookie: Cookie<'static> = Cookie::parse(cookie_header_str)?.into_owned();
-            this_locked.cookies.add(cookie);
-        }
-
-        Ok(())
+            Ok(()) as Result<()>
+        })?
     }
 
     /// Adds the given cookies.
     ///
     /// They will be stored over the top of the existing cookies.
     pub(crate) fn add_cookies(this: &mut Arc<Mutex<Self>>, cookies: CookieJar) -> Result<()> {
-        let mut this_locked = this.lock().map_err(|err| {
-            anyhow!(
-                "Failed to lock InternalTestServer for `add_cookies`, {:?}",
-                err
-            )
-        })?;
-
-        for cookie in cookies.iter() {
-            this_locked.cookies.add(cookie.to_owned());
-        }
-
-        Ok(())
+        InnerTestServer::with_this_mut(this, "add_cookies", |this| {
+            for cookie in cookies.iter() {
+                this.cookies.add(cookie.to_owned());
+            }
+        })
     }
 
     pub(crate) fn add_cookie(this: &mut Arc<Mutex<Self>>, cookie: Cookie) -> Result<()> {
-        let mut this_locked = this.lock().map_err(|err| {
-            anyhow!(
-                "Failed to lock InternalTestServer for `add_cookies`, {:?}",
-                err
-            )
-        })?;
+        InnerTestServer::with_this_mut(this, "add_cookie", |this| {
+            this.cookies.add(cookie.into_owned());
+        })
+    }
 
-        this_locked.cookies.add(cookie.into_owned());
-
-        Ok(())
+    pub(crate) fn is_saving_cookies(this: &Arc<Mutex<Self>>) -> Result<bool> {
+        InnerTestServer::with_this(this, "is_saving_cookies", |this| this.save_cookies)
     }
 
     pub(crate) fn send(this: &Arc<Mutex<Self>>, method: Method, path: &str) -> Result<TestRequest> {
-        TestRequest::new(this.clone(), method, path)
+        TestRequest::new(
+            this.clone(),
+            TestRequestConfig {
+                method,
+                path: path.to_string(),
+                save_cookies: InnerTestServer::is_saving_cookies(this)?,
+            },
+        )
+    }
+
+    pub(crate) fn with_this<F, R>(this: &Arc<Mutex<Self>>, name: &str, some_action: F) -> Result<R>
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        let mut this_locked = this.lock().map_err(|err| {
+            anyhow!(
+                "Failed to lock InternalTestServer for `{}`, {:?}",
+                name,
+                err,
+            )
+        })?;
+
+        let result = some_action(&mut this_locked);
+
+        Ok(result)
+    }
+
+    pub(crate) fn with_this_mut<F, R>(
+        this: &mut Arc<Mutex<Self>>,
+        name: &str,
+        some_action: F,
+    ) -> Result<R>
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        let mut this_locked = this.lock().map_err(|err| {
+            anyhow!(
+                "Failed to lock InternalTestServer for `{}`, {:?}",
+                name,
+                err,
+            )
+        })?;
+
+        let result = some_action(&mut this_locked);
+
+        Ok(result)
     }
 }
 

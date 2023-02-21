@@ -7,7 +7,6 @@ use ::hyper::body::Body;
 use ::hyper::body::Bytes;
 use ::hyper::header;
 use ::hyper::http::header::SET_COOKIE;
-use ::hyper::http::Method;
 use ::hyper::http::Request;
 use ::hyper::Client;
 use ::serde::Serialize;
@@ -24,6 +23,9 @@ use hyper::header::HeaderName;
 use crate::InnerTestServer;
 use crate::TestResponse;
 
+mod test_request_config;
+pub(crate) use self::test_request_config::*;
+
 /// This contains the response from the server.
 ///
 /// Inside are the contents of the response, the status code, and some
@@ -37,36 +39,29 @@ use crate::TestResponse;
 pub struct TestRequest {
     inner_test_server: Arc<Mutex<InnerTestServer>>,
 
-    method: Method,
     full_request_path: String,
     body: Option<Body>,
 
-    /// This is what we use for logging for when we display the path to the user.
-    debug_path: String,
-
     is_expecting_failure: bool,
-    is_saving_cookies: bool,
 
     headers: Vec<(HeaderName, HeaderValue)>,
+    config: TestRequestConfig,
 }
 
 impl TestRequest {
     pub(crate) fn new(
         inner_test_server: Arc<Mutex<InnerTestServer>>,
-        method: Method,
-        path: &str,
+        config: TestRequestConfig,
     ) -> Result<Self> {
-        let debug_path = path.to_string();
-
         let server_locked = inner_test_server.as_ref().lock().map_err(|err| {
             anyhow!(
                 "Failed to lock InternalTestServer for {} {}, received {:?}",
-                method,
-                path,
+                config.method,
+                config.path,
                 err
             )
         })?;
-        let full_request_path = build_request_path(server_locked.server_address(), path);
+        let full_request_path = build_request_path(server_locked.server_address(), &config.path);
 
         let cookie_header_raw =
             server_locked
@@ -94,19 +89,17 @@ impl TestRequest {
         }
 
         Ok(Self {
+            config,
             inner_test_server,
-            method,
             full_request_path,
             body: None,
-            debug_path,
             is_expecting_failure: false,
-            is_saving_cookies: true,
             headers: initial_headers,
         })
     }
 
     pub fn do_save_cookies(mut self) -> Self {
-        self.is_saving_cookies = true;
+        self.config.save_cookies = true;
         self
     }
 
@@ -116,7 +109,7 @@ impl TestRequest {
     /// Call this method to opt out and turn this feature off,
     /// for just _this_ request.
     pub fn do_not_save_cookies(mut self) -> Self {
-        self.is_saving_cookies = false;
+        self.config.save_cookies = false;
         self
     }
 
@@ -177,11 +170,13 @@ impl TestRequest {
     }
 
     async fn send(mut self) -> Result<TestResponse> {
+        let path = self.config.path;
+        let save_cookies = self.config.save_cookies;
         let body = self.body.unwrap_or(Body::empty());
 
         let mut request_builder = Request::builder()
             .uri(&self.full_request_path)
-            .method(self.method);
+            .method(self.config.method);
 
         // Add all the headers we have.
         for (header_name, header_value) in self.headers {
@@ -191,26 +186,24 @@ impl TestRequest {
         let request = request_builder.body(body).with_context(|| {
             format!(
                 "Expect valid hyper Request to be built on request to {}",
-                self.debug_path
+                path
             )
         })?;
 
-        let hyper_response = Client::new().request(request).await.with_context(|| {
-            format!(
-                "Expect Hyper Response to succeed on request to {}",
-                self.debug_path
-            )
-        })?;
+        let hyper_response = Client::new()
+            .request(request)
+            .await
+            .with_context(|| format!("Expect Hyper Response to succeed on request to {}", path))?;
 
         let (parts, response_body) = hyper_response.into_parts();
         let response_bytes = to_bytes(response_body).await?;
 
-        if self.is_saving_cookies {
+        if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
             InnerTestServer::add_cookies_by_header(&mut self.inner_test_server, cookie_headers)?;
         }
 
-        let mut response = TestResponse::new(self.debug_path, parts, response_bytes);
+        let mut response = TestResponse::new(path, parts, response_bytes);
 
         // Assert if ok or not.
         if self.is_expecting_failure {

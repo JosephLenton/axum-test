@@ -5,11 +5,11 @@ use ::axum::Router;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::hyper::http::Method;
-use ::std::net::SocketAddr;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 
 use crate::TestRequest;
+use crate::TestServerConfig;
 
 mod inner_test_server;
 pub(crate) use self::inner_test_server::*;
@@ -28,22 +28,15 @@ impl TestServer {
     /// The webserver is then wrapped within a `TestServer`,
     /// and returned.
     pub fn new(app: IntoMakeService<Router>) -> Result<Self> {
-        let inner_test_server = InnerTestServer::new(app)?;
-
-        Self::new_with_inner(inner_test_server)
+        Self::new_with_options(app, TestServerConfig::default())
     }
 
     /// Creates a `TestServer` running your app on the address given.
-    pub fn new_with_address(
+    pub fn new_with_options(
         app: IntoMakeService<Router>,
-        socket_address: SocketAddr,
+        options: TestServerConfig,
     ) -> Result<Self> {
-        let inner_test_server = InnerTestServer::new_with_address(app, socket_address)?;
-
-        Self::new_with_inner(inner_test_server)
-    }
-
-    fn new_with_inner(inner_test_server: InnerTestServer) -> Result<Self> {
+        let inner_test_server = InnerTestServer::new(app, options)?;
         let inner_mutex = Mutex::new(inner_test_server);
         let inner = Arc::new(inner_mutex);
 

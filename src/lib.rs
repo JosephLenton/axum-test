@@ -1,6 +1,9 @@
 mod test_server;
 pub use self::test_server::*;
 
+mod test_server_config;
+pub use self::test_server_config::*;
+
 mod test_request;
 pub use self::test_request::*;
 
@@ -50,8 +53,10 @@ mod test_cookies {
     use ::hyper::body::to_bytes;
 
     async fn get_cookie(cookies: CookieJar) -> (CookieJar, String) {
-        let cookie = cookies.get("test-cookie").unwrap();
-        let cookie_value = cookie.value().to_string();
+        let cookie = cookies.get("test-cookie");
+        let cookie_value = cookie
+            .map(|c| c.value().to_string())
+            .unwrap_or_else(|| "cookie-not-found".to_string());
 
         (cookies, cookie_value)
     }
@@ -71,7 +76,7 @@ mod test_cookies {
     }
 
     #[tokio::test]
-    async fn it_should_pass_cookies_created_back_up_to_server_automatically() {
+    async fn it_should_not_pass_cookies_created_back_up_to_server_by_default() {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
@@ -87,6 +92,91 @@ mod test_cookies {
         // Check it comes back.
         let response_text = server.get(&"/cookie").await.text();
 
-        assert_eq!(response_text, "new-cookie");
+        assert_eq!(response_text, "cookie-not-found");
+    }
+
+    #[tokio::test]
+    async fn it_should_not_pass_cookies_created_back_up_to_server_when_turned_off() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new_with_options(
+            app,
+            TestServerConfig {
+                save_cookies: false,
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        // Create a cookie.
+        server.put(&"/cookie").text(&"new-cookie").await;
+
+        // Check it comes back.
+        let response_text = server.get(&"/cookie").await.text();
+
+        assert_eq!(response_text, "cookie-not-found");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_cookies_created_back_up_to_server_automatically() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new_with_options(
+            app,
+            TestServerConfig {
+                save_cookies: true,
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        // Create a cookie.
+        server.put(&"/cookie").text(&"cookie-found!").await;
+
+        // Check it comes back.
+        let response_text = server.get(&"/cookie").await.text();
+
+        assert_eq!(response_text, "cookie-found!");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_cookies_created_back_up_to_server_when_turned_on_for_request() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new_with_options(
+            app,
+            TestServerConfig {
+                save_cookies: false, // it's off by default!
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        // Create a cookie.
+        server
+            .put(&"/cookie")
+            .text(&"cookie-found!")
+            .do_save_cookies()
+            .await;
+
+        // Check it comes back.
+        let response_text = server.get(&"/cookie").await.text();
+
+        assert_eq!(response_text, "cookie-found!");
     }
 }
