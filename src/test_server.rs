@@ -28,11 +28,11 @@ impl TestServer {
     /// The webserver is then wrapped within a `TestServer`,
     /// and returned.
     pub fn new(app: IntoMakeService<Router>) -> Result<Self> {
-        Self::new_with_options(app, TestServerConfig::default())
+        Self::new_with_config(app, TestServerConfig::default())
     }
 
     /// Creates a `TestServer` running your app on the address given.
-    pub fn new_with_options(
+    pub fn new_with_config(
         app: IntoMakeService<Router>,
         options: TestServerConfig,
     ) -> Result<Self> {

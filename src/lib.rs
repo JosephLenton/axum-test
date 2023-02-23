@@ -41,6 +41,103 @@ mod test_get {
 }
 
 #[cfg(test)]
+mod test_content_type {
+    use super::*;
+
+    use ::axum::http::header::CONTENT_TYPE;
+    use ::axum::http::HeaderMap;
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    async fn get_content_type(headers: HeaderMap) -> String {
+        headers
+            .get(CONTENT_TYPE)
+            .map(|h| h.to_str().unwrap().to_string())
+            .unwrap_or_else(|| "".to_string())
+    }
+
+    #[tokio::test]
+    async fn it_should_not_set_a_content_type_by_default() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", get(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server.get(&"/content_type").await.text();
+
+        assert_eq!(text, "");
+    }
+
+    #[tokio::test]
+    async fn it_should_default_to_server_content_type_when_present() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", get(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let config = TestServerConfig {
+            default_content_type: Some("text/plain".to_string()),
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+
+        // Get the request.
+        let text = server.get(&"/content_type").await.text();
+
+        assert_eq!(text, "text/plain");
+    }
+
+    #[tokio::test]
+    async fn it_should_override_server_content_type_when_present() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", get(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let config = TestServerConfig {
+            default_content_type: Some("text/plain".to_string()),
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .get(&"/content_type")
+            .content_type(&"application/json")
+            .await
+            .text();
+
+        assert_eq!(text, "application/json");
+    }
+
+    #[tokio::test]
+    async fn it_should_set_content_type_when_present() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", get(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .get(&"/content_type")
+            .content_type(&"application/json")
+            .await
+            .text();
+
+        assert_eq!(text, "application/json");
+    }
+}
+
+#[cfg(test)]
 mod test_cookies {
     use super::*;
 
@@ -104,7 +201,7 @@ mod test_cookies {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::new_with_options(
+        let server = TestServer::new_with_config(
             app,
             TestServerConfig {
                 save_cookies: false,
@@ -131,7 +228,7 @@ mod test_cookies {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::new_with_options(
+        let server = TestServer::new_with_config(
             app,
             TestServerConfig {
                 save_cookies: true,
@@ -158,7 +255,7 @@ mod test_cookies {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::new_with_options(
+        let server = TestServer::new_with_config(
             app,
             TestServerConfig {
                 save_cookies: false, // it's off by default!

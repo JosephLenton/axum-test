@@ -17,6 +17,7 @@ use ::tokio::task::JoinHandle;
 use crate::util::new_random_socket_addr;
 use crate::TestRequest;
 use crate::TestRequestConfig;
+use crate::TestRequestDetails;
 use crate::TestServerConfig;
 
 /// A means to run Axum applications within a server that you can query.
@@ -27,6 +28,7 @@ pub(crate) struct InnerTestServer {
     server_address: String,
     cookies: CookieJar,
     save_cookies: bool,
+    default_content_type: Option<String>,
 }
 
 impl InnerTestServer {
@@ -53,6 +55,7 @@ impl InnerTestServer {
             server_address,
             cookies: CookieJar::new(),
             save_cookies: config.save_cookies,
+            default_content_type: config.default_content_type,
         };
 
         Ok(test_server)
@@ -108,17 +111,22 @@ impl InnerTestServer {
         })
     }
 
-    pub(crate) fn is_saving_cookies(this: &Arc<Mutex<Self>>) -> Result<bool> {
-        InnerTestServer::with_this(this, "is_saving_cookies", |this| this.save_cookies)
+    pub(crate) fn test_request_config(this: &Arc<Mutex<Self>>) -> Result<TestRequestConfig> {
+        InnerTestServer::with_this(this, "test_request_config", |this| TestRequestConfig {
+            save_cookies: this.save_cookies,
+            content_type: this.default_content_type.clone(),
+        })
     }
 
     pub(crate) fn send(this: &Arc<Mutex<Self>>, method: Method, path: &str) -> Result<TestRequest> {
+        let config = InnerTestServer::test_request_config(this)?;
+
         TestRequest::new(
             this.clone(),
-            TestRequestConfig {
+            config,
+            TestRequestDetails {
                 method,
                 path: path.to_string(),
-                save_cookies: InnerTestServer::is_saving_cookies(this)?,
             },
         )
     }

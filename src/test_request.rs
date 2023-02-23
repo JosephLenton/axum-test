@@ -26,6 +26,12 @@ use crate::TestResponse;
 mod test_request_config;
 pub(crate) use self::test_request_config::*;
 
+mod test_request_details;
+pub(crate) use self::test_request_details::*;
+
+const JSON_CONTENT_TYPE: &'static str = &"application/json";
+const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
+
 /// This contains the response from the server.
 ///
 /// Inside are the contents of the response, the status code, and some
@@ -37,31 +43,34 @@ pub(crate) use self::test_request_config::*;
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]
 pub struct TestRequest {
+    details: TestRequestDetails,
+
     inner_test_server: Arc<Mutex<InnerTestServer>>,
 
     full_request_path: String,
     body: Option<Body>,
+    headers: Vec<(HeaderName, HeaderValue)>,
+    content_type: Option<String>,
 
     is_expecting_failure: bool,
-
-    headers: Vec<(HeaderName, HeaderValue)>,
-    config: TestRequestConfig,
+    is_saving_cookies: bool,
 }
 
 impl TestRequest {
     pub(crate) fn new(
         inner_test_server: Arc<Mutex<InnerTestServer>>,
         config: TestRequestConfig,
+        details: TestRequestDetails,
     ) -> Result<Self> {
         let server_locked = inner_test_server.as_ref().lock().map_err(|err| {
             anyhow!(
                 "Failed to lock InternalTestServer for {} {}, received {:?}",
-                config.method,
-                config.path,
+                details.method,
+                details.path,
                 err
             )
         })?;
-        let full_request_path = build_request_path(server_locked.server_address(), &config.path);
+        let full_request_path = build_request_path(server_locked.server_address(), &details.path);
 
         let cookie_header_raw =
             server_locked
@@ -89,17 +98,19 @@ impl TestRequest {
         }
 
         Ok(Self {
-            config,
+            details,
             inner_test_server,
             full_request_path,
             body: None,
-            is_expecting_failure: false,
             headers: initial_headers,
+            content_type: config.content_type,
+            is_expecting_failure: false,
+            is_saving_cookies: config.save_cookies,
         })
     }
 
     pub fn do_save_cookies(mut self) -> Self {
-        self.config.save_cookies = true;
+        self.is_saving_cookies = true;
         self
     }
 
@@ -109,7 +120,7 @@ impl TestRequest {
     /// Call this method to opt out and turn this feature off,
     /// for just _this_ request.
     pub fn do_not_save_cookies(mut self) -> Self {
-        self.config.save_cookies = false;
+        self.is_saving_cookies = false;
         self
     }
 
@@ -129,18 +140,26 @@ impl TestRequest {
     {
         let body_bytes = json_to_vec(body).expect("It should serialize the content into JSON");
         let body: Body = body_bytes.into();
-
         self.body = Some(body);
+
+        if self.content_type == None {
+            self.content_type = Some(JSON_CONTENT_TYPE.to_string());
+        }
 
         self
     }
 
     /// Set the body of the request to send up as raw test.
-    pub fn text<S>(self, raw_body: S) -> Self
+    pub fn text<S>(mut self, raw_body: S) -> Self
     where
         S: AsRef<str>,
     {
         let body_bytes = Bytes::copy_from_slice(raw_body.as_ref().as_bytes());
+
+        if self.content_type == None {
+            self.content_type = Some(TEXT_CONTENT_TYPE.to_string());
+        }
+
         self.bytes(body_bytes)
     }
 
@@ -153,16 +172,8 @@ impl TestRequest {
     }
 
     pub fn content_type(mut self, content_type: &str) -> Self {
-        self.push_header_content_type(content_type);
+        self.content_type = Some(content_type.to_string());
         self
-    }
-
-    fn push_header_content_type(&mut self, content_type: &str) {
-        let header_value = HeaderValue::from_str(content_type)
-            .with_context(|| format!("Failed to store header content type '{}'", content_type))
-            .unwrap();
-
-        self.headers.push((header::CONTENT_TYPE, header_value));
     }
 
     async fn send_or_panic(self) -> TestResponse {
@@ -170,16 +181,22 @@ impl TestRequest {
     }
 
     async fn send(mut self) -> Result<TestResponse> {
-        let path = self.config.path;
-        let save_cookies = self.config.save_cookies;
+        let path = self.details.path;
+        let save_cookies = self.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
 
         let mut request_builder = Request::builder()
             .uri(&self.full_request_path)
-            .method(self.config.method);
+            .method(self.details.method);
 
         // Add all the headers we have.
-        for (header_name, header_value) in self.headers {
+        let mut headers = self.headers;
+        if let Some(content_type) = self.content_type {
+            let header = build_content_type_header(content_type)?;
+            headers.push(header);
+        }
+
+        for (header_name, header_value) in headers {
             request_builder = request_builder.header(header_name, header_value);
         }
 
@@ -236,4 +253,11 @@ fn build_request_path(root_path: &str, sub_path: &str) -> String {
     }
 
     format!("http://{}/{}", root_path, sub_path)
+}
+
+fn build_content_type_header(content_type: String) -> Result<(HeaderName, HeaderValue)> {
+    let header_value = HeaderValue::from_str(&content_type)
+        .with_context(|| format!("Failed to store header content type '{}'", content_type))?;
+
+    Ok((header::CONTENT_TYPE, header_value))
 }
