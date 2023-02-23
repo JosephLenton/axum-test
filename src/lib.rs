@@ -1,3 +1,71 @@
+//!
+//! Axum Test is a library for testing Axum applications.
+//! Typically for full E2E testing.
+//!
+//!  * You can spin up a `TestServer` within a test.
+//!  * Create requests that will run against that.
+//!  * Retrieve what they happen to return.
+//!  * Assert that the response works how you expect.
+//!
+//! It icludes built in suppot with Serde, Cookies,
+//! and other common crates for working with the web.
+//!
+//! # Features
+//!
+//! ## Auto Cookie Saving 🍪
+//!
+//! When you build a `TestServer`, you can turn on a feature to automatically save cookies
+//! across requests. This is used for automatically saving things like session cookies.
+//!
+//! ```
+//! let config = TestServerConfig {
+//!     save_cookies: true,
+//!     ..TestServerConfig::default()
+//! };
+//! let server = TestServer::new_with_config(app, config)?;
+//! ```
+//!
+//! Then when you make a request, any cookies that are returned will be reused
+//! by the next request. This is on a per server basis (it doesn't save across servers).
+//!
+//! You can turn this on or off per request, using `TestRequest::do_save_cookies'
+//! and TestRequest::do_not_save_cookies'.
+//!
+//! ## Content Type 📇
+//!
+//! When performing a request, it will start with no content type at all.
+//!
+//! You can set a default type for all `TestRequest` objects to use,
+//! by setting the `default_content_type` in the `TestServerConfig`.
+//! When creating the `TestServer` instance, using `new_with_config`.
+//!
+//! ```
+//! let config = TestServerConfig {
+//!     default_content_type: Some("application/json".to_string()),
+//!     ..TestServerConfig::default()
+//! };
+//! let server = TestServer::new_with_config(app, config)?;
+//! ```
+//!
+//! If there is no default, then a `TestRequest` will try to guess the content type.
+//! Such as setting `application/json` when calling `TestRequest::json`,
+//! and `text/plain` when calling `TestRequest::text`.
+//! This will never override any default content type provided.
+//!
+//! Finally on each `TestRequest`, one can set the content type to use.
+//! By calling `TestRequest::content_type` on it.
+//!
+//! ```
+//! let server = TestServer::new(app, config)?;
+//! let response = server.post("/users")
+//!     .json(json!{
+//!         "username": "Terrance Pencilworth",
+//!     })
+//!     .content_type(&"application/json")
+//!     .await;
+//! ```
+//!
+
 mod test_server;
 pub use self::test_server::*;
 

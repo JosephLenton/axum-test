@@ -32,6 +32,7 @@ pub(crate) use self::test_request_details::*;
 const JSON_CONTENT_TYPE: &'static str = &"application/json";
 const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 
+///
 /// This contains the response from the server.
 ///
 /// Inside are the contents of the response, the status code, and some
@@ -40,6 +41,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// You can get the contents out as it's raw string, or deserialise it.
 /// One can also also use the `assert_*` functions to test against the
 /// response.
+///
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]
 pub struct TestRequest {
@@ -109,16 +111,18 @@ impl TestRequest {
         })
     }
 
+    /// Any cookies returned will be saved to the `TestServer` that created this,
+    /// which will continue to use those cookies on future requests.
     pub fn do_save_cookies(mut self) -> Self {
         self.is_saving_cookies = true;
         self
     }
 
-    /// By default, when this reuest finishes it will save all received cookies into the `TestServer`
-    /// for future requests. This is done to help test environments with things like authentication.
+    /// Cookies returned by this will _not_ be saved to the `TestServer`.
+    /// For use by future requests.
     ///
-    /// Call this method to opt out and turn this feature off,
-    /// for just _this_ request.
+    /// This is the default behaviour.
+    /// You can change that default in `TestServerConfig`.
     pub fn do_not_save_cookies(mut self) -> Self {
         self.is_saving_cookies = false;
         self

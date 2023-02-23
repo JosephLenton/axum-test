@@ -3,12 +3,9 @@ use ::std::net::SocketAddr;
 /// The basic setup for the `TestServer`.
 #[derive(Debug, Clone)]
 pub struct TestServerConfig {
-    /// When performing a request, the request will default to this content type.
-    /// Set this to set the content type for all requests (which individually they can override).
-    /// For example you may set all requests to use 'application/json'.
+    /// Set the default content type for all requests created by the `TestServer`.
     ///
-    /// If this is not set (i.e. set to `None`), then a best efforts approach will be used by requests.
-    /// Where it will guess an appropriate content type to use.
+    /// This overrides the default 'best efforts' approach of requests.
     pub default_content_type: Option<String>,
 
     /// Set the socket to use for the server.

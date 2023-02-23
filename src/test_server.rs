@@ -14,8 +14,13 @@ use crate::TestServerConfig;
 mod inner_test_server;
 pub(crate) use self::inner_test_server::*;
 
+///
 /// A means to run Axum applications within a server that you can query.
 /// This is for writing tests.
+///
+/// You can make a request against the `TestServer` by calling the
+/// `get`, `post`, `put`, `delete`, and `patch` methods (you can also use `method`).
+///
 #[derive(Debug)]
 pub struct TestServer {
     inner: Arc<Mutex<InnerTestServer>>,
