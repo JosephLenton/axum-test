@@ -20,8 +20,7 @@ use crate::TestRequestConfig;
 use crate::TestRequestDetails;
 use crate::TestServerConfig;
 
-/// A means to run Axum applications within a server that you can query.
-/// This is for writing tests.
+/// The `InnerTestServer` is the real server that runs.
 #[derive(Debug)]
 pub(crate) struct InnerTestServer {
     server_thread: JoinHandle<()>,

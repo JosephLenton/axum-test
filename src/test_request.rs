@@ -35,12 +35,19 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 ///
 /// This contains the response from the server.
 ///
-/// Inside are the contents of the response, the status code, and some
-/// debugging information.
+/// A `TestRequest` represents a HTTP request to the test server.
+/// It is created by using the `TestServer`. Such as calling `TestServer::get`
+/// or `TestServer::post.
 ///
-/// You can get the contents out as it's raw string, or deserialise it.
-/// One can also also use the `assert_*` functions to test against the
-/// response.
+/// The `TestRequest` allows the caller to modify the request to be sent to the server.
+/// Including the headers, body, and other relevant details.
+///
+/// The TestRequest struct provides a number of methods to set up the request,
+/// such as json, text, bytes, expect_fail, content_type, etc.
+/// The do_save_cookies and do_not_save_cookies methods are used to control cookie handling.
+///
+/// Once the request is fully configured, the caller should await this object.
+/// That runs the request to the server, and resolves to a `TestResponse`.
 ///
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]

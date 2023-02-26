@@ -36,14 +36,13 @@ This is primarily for testing Axum services.
           .route("/ping", get(get_ping))
           .into_make_service();
 
-      // Run the server.
-      let server = TestServer::new_with_random_address(app);
+      // Run the server on a random address.
+      let server = TestServer::new(app).unwrap();
 
       // Get the request.
       let response = server
           .get("/ping")
-          .await
-          .assert_contents(&"pong!");
+          .await;
 
       assert_eq!(response.contents, "pong!");
   }

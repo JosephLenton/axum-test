@@ -15,8 +15,8 @@ mod inner_test_server;
 pub(crate) use self::inner_test_server::*;
 
 ///
-/// A means to run Axum applications within a server that you can query.
-/// This is for writing tests.
+/// The `TestServer` represents your application, running on a socket.
+/// Allowing you to create new requests that will go to this server.
 ///
 /// You can make a request against the `TestServer` by calling the
 /// `get`, `post`, `put`, `delete`, and `patch` methods (you can also use `method`).
