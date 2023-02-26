@@ -13,14 +13,15 @@ use ::serde::Deserialize;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 
-/// This contains the response from the server.
+///
+/// The `TestResponse` represents the result of a `TestRequest`.
+/// It is returned when you call await on a `TestRequest` object.
 ///
 /// Inside are the contents of the response, the status code, and some
-/// debugging information.
+/// debugging information. You can use this to deserialise the data
+/// returned into a specific format (i.e. deserialising from JSON),
+/// and validating the response looks how you expect.
 ///
-/// You can get the contents out as it's raw string, or deserialise it.
-/// One can also also use the `assert_*` functions to test against the
-/// response.
 #[derive(Clone, Debug)]
 pub struct TestResponse {
     request_url: String,

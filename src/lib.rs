@@ -17,12 +17,22 @@
 //! When you build a `TestServer`, you can turn on a feature to automatically save cookies
 //! across requests. This is used for automatically saving things like session cookies.
 //!
-//! ```
+//! ```rust
+//! # ::tokio_test::block_on(async {
+//! use ::axum::Router;
+//! use ::axum_test::TestServer;
+//! use ::axum_test::TestServerConfig;
+//!
+//! let my_app = Router::new()
+//!     .into_make_service();
+//!
 //! let config = TestServerConfig {
 //!     save_cookies: true,
 //!     ..TestServerConfig::default()
 //! };
-//! let server = TestServer::new_with_config(app, config)?;
+//! let server = TestServer::new_with_config(my_app, config)
+//!     .unwrap();
+//! # })
 //! ```
 //!
 //! Then when you make a request, any cookies that are returned will be reused
@@ -39,12 +49,22 @@
 //! by setting the `default_content_type` in the `TestServerConfig`.
 //! When creating the `TestServer` instance, using `new_with_config`.
 //!
-//! ```
+//! ```rust
+//! # ::tokio_test::block_on(async {
+//! use ::axum::Router;
+//! use ::axum_test::TestServer;
+//! use ::axum_test::TestServerConfig;
+//!
+//! let my_app = Router::new()
+//!     .into_make_service();
+//!
 //! let config = TestServerConfig {
 //!     default_content_type: Some("application/json".to_string()),
 //!     ..TestServerConfig::default()
 //! };
-//! let server = TestServer::new_with_config(app, config)?;
+//! let server = TestServer::new_with_config(my_app, config)
+//!     .unwrap();
+//! # })
 //! ```
 //!
 //! If there is no default, then a `TestRequest` will try to guess the content type.
@@ -55,14 +75,32 @@
 //! Finally on each `TestRequest`, one can set the content type to use.
 //! By calling `TestRequest::content_type` on it.
 //!
-//! ```
-//! let server = TestServer::new(app, config)?;
-//! let response = server.post("/users")
-//!     .json(json!{
-//!         "username": "Terrance Pencilworth",
-//!     })
+//! ```rust
+//! # ::tokio_test::block_on(async {
+//! use ::axum::Router;
+//! use ::axum::extract::Json;
+//! use ::axum::routing::put;
+//! use ::axum_test::TestServer;
+//! use ::serde_json::json;
+//! use ::serde_json::Value;
+//!
+//! async fn put_user(Json(user): Json<Value>) -> () {
+//!     // todo
+//! }
+//!
+//! let my_app = Router::new()
+//!     .route("/users", put(put_user))
+//!     .into_make_service();
+//!
+//! let server = TestServer::new(my_app)
+//!     .unwrap();
+//! let response = server.put("/users")
 //!     .content_type(&"application/json")
+//!     .json(&json!({
+//!         "username": "Terrance Pencilworth",
+//!     }))
 //!     .await;
+//! # })
 //! ```
 //!
 

@@ -15,8 +15,11 @@ mod inner_test_server;
 pub(crate) use self::inner_test_server::*;
 
 ///
-/// The `TestServer` represents your application, running on a socket.
-/// Allowing you to create new requests that will go to this server.
+/// The `TestServer` represents your application, running as a web server,
+/// and you can make web requests to your application.
+///
+/// For most people's needs, this is where to start when writing a test.
+/// This allows you Allowing you to create new requests that will go to this server.
 ///
 /// You can make a request against the `TestServer` by calling the
 /// `get`, `post`, `put`, `delete`, and `patch` methods (you can also use `method`).
@@ -28,15 +31,19 @@ pub struct TestServer {
 
 impl TestServer {
     /// This will take the given app, and run it.
-    /// It will be run on a randomly picked port.
+    /// It will use a randomly selected port for running.
     ///
-    /// The webserver is then wrapped within a `TestServer`,
-    /// and returned.
+    /// This is the same as creating a new `TestServer` with a configuration,
+    /// and passing `TestServerConfig::default()`.
     pub fn new(app: IntoMakeService<Router>) -> Result<Self> {
         Self::new_with_config(app, TestServerConfig::default())
     }
 
-    /// Creates a `TestServer` running your app on the address given.
+    /// This very similar to `TestServer::new()`,
+    /// however you can customise some of the configuration.
+    /// This includes which port to run on, or default settings.
+    ///
+    /// See the `TestServerConfig` for more information on each configuration setting.
     pub fn new_with_config(
         app: IntoMakeService<Router>,
         options: TestServerConfig,
@@ -48,52 +55,52 @@ impl TestServer {
         Ok(Self { inner })
     }
 
-    /// Adds the given cookies.
-    /// They will be included on all future requests.
+    /// Adds extra cookies to be used on *all* future requests.
     ///
-    /// They will be stored over the top of the existing cookies.
+    /// Any cookies which have the same name as the new cookies,
+    /// will get replaced.
     pub fn add_cookies(&mut self, cookies: CookieJar) {
         InnerTestServer::add_cookies(&mut self.inner, cookies)
             .with_context(|| format!("Trying to add_cookies"))
             .unwrap()
     }
 
-    /// Adds the given cookie.
-    /// It will be included on all future requests.
+    /// Adds a cookie to be included on *all* future requests.
     ///
-    /// It will be stored over the top of the existing cookies.
+    /// If a cookie with the same name already exists,
+    /// then it will be replaced.
     pub fn add_cookie(&mut self, cookie: Cookie) {
         InnerTestServer::add_cookie(&mut self.inner, cookie)
             .with_context(|| format!("Trying to add_cookie"))
             .unwrap()
     }
 
-    /// Creates a GET request to the path.
+    /// Creates a HTTP GET request to the path.
     pub fn get(&self, path: &str) -> TestRequest {
         self.method(Method::GET, path)
     }
 
-    /// Creates a POST request to the given path.
+    /// Creates a HTTP POST request to the given path.
     pub fn post(&self, path: &str) -> TestRequest {
         self.method(Method::POST, path)
     }
 
-    /// Creates a PATCH request to the path.
+    /// Creates a HTTP PATCH request to the path.
     pub fn patch(&self, path: &str) -> TestRequest {
         self.method(Method::PATCH, path)
     }
 
-    /// Creates a PUT request to the path.
+    /// Creates a HTTP PUT request to the path.
     pub fn put(&self, path: &str) -> TestRequest {
         self.method(Method::PUT, path)
     }
 
-    /// Creates a DELETE request to the path.
+    /// Creates a HTTP DELETE request to the path.
     pub fn delete(&self, path: &str) -> TestRequest {
         self.method(Method::DELETE, path)
     }
 
-    /// Creates a request to the path, using the method you provided.
+    /// Creates a HTTP request, to the path given, using the given method.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
         let debug_method = method.clone();
         InnerTestServer::send(&self.inner, method, path)

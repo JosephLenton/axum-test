@@ -33,14 +33,15 @@ const JSON_CONTENT_TYPE: &'static str = &"application/json";
 const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 
 ///
-/// This contains the response from the server.
-///
 /// A `TestRequest` represents a HTTP request to the test server.
-/// It is created by using the `TestServer`. Such as calling `TestServer::get`
-/// or `TestServer::post.
+/// Requests are created by the `TestServer`. You do not create them yourself.
+/// They are creted by calling the relevant `TestServer` function which starts the request for you.
+/// For example calling `TestServer::get` to create a new HTTP GET request,
+/// or `TestServer::post to create a HTTP POST request.
 ///
-/// The `TestRequest` allows the caller to modify the request to be sent to the server.
-/// Including the headers, body, and other relevant details.
+/// The `TestRequest` allows the caller to fill in the rest of the request
+/// to be sent to the server. Including the headers, the body, cookies, the content type,
+/// and other relevant details.
 ///
 /// The TestRequest struct provides a number of methods to set up the request,
 /// such as json, text, bytes, expect_fail, content_type, etc.

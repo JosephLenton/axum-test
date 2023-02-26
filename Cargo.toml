@@ -25,3 +25,4 @@ tokio = { version = "1.21.2", features = ["rt", "time"] }
 [dev-dependencies]
 axum-extra = { vartion = "0.5.0", features = ["cookie"] }
 tokio = { version = "1.21.2", features = ["rt", "time", "macros"] }
+tokio-test = "0.4.2"
