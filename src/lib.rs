@@ -1,6 +1,5 @@
 //!
-//! Axum Test is a library for testing Axum applications.
-//! Typically for full E2E testing.
+//! Axum Test is a library for writing tests for web servers written using Axum.
 //!
 //!  * You can spin up a `TestServer` within a test.
 //!  * Create requests that will run against that.
@@ -10,9 +9,9 @@
 //! It icludes built in suppot with Serde, Cookies,
 //! and other common crates for working with the web.
 //!
-//! # Features
+//! ## Features
 //!
-//! ## Auto Cookie Saving 🍪
+//! ### Auto Cookie Saving 🍪
 //!
 //! When you build a `TestServer`, you can turn on a feature to automatically save cookies
 //! across requests. This is used for automatically saving things like session cookies.
@@ -41,7 +40,7 @@
 //! You can turn this on or off per request, using `TestRequest::do_save_cookies'
 //! and TestRequest::do_not_save_cookies'.
 //!
-//! ## Content Type 📇
+//! ### Content Type 📇
 //!
 //! When performing a request, it will start with no content type at all.
 //!
@@ -62,6 +61,7 @@
 //!     default_content_type: Some("application/json".to_string()),
 //!     ..TestServerConfig::default()
 //! };
+//!
 //! let server = TestServer::new_with_config(my_app, config)
 //!     .unwrap();
 //! # })
@@ -94,6 +94,7 @@
 //!
 //! let server = TestServer::new(my_app)
 //!     .unwrap();
+//!
 //! let response = server.put("/users")
 //!     .content_type(&"application/json")
 //!     .json(&json!({
