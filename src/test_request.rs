@@ -13,6 +13,7 @@ use ::serde::Serialize;
 use ::serde_json::to_vec as json_to_vec;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
+use ::std::fmt::Display;
 use ::std::fmt::Write;
 use ::std::future::IntoFuture;
 use ::std::sync::Arc;
@@ -161,12 +162,15 @@ impl TestRequest {
         self
     }
 
-    /// Set the body of the request to send up as raw test.
-    pub fn text<S>(mut self, raw_body: S) -> Self
+    /// Set raw text as the body of the request.
+    ///
+    /// If there isn't a content type set, this will default to `text/plain`.
+    pub fn text<T>(mut self, raw_text: T) -> Self
     where
-        S: AsRef<str>,
+        T: Display,
     {
-        let body_bytes = Bytes::copy_from_slice(raw_body.as_ref().as_bytes());
+        let body_text = format!("{}", raw_text);
+        let body_bytes = Bytes::from(body_text.into_bytes());
 
         if self.content_type == None {
             self.content_type = Some(TEXT_CONTENT_TYPE.to_string());
@@ -175,7 +179,9 @@ impl TestRequest {
         self.bytes(body_bytes)
     }
 
-    /// Set the body of the request to send up as raw bytes.
+    /// Set raw bytes as the body of the request.
+    ///
+    /// The content type is left unchanged.
     pub fn bytes(mut self, body_bytes: Bytes) -> Self {
         let body: Body = body_bytes.into();
 
