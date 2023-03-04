@@ -45,7 +45,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// and other relevant details.
 ///
 /// The TestRequest struct provides a number of methods to set up the request,
-/// such as json, text, bytes, expect_fail, content_type, etc.
+/// such as json, text, bytes, expect_failure, content_type, etc.
 /// The do_save_cookies and do_not_save_cookies methods are used to control cookie handling.
 ///
 /// Once the request is fully configured, the caller should await this object.
@@ -141,15 +141,24 @@ impl TestRequest {
     /// Failiure is deemend as any response that isn't a 200.
     ///
     /// By default, requests are expct to always succeed.
-    pub fn expect_fail(mut self) -> Self {
+    pub fn expect_failure(mut self) -> Self {
         self.is_expecting_failure = true;
+        self
+    }
+
+    /// Marks that this request should expect to succeed.
+    /// Success is deemend as returning a 200.
+    ///
+    /// Note this is the default behaviour when creating a new `TestRequest`.
+    pub fn expect_success(mut self) -> Self {
+        self.is_expecting_failure = false;
         self
     }
 
     /// Set the body of the request to send up as Json.
     pub fn json<J>(mut self, body: &J) -> Self
     where
-        J: Serialize,
+        J: ?Sized + Serialize,
     {
         let body_bytes = json_to_vec(body).expect("It should serialize the content into JSON");
         let body: Body = body_bytes.into();
