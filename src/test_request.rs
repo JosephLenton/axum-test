@@ -35,10 +35,16 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 
 ///
 /// A `TestRequest` represents a HTTP request to the test server.
+///
+/// ## Creating
+///
 /// Requests are created by the `TestServer`. You do not create them yourself.
-/// They are creted by calling the relevant `TestServer` function which starts the request for you.
+///
+/// The `TestServer` has functions corresponding to specific requests.
 /// For example calling `TestServer::get` to create a new HTTP GET request,
 /// or `TestServer::post to create a HTTP POST request.
+///
+/// ## Customising
 ///
 /// The `TestRequest` allows the caller to fill in the rest of the request
 /// to be sent to the server. Including the headers, the body, cookies, the content type,
@@ -48,8 +54,16 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// such as json, text, bytes, expect_failure, content_type, etc.
 /// The do_save_cookies and do_not_save_cookies methods are used to control cookie handling.
 ///
-/// Once the request is fully configured, the caller should await this object.
-/// That runs the request to the server, and resolves to a `TestResponse`.
+/// ## Sending
+///
+/// Once fully configured you send the rquest by awaiting the request object.
+///
+/// ```rust,ignore
+/// let request = server.get(&"/user");
+/// let response = request.await;
+/// ```
+///
+/// You will receive back a `TestResponse`.
 ///
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]
@@ -198,6 +212,7 @@ impl TestRequest {
         self
     }
 
+    /// Set the content type to use for this request in the header.
     pub fn content_type(mut self, content_type: &str) -> Self {
         self.content_type = Some(content_type.to_string());
         self
