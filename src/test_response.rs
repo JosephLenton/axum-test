@@ -12,6 +12,7 @@ use ::hyper::http::StatusCode;
 use ::serde::Deserialize;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
+use ::std::fmt::Display;
 
 ///
 /// The `TestResponse` represents the result of a `TestRequest`.
@@ -64,12 +65,40 @@ impl TestResponse {
         self.status_code
     }
 
+    /// Finds a header with the given name.
+    /// If there are multiple headers with the same name,
+    /// then only the first will be returned.
+    ///
+    /// `None` is returned when no header was found.
     #[must_use]
-    pub fn header<N>(&self, header_name: N) -> Option<HeaderValue>
+    pub fn maybe_header<N>(&self, header_name: N) -> Option<HeaderValue>
     where
         N: AsHeaderName,
     {
         self.headers.get(header_name).map(|h| h.to_owned())
+    }
+
+    /// Finds a header with the given name.
+    /// If there are multiple headers with the same name,
+    /// then only the first will be returned.
+    ///
+    /// If no header is found, then this will panic.
+    #[must_use]
+    pub fn header<N>(&self, header_name: N) -> HeaderValue
+    where
+        N: AsHeaderName + Display + Clone,
+    {
+        let debug_header = header_name.clone();
+        self.headers
+            .get(header_name)
+            .map(|h| h.to_owned())
+            .with_context(|| {
+                format!(
+                    "Cannot find header {} for response {}",
+                    debug_header, self.request_url
+                )
+            })
+            .unwrap()
     }
 
     pub fn iter_headers<'a>(&'a self) -> impl Iterator<Item = (&'a HeaderName, &'a HeaderValue)> {
@@ -87,19 +116,7 @@ impl TestResponse {
     }
 
     #[must_use]
-    pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
-        self.maybe_cookie(cookie_name)
-            .with_context(|| {
-                format!(
-                    "Cannot find cookie {} for response {}",
-                    cookie_name, self.request_url
-                )
-            })
-            .unwrap()
-    }
-
-    #[must_use]
-    pub fn maybe_cookie(&self, cookie_name: &str) -> Option<Cookie<'static>> {
+    pub fn cookie(&self, cookie_name: &str) -> Option<Cookie<'static>> {
         for cookie in self.iter_cookies() {
             if cookie.name() == cookie_name {
                 return Some(cookie.into_owned());
@@ -107,6 +124,18 @@ impl TestResponse {
         }
 
         None
+    }
+
+    #[must_use]
+    pub fn expect_cookie(&self, cookie_name: &str) -> Cookie<'static> {
+        self.cookie(cookie_name)
+            .with_context(|| {
+                format!(
+                    "Cannot find cookie {} for response {}",
+                    cookie_name, self.request_url
+                )
+            })
+            .unwrap()
     }
 
     #[must_use]
