@@ -101,10 +101,12 @@ impl TestResponse {
             .unwrap()
     }
 
+    /// Iterates over all of the headers contained in the response.
     pub fn iter_headers<'a>(&'a self) -> impl Iterator<Item = (&'a HeaderName, &'a HeaderValue)> {
         self.headers.iter()
     }
 
+    /// Iterates over all of the headers for a specific name, contained in the response.
     pub fn iter_headers_by_name<'a, N>(
         &'a self,
         header_name: N,
@@ -116,7 +118,7 @@ impl TestResponse {
     }
 
     #[must_use]
-    pub fn cookie(&self, cookie_name: &str) -> Option<Cookie<'static>> {
+    pub fn maybe_cookie(&self, cookie_name: &str) -> Option<Cookie<'static>> {
         for cookie in self.iter_cookies() {
             if cookie.name() == cookie_name {
                 return Some(cookie.into_owned());
@@ -127,8 +129,8 @@ impl TestResponse {
     }
 
     #[must_use]
-    pub fn expect_cookie(&self, cookie_name: &str) -> Cookie<'static> {
-        self.cookie(cookie_name)
+    pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
+        self.maybe_cookie(cookie_name)
             .with_context(|| {
                 format!(
                     "Cannot find cookie {} for response {}",
@@ -138,6 +140,10 @@ impl TestResponse {
             .unwrap()
     }
 
+    /// Returns all of the cookies contained in the response,
+    /// within a `CookieJar` object.
+    ///
+    /// See the `cookie` crate for details.
     #[must_use]
     pub fn cookies(&self) -> CookieJar {
         let mut cookies = CookieJar::new();
@@ -149,6 +155,8 @@ impl TestResponse {
         cookies
     }
 
+    /// Iterate over all of the cookies in the response.
+    #[must_use]
     pub fn iter_cookies<'a>(&'a self) -> impl Iterator<Item = Cookie<'a>> {
         self.iter_headers_by_name(SET_COOKIE).map(|header| {
             let header_str = header

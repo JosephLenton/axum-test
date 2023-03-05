@@ -137,6 +137,15 @@
 //! # })
 //! ```
 //!
+//! ### Fail Fast
+//!
+//! This library is written to panic quickly. For example by default a response will presume to
+//! succeed and will panic if they don't (which you can change).
+//! Functions to retreive cookies and headers will by default panic if they aren't found.
+//!
+//! This behaviour is unorthodox for Rust, however it is intentional to aid with writing tests.
+//! Where you want the test to fail as quickly, and skip on writing error handling code.
+//!
 
 mod test_server;
 pub use self::test_server::*;
