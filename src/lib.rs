@@ -9,6 +9,39 @@
 //! It icludes built in suppot with Serde, Cookies,
 //! and other common crates for working with the web.
 //!
+//! ## Getting Started
+//!
+//! In essence; create your Axum application, create a `TestServer`,
+//! and then make requests against it.
+//!
+//! ```rust
+//! # ::tokio_test::block_on(async {
+//! use ::axum::Router;
+//! use ::axum::extract::Json;
+//! use ::axum::routing::put;
+//! use ::axum_test::TestServer;
+//! use ::serde_json::json;
+//! use ::serde_json::Value;
+//!
+//! async fn put_user(Json(user): Json<Value>) -> () {
+//!     // todo
+//! }
+//!
+//! let my_app = Router::new()
+//!     .route("/users", put(put_user))
+//!     .into_make_service();
+//!
+//! let server = TestServer::new(my_app)
+//!     .unwrap();
+//!
+//! let response = server.put("/users")
+//!     .json(&json!({
+//!         "username": "Terrance Pencilworth",
+//!     }))
+//!     .await;
+//! # })
+//! ```
+//!
 //! ## Features
 //!
 //! ### Auto Cookie Saving 🍪
