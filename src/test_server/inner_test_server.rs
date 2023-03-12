@@ -96,6 +96,15 @@ impl InnerTestServer {
     /// Adds the given cookies.
     ///
     /// They will be stored over the top of the existing cookies.
+    pub(crate) fn clear_cookies(this: &mut Arc<Mutex<Self>>) -> Result<()> {
+        InnerTestServer::with_this_mut(this, "clear_cookies", |this| {
+            this.cookies = CookieJar::new();
+        })
+    }
+
+    /// Adds the given cookies.
+    ///
+    /// They will be stored over the top of the existing cookies.
     pub(crate) fn add_cookies(this: &mut Arc<Mutex<Self>>, cookies: CookieJar) -> Result<()> {
         InnerTestServer::with_this_mut(this, "add_cookies", |this| {
             for cookie in cookies.iter() {

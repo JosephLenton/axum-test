@@ -2,10 +2,14 @@ use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::auto_future::AutoFuture;
+use ::axum::http::HeaderValue;
+use ::cookie::Cookie;
+use ::cookie::CookieJar;
 use ::hyper::body::to_bytes;
 use ::hyper::body::Body;
 use ::hyper::body::Bytes;
 use ::hyper::header;
+use ::hyper::header::HeaderName;
 use ::hyper::http::header::SET_COOKIE;
 use ::hyper::http::Request;
 use ::hyper::Client;
@@ -14,12 +18,9 @@ use ::serde_json::to_vec as json_to_vec;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
-use ::std::fmt::Write;
 use ::std::future::IntoFuture;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
-use axum::http::HeaderValue;
-use hyper::header::HeaderName;
 
 use crate::InnerTestServer;
 use crate::TestResponse;
@@ -75,6 +76,7 @@ pub struct TestRequest {
     full_request_path: String,
     body: Option<Body>,
     headers: Vec<(HeaderName, HeaderValue)>,
+    cookies: CookieJar,
     content_type: Option<String>,
 
     is_expecting_failure: bool,
@@ -97,37 +99,17 @@ impl TestRequest {
         })?;
         let full_request_path = build_request_path(server_locked.server_address(), &details.path);
 
-        let cookie_header_raw =
-            server_locked
-                .cookies()
-                .iter()
-                .fold(String::new(), |mut buffer, cookie| {
-                    if buffer.len() > 0 {
-                        write!(buffer, "; ").expect(
-                            "Writing to internal string for cookie header should always work",
-                        );
-                    }
-
-                    write!(buffer, "{}", cookie)
-                        .expect("Writing to internal string for cookie header should always work");
-
-                    buffer
-                });
+        let cookies = server_locked.cookies().clone();
 
         ::std::mem::drop(server_locked);
-
-        let mut initial_headers: Vec<(HeaderName, HeaderValue)> = vec![];
-        if cookie_header_raw.len() > 0 {
-            let header_value = HeaderValue::from_str(&cookie_header_raw)?;
-            initial_headers.push((header::COOKIE, header_value));
-        }
 
         Ok(Self {
             details,
             inner_test_server,
             full_request_path,
             body: None,
-            headers: initial_headers,
+            headers: vec![],
+            cookies,
             content_type: config.content_type,
             is_expecting_failure: false,
             is_saving_cookies: config.save_cookies,
@@ -148,6 +130,18 @@ impl TestRequest {
     /// You can change that default in `TestServerConfig`.
     pub fn do_not_save_cookies(mut self) -> Self {
         self.is_saving_cookies = false;
+        self
+    }
+
+    /// Clears all cookies used internally within this Request.
+    pub fn clear_cookies(mut self) -> Self {
+        self.cookies = CookieJar::new();
+        self
+    }
+
+    /// Adds a Cookie to be sent with this request.
+    pub fn add_cookie<'c>(mut self, cookie: Cookie<'c>) -> Self {
+        self.cookies.add(cookie.into_owned());
         self
     }
 
@@ -238,6 +232,14 @@ impl TestRequest {
             headers.push(header);
         }
 
+        // Add all the cookies as headers
+        for cookie in self.cookies.iter() {
+            let cookie_raw = cookie.to_string();
+            let header_value = HeaderValue::from_str(&cookie_raw)?;
+            headers.push((header::COOKIE, header_value));
+        }
+
+        // Put headers into the request
         for (header_name, header_value) in headers {
             request_builder = request_builder.header(header_name, header_value);
         }

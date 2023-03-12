@@ -55,6 +55,13 @@ impl TestServer {
         Ok(Self { inner })
     }
 
+    /// Clears all of the cookies stored internally.
+    pub fn clear_cookies(&mut self) {
+        InnerTestServer::clear_cookies(&mut self.inner)
+            .with_context(|| format!("Trying to clear_cookies"))
+            .unwrap()
+    }
+
     /// Adds extra cookies to be used on *all* future requests.
     ///
     /// Any cookies which have the same name as the new cookies,

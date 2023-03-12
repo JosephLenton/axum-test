@@ -294,12 +294,15 @@ mod test_cookies {
     use ::axum::routing::get;
     use ::axum::routing::put;
     use ::axum::Router;
-    use ::axum_extra::extract::cookie::Cookie;
+    use ::axum_extra::extract::cookie::Cookie as AxumCookie;
     use ::axum_extra::extract::cookie::CookieJar;
+    use ::cookie::Cookie;
     use ::hyper::body::to_bytes;
 
+    const TEST_COOKIE_NAME: &'static str = &"test-cookie";
+
     async fn get_cookie(cookies: CookieJar) -> (CookieJar, String) {
-        let cookie = cookies.get("test-cookie");
+        let cookie = cookies.get(&TEST_COOKIE_NAME);
         let cookie_value = cookie
             .map(|c| c.value().to_string())
             .unwrap_or_else(|| "cookie-not-found".to_string());
@@ -315,7 +318,7 @@ mod test_cookies {
             .await
             .expect("Should turn the body into bytes");
         let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
-        let cookie = Cookie::new("test-cookie", body_text);
+        let cookie = AxumCookie::new(TEST_COOKIE_NAME, body_text);
         cookies = cookies.add(cookie);
 
         (cookies, &"done")
@@ -424,5 +427,122 @@ mod test_cookies {
         let response_text = server.get(&"/cookie").await.text();
 
         assert_eq!(response_text, "cookie-found!");
+    }
+
+    #[tokio::test]
+    async fn it_should_wipe_cookies_cleared_by_request() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new_with_config(
+            app,
+            TestServerConfig {
+                save_cookies: false, // it's off by default!
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        // Create a cookie.
+        server
+            .put(&"/cookie")
+            .text(&"cookie-found!")
+            .do_save_cookies()
+            .await;
+
+        // Check it comes back.
+        let response_text = server.get(&"/cookie").clear_cookies().await.text();
+
+        assert_eq!(response_text, "cookie-not-found");
+    }
+
+    #[tokio::test]
+    async fn it_should_wipe_cookies_cleared_by_test_server() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+
+        // Run the server.
+        let mut server = TestServer::new_with_config(
+            app,
+            TestServerConfig {
+                save_cookies: false, // it's off by default!
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        // Create a cookie.
+        server
+            .put(&"/cookie")
+            .text(&"cookie-found!")
+            .do_save_cookies()
+            .await;
+
+        server.clear_cookies();
+
+        // Check it comes back.
+        let response_text = server.get(&"/cookie").await.text();
+
+        assert_eq!(response_text, "cookie-not-found");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_cookies_added_to_request() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new_with_config(
+            app,
+            TestServerConfig {
+                save_cookies: false, // it's off by default!
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        // Check it comes back.
+        let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+
+        let response_text = server.get(&"/cookie").add_cookie(cookie).await.text();
+
+        assert_eq!(response_text, "my-custom-cookie");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_cookies_added_to_test_server() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+
+        // Run the server.
+        let mut server = TestServer::new_with_config(
+            app,
+            TestServerConfig {
+                save_cookies: false, // it's off by default!
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        // Check it comes back.
+        let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        server.add_cookie(cookie);
+
+        let response_text = server.get(&"/cookie").await.text();
+
+        assert_eq!(response_text, "my-custom-cookie");
     }
 }
