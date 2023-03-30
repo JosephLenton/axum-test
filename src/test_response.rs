@@ -78,6 +78,12 @@ impl TestResponse {
         self.headers.get(header_name).map(|h| h.to_owned())
     }
 
+    /// Returns the headers returned from the response.
+    #[must_use]
+    pub fn headers<'a>(&'a self) -> &'a HeaderMap<HeaderValue> {
+        &self.headers
+    }
+
     /// Finds a header with the given name.
     /// If there are multiple headers with the same name,
     /// then only the first will be returned.
