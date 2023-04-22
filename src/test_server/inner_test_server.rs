@@ -14,10 +14,8 @@ use ::std::sync::Mutex;
 use ::tokio::spawn;
 use ::tokio::task::JoinHandle;
 
-use crate::util::new_random_socket_addr;
 use crate::TestRequest;
 use crate::TestRequestConfig;
-use crate::TestRequestDetails;
 use crate::TestServerConfig;
 
 /// The `InnerTestServer` is the real server that runs.
@@ -33,14 +31,9 @@ pub(crate) struct InnerTestServer {
 impl InnerTestServer {
     /// Creates a `TestServer` running your app on the address given.
     pub(crate) fn new(app: IntoMakeService<Router>, config: TestServerConfig) -> Result<Self> {
-        let socket_address = match config.socket_address {
-            Some(socket_address) => socket_address,
-            None => new_random_socket_addr().context("Cannot create socket address for use")?,
-        };
-
+        let socket_address = config.build_socket_address()?;
         let listener = TcpListener::bind(socket_address)
             .with_context(|| "Failed to create TCPListener for TestServer")?;
-        let server_address = socket_address.to_string();
         let server = Server::from_tcp(listener)
             .with_context(|| "Failed to create ::axum::Server for TestServer")?
             .serve(app);
@@ -51,17 +44,13 @@ impl InnerTestServer {
 
         let test_server = Self {
             server_thread,
-            server_address,
+            server_address: socket_address.to_string(),
             cookies: CookieJar::new(),
             save_cookies: config.save_cookies,
             default_content_type: config.default_content_type,
         };
 
         Ok(test_server)
-    }
-
-    pub(crate) fn server_address<'a>(&'a self) -> &'a str {
-        &self.server_address
     }
 
     pub(crate) fn cookies<'a>(&'a self) -> &'a CookieJar {
@@ -119,29 +108,37 @@ impl InnerTestServer {
         })
     }
 
-    pub(crate) fn test_request_config(this: &Arc<Mutex<Self>>) -> Result<TestRequestConfig> {
-        InnerTestServer::with_this(this, "test_request_config", |this| TestRequestConfig {
-            save_cookies: this.save_cookies,
-            content_type: this.default_content_type.clone(),
+    pub(crate) fn test_request_config(
+        this: &Arc<Mutex<Self>>,
+        method: Method,
+        path: &str,
+    ) -> Result<TestRequestConfig> {
+        InnerTestServer::with_this(this, "test_request_config", |this| {
+            let full_request_path = build_request_path(&this.server_address, path);
+
+            TestRequestConfig {
+                is_saving_cookies: this.save_cookies,
+                content_type: this.default_content_type.clone(),
+                full_request_path,
+                method,
+                path: path.to_string(),
+            }
         })
     }
 
     pub(crate) fn send(this: &Arc<Mutex<Self>>, method: Method, path: &str) -> Result<TestRequest> {
-        let config = InnerTestServer::test_request_config(this)?;
+        let config = InnerTestServer::test_request_config(this, method, path)?;
 
-        TestRequest::new(
-            this.clone(),
-            config,
-            TestRequestDetails {
-                method,
-                path: path.to_string(),
-            },
-        )
+        TestRequest::new(this.clone(), config)
     }
 
-    pub(crate) fn with_this<F, R>(this: &Arc<Mutex<Self>>, name: &str, some_action: F) -> Result<R>
+    pub(crate) fn with_this<'a, F, R>(
+        this: &'a Arc<Mutex<Self>>,
+        name: &str,
+        some_action: F,
+    ) -> Result<R>
     where
-        F: FnOnce(&mut Self) -> R,
+        F: FnOnce(&mut Self) -> R + 'a,
     {
         let mut this_locked = this.lock().map_err(|err| {
             anyhow!(
@@ -182,4 +179,16 @@ impl Drop for InnerTestServer {
     fn drop(&mut self) {
         self.server_thread.abort();
     }
+}
+
+fn build_request_path(root_path: &str, sub_path: &str) -> String {
+    if sub_path == "" {
+        return format!("http://{}", root_path.to_string());
+    }
+
+    if sub_path.starts_with("/") {
+        return format!("http://{}{}", root_path, sub_path);
+    }
+
+    format!("http://{}/{}", root_path, sub_path)
 }

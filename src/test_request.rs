@@ -28,9 +28,6 @@ use crate::TestResponse;
 mod test_request_config;
 pub(crate) use self::test_request_config::*;
 
-mod test_request_details;
-pub(crate) use self::test_request_details::*;
-
 const JSON_CONTENT_TYPE: &'static str = &"application/json";
 const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 
@@ -69,57 +66,49 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]
 pub struct TestRequest {
-    details: TestRequestDetails,
+    config: TestRequestConfig,
 
     inner_test_server: Arc<Mutex<InnerTestServer>>,
 
-    full_request_path: String,
     body: Option<Body>,
     headers: Vec<(HeaderName, HeaderValue)>,
     cookies: CookieJar,
-    content_type: Option<String>,
 
     is_expecting_failure: bool,
-    is_saving_cookies: bool,
 }
 
 impl TestRequest {
     pub(crate) fn new(
         inner_test_server: Arc<Mutex<InnerTestServer>>,
         config: TestRequestConfig,
-        details: TestRequestDetails,
     ) -> Result<Self> {
         let server_locked = inner_test_server.as_ref().lock().map_err(|err| {
             anyhow!(
                 "Failed to lock InternalTestServer for {} {}, received {:?}",
-                details.method,
-                details.path,
+                config.method,
+                config.path,
                 err
             )
         })?;
-        let full_request_path = build_request_path(server_locked.server_address(), &details.path);
 
         let cookies = server_locked.cookies().clone();
 
         ::std::mem::drop(server_locked);
 
         Ok(Self {
-            details,
+            config,
             inner_test_server,
-            full_request_path,
             body: None,
             headers: vec![],
             cookies,
-            content_type: config.content_type,
             is_expecting_failure: false,
-            is_saving_cookies: config.save_cookies,
         })
     }
 
     /// Any cookies returned will be saved to the `TestServer` that created this,
     /// which will continue to use those cookies on future requests.
     pub fn do_save_cookies(mut self) -> Self {
-        self.is_saving_cookies = true;
+        self.config.is_saving_cookies = true;
         self
     }
 
@@ -129,7 +118,7 @@ impl TestRequest {
     /// This is the default behaviour.
     /// You can change that default in `TestServerConfig`.
     pub fn do_not_save_cookies(mut self) -> Self {
-        self.is_saving_cookies = false;
+        self.config.is_saving_cookies = false;
         self
     }
 
@@ -172,8 +161,8 @@ impl TestRequest {
         let body: Body = body_bytes.into();
         self.body = Some(body);
 
-        if self.content_type == None {
-            self.content_type = Some(JSON_CONTENT_TYPE.to_string());
+        if self.config.content_type == None {
+            self.config.content_type = Some(JSON_CONTENT_TYPE.to_string());
         }
 
         self
@@ -189,8 +178,8 @@ impl TestRequest {
         let body_text = format!("{}", raw_text);
         let body_bytes = Bytes::from(body_text.into_bytes());
 
-        if self.content_type == None {
-            self.content_type = Some(TEXT_CONTENT_TYPE.to_string());
+        if self.config.content_type == None {
+            self.config.content_type = Some(TEXT_CONTENT_TYPE.to_string());
         }
 
         self.bytes(body_bytes)
@@ -208,7 +197,7 @@ impl TestRequest {
 
     /// Set the content type to use for this request in the header.
     pub fn content_type(mut self, content_type: &str) -> Self {
-        self.content_type = Some(content_type.to_string());
+        self.config.content_type = Some(content_type.to_string());
         self
     }
 
@@ -217,17 +206,17 @@ impl TestRequest {
     }
 
     async fn send(mut self) -> Result<TestResponse> {
-        let path = self.details.path;
-        let save_cookies = self.is_saving_cookies;
+        let full_request_path = self.config.full_request_path;
+        let method = self.config.method;
+        let path = self.config.path;
+        let save_cookies = self.config.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
 
-        let mut request_builder = Request::builder()
-            .uri(&self.full_request_path)
-            .method(self.details.method);
+        let mut request_builder = Request::builder().uri(&full_request_path).method(method);
 
         // Add all the headers we have.
         let mut headers = self.headers;
-        if let Some(content_type) = self.content_type {
+        if let Some(content_type) = self.config.content_type {
             let header = build_content_type_header(content_type)?;
             headers.push(header);
         }
@@ -285,18 +274,6 @@ impl IntoFuture for TestRequest {
         let raw_future = self.send_or_panic();
         AutoFuture::new(raw_future)
     }
-}
-
-fn build_request_path(root_path: &str, sub_path: &str) -> String {
-    if sub_path == "" {
-        return format!("http://{}", root_path.to_string());
-    }
-
-    if sub_path.starts_with("/") {
-        return format!("http://{}{}", root_path, sub_path);
-    }
-
-    format!("http://{}/{}", root_path, sub_path)
 }
 
 fn build_content_type_header(content_type: String) -> Result<(HeaderName, HeaderValue)> {

@@ -1,3 +1,6 @@
+use crate::util::new_random_socket_addr;
+use ::anyhow::Context;
+use ::anyhow::Result;
 use ::std::net::SocketAddr;
 
 /// The basic setup for the `TestServer`.
@@ -21,6 +24,17 @@ pub struct TestServerConfig {
     ///
     /// **Defaults** to false (being turned off).
     pub save_cookies: bool,
+}
+
+impl TestServerConfig {
+    pub(crate) fn build_socket_address(&self) -> Result<SocketAddr> {
+        let socket_address = match self.socket_address {
+            Some(socket_address) => socket_address,
+            None => new_random_socket_addr().context("Cannot create socket address for use")?,
+        };
+
+        Ok(socket_address)
+    }
 }
 
 impl Default for TestServerConfig {

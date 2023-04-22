@@ -13,6 +13,7 @@ use crate::TestServerConfig;
 
 mod inner_test_server;
 pub(crate) use self::inner_test_server::*;
+use std::net::SocketAddr;
 
 ///
 /// The `TestServer` represents your application, running as a web server,
@@ -26,6 +27,7 @@ pub(crate) use self::inner_test_server::*;
 ///
 #[derive(Debug)]
 pub struct TestServer {
+    socket_address: SocketAddr,
     inner: Arc<Mutex<InnerTestServer>>,
 }
 
@@ -48,11 +50,29 @@ impl TestServer {
         app: IntoMakeService<Router>,
         options: TestServerConfig,
     ) -> Result<Self> {
-        let inner_test_server = InnerTestServer::new(app, options)?;
+        let socket_address = options.build_socket_address()?;
+        let new_config = TestServerConfig {
+            socket_address: Some(socket_address),
+            ..options
+        };
+        let inner_test_server = InnerTestServer::new(app, new_config)?;
+
         let inner_mutex = Mutex::new(inner_test_server);
         let inner = Arc::new(inner_mutex);
+        let this = Self {
+            inner,
+            socket_address,
+        };
 
-        Ok(Self { inner })
+        Ok(this)
+    }
+
+    /// Returns the address for the test server.
+    ///
+    /// By default this will be something like `0.0.0.0:1234`,
+    /// where `1234` is a randomly assigned port numbr.
+    pub fn server_address(&self) -> String {
+        format!("http://{}", self.socket_address)
     }
 
     /// Clears all of the cookies stored internally.
@@ -118,5 +138,26 @@ impl TestServer {
                 )
             })
             .unwrap()
+    }
+}
+
+#[cfg(test)]
+mod server_address {
+    use super::*;
+    use ::axum::Router;
+
+    #[tokio::test]
+    async fn it_should_return_address_used_from_config() {
+        let socket_address = SocketAddr::from(([127, 0, 0, 1], 3000));
+        let config = TestServerConfig {
+            socket_address: Some(socket_address),
+            ..TestServerConfig::default()
+        };
+
+        // Build an application with a route.
+        let app = Router::new().into_make_service();
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+
+        assert_eq!(server.server_address(), "http://127.0.0.1:3000")
     }
 }
