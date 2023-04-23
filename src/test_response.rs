@@ -229,6 +229,16 @@ impl TestResponse {
         assert_eq!(own_json, *other);
     }
 
+    /// This will panic if the status code is **outside** the 2xx range.
+    pub fn assert_status_success(&self) {
+        assert!(200 <= self.status_code.as_u16() && self.status_code.as_u16() <= 299);
+    }
+
+    /// This will panic if the status code is **within** the 2xx range.
+    pub fn assert_status_failure(&self) {
+        assert!(self.status_code.as_u16() < 200 || 299 < self.status_code.as_u16());
+    }
+
     pub fn assert_status_bad_request(&self) {
         self.assert_status(StatusCode::BAD_REQUEST)
     }
