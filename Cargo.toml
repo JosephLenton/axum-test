@@ -24,6 +24,7 @@ tokio = { version = "1.26.0", features = ["rt", "time"] }
 
 [dev-dependencies]
 axum-extra = { version = "0.7.0", features = ["cookie"] }
+regex = "1.8.1"
 serde-email = { version = "1.3.0", features = ["serde"] }
 tokio = { version = "1.26.0", features = ["rt", "rt-multi-thread", "time", "macros"] }
 tokio-test = "0.4.2"

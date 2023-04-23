@@ -145,6 +145,7 @@ impl TestServer {
 mod server_address {
     use super::*;
     use ::axum::Router;
+    use ::regex::Regex;
 
     #[tokio::test]
     async fn it_should_return_address_used_from_config() {
@@ -159,5 +160,15 @@ mod server_address {
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         assert_eq!(server.server_address(), "http://127.0.0.1:3000")
+    }
+
+    #[tokio::test]
+    async fn it_should_return_default_address_without_ending_slash() {
+        let app = Router::new().into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let address_regex = Regex::new("^http://0\\.0\\.0\\.0:[0-9]+$").unwrap();
+        let is_match = address_regex.is_match(&server.server_address());
+        assert!(is_match);
     }
 }
