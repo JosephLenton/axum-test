@@ -2,17 +2,24 @@ use ::anyhow::Context;
 use ::anyhow::Result;
 use ::axum::routing::IntoMakeService;
 use ::axum::Router;
+use ::axum::Server as AxumServer;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::hyper::http::Method;
+use ::std::net::TcpListener;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
+use ::tokio::spawn;
+use ::tokio::task::JoinHandle;
 
+use crate::util::new_random_socket_addr;
 use crate::TestRequest;
+use crate::TestRequestConfig;
 use crate::TestServerConfig;
 
-mod inner_test_server;
-pub(crate) use self::inner_test_server::*;
+mod server_shared_state;
+pub(crate) use self::server_shared_state::*;
+
 use std::net::SocketAddr;
 
 ///
@@ -27,8 +34,11 @@ use std::net::SocketAddr;
 ///
 #[derive(Debug)]
 pub struct TestServer {
-    socket_address: SocketAddr,
-    inner: Arc<Mutex<InnerTestServer>>,
+    state: Arc<Mutex<ServerSharedState>>,
+    server_thread: JoinHandle<()>,
+    server_address: String,
+    save_cookies: bool,
+    default_content_type: Option<String>,
 }
 
 impl TestServer {
@@ -46,22 +56,28 @@ impl TestServer {
     /// This includes which port to run on, or default settings.
     ///
     /// See the `TestServerConfig` for more information on each configuration setting.
-    pub fn new_with_config(
-        app: IntoMakeService<Router>,
-        options: TestServerConfig,
-    ) -> Result<Self> {
-        let socket_address = options.build_socket_address()?;
-        let new_config = TestServerConfig {
-            socket_address: Some(socket_address),
-            ..options
-        };
-        let inner_test_server = InnerTestServer::new(app, new_config)?;
+    pub fn new_with_config(app: IntoMakeService<Router>, config: TestServerConfig) -> Result<Self> {
+        let socket_address = build_socket_address(&config)?;
+        let listener = TcpListener::bind(socket_address)
+            .with_context(|| "Failed to create TCPListener for TestServer")?;
+        let server = AxumServer::from_tcp(listener)
+            .with_context(|| "Failed to create ::axum::Server for TestServer")?
+            .serve(app);
 
-        let inner_mutex = Mutex::new(inner_test_server);
-        let inner = Arc::new(inner_mutex);
+        let server_thread = spawn(async move {
+            server.await.expect("Expect server to start serving");
+        });
+
+        let shared_state = ServerSharedState::new();
+        let shared_state_mutex = Mutex::new(shared_state);
+        let state = Arc::new(shared_state_mutex);
+
         let this = Self {
-            inner,
-            socket_address,
+            state,
+            server_thread,
+            server_address: socket_address.to_string(),
+            save_cookies: config.save_cookies,
+            default_content_type: config.default_content_type,
         };
 
         Ok(this)
@@ -71,13 +87,13 @@ impl TestServer {
     ///
     /// By default this will be something like `0.0.0.0:1234`,
     /// where `1234` is a randomly assigned port numbr.
-    pub fn server_address(&self) -> String {
-        format!("http://{}", self.socket_address)
+    pub fn server_address<'a>(&'a self) -> &'a str {
+        &self.server_address
     }
 
     /// Clears all of the cookies stored internally.
     pub fn clear_cookies(&mut self) {
-        InnerTestServer::clear_cookies(&mut self.inner)
+        ServerSharedState::clear_cookies(&mut self.state)
             .with_context(|| format!("Trying to clear_cookies"))
             .unwrap()
     }
@@ -87,7 +103,7 @@ impl TestServer {
     /// Any cookies which have the same name as the new cookies,
     /// will get replaced.
     pub fn add_cookies(&mut self, cookies: CookieJar) {
-        InnerTestServer::add_cookies(&mut self.inner, cookies)
+        ServerSharedState::add_cookies(&mut self.state, cookies)
             .with_context(|| format!("Trying to add_cookies"))
             .unwrap()
     }
@@ -97,7 +113,7 @@ impl TestServer {
     /// If a cookie with the same name already exists,
     /// then it will be replaced.
     pub fn add_cookie(&mut self, cookie: Cookie) {
-        InnerTestServer::add_cookie(&mut self.inner, cookie)
+        ServerSharedState::add_cookie(&mut self.state, cookie)
             .with_context(|| format!("Trying to add_cookie"))
             .unwrap()
     }
@@ -130,7 +146,10 @@ impl TestServer {
     /// Creates a HTTP request, to the path given, using the given method.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
         let debug_method = method.clone();
-        InnerTestServer::send(&self.inner, method, path)
+        let config = self.test_request_config(method, path);
+        let maybe_request = TestRequest::new(self.state.clone(), config);
+
+        maybe_request
             .with_context(|| {
                 format!(
                     "Trying to create internal request for {} {}",
@@ -139,6 +158,45 @@ impl TestServer {
             })
             .unwrap()
     }
+
+    pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
+        let full_request_path = build_request_path(&self.server_address, path);
+
+        TestRequestConfig {
+            is_saving_cookies: self.save_cookies,
+            content_type: self.default_content_type.clone(),
+            full_request_path,
+            method,
+            path: path.to_string(),
+        }
+    }
+}
+
+impl Drop for TestServer {
+    fn drop(&mut self) {
+        self.server_thread.abort();
+    }
+}
+
+fn build_socket_address(config: &TestServerConfig) -> Result<SocketAddr> {
+    let socket_address = match config.socket_address {
+        Some(socket_address) => socket_address,
+        None => new_random_socket_addr().context("Cannot create socket address for use")?,
+    };
+
+    Ok(socket_address)
+}
+
+fn build_request_path(root_path: &str, sub_path: &str) -> String {
+    if sub_path == "" {
+        return format!("http://{}", root_path.to_string());
+    }
+
+    if sub_path.starts_with("/") {
+        return format!("http://{}{}", root_path, sub_path);
+    }
+
+    format!("http://{}/{}", root_path, sub_path)
 }
 
 #[cfg(test)]
@@ -159,7 +217,7 @@ mod server_address {
         let app = Router::new().into_make_service();
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
-        assert_eq!(server.server_address(), "http://127.0.0.1:3000")
+        assert_eq!(server.server_address(), "127.0.0.1:3000")
     }
 
     #[tokio::test]
@@ -167,7 +225,7 @@ mod server_address {
         let app = Router::new().into_make_service();
         let server = TestServer::new(app).expect("Should create test server");
 
-        let address_regex = Regex::new("^http://0\\.0\\.0\\.0:[0-9]+$").unwrap();
+        let address_regex = Regex::new("^0\\.0\\.0\\.0:[0-9]+$").unwrap();
         let is_match = address_regex.is_match(&server.server_address());
         assert!(is_match);
     }

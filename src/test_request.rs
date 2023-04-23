@@ -22,7 +22,7 @@ use ::std::future::IntoFuture;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 
-use crate::InnerTestServer;
+use crate::ServerSharedState;
 use crate::TestResponse;
 
 mod test_request_config;
@@ -68,7 +68,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 pub struct TestRequest {
     config: TestRequestConfig,
 
-    inner_test_server: Arc<Mutex<InnerTestServer>>,
+    server_state: Arc<Mutex<ServerSharedState>>,
 
     body: Option<Body>,
     headers: Vec<(HeaderName, HeaderValue)>,
@@ -79,10 +79,10 @@ pub struct TestRequest {
 
 impl TestRequest {
     pub(crate) fn new(
-        inner_test_server: Arc<Mutex<InnerTestServer>>,
+        server_state: Arc<Mutex<ServerSharedState>>,
         config: TestRequestConfig,
     ) -> Result<Self> {
-        let server_locked = inner_test_server.as_ref().lock().map_err(|err| {
+        let server_locked = server_state.as_ref().lock().map_err(|err| {
             anyhow!(
                 "Failed to lock InternalTestServer for {} {}, received {:?}",
                 config.method,
@@ -97,7 +97,7 @@ impl TestRequest {
 
         Ok(Self {
             config,
-            inner_test_server,
+            server_state,
             body: None,
             headers: vec![],
             cookies,
@@ -250,7 +250,7 @@ impl TestRequest {
 
         if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
-            InnerTestServer::add_cookies_by_header(&mut self.inner_test_server, cookie_headers)?;
+            ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
         let mut response = TestResponse::new(path, parts, response_bytes);
