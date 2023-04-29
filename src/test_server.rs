@@ -12,15 +12,13 @@ use ::std::sync::Mutex;
 use ::tokio::spawn;
 use ::tokio::task::JoinHandle;
 
-use crate::util::new_random_socket_addr;
+use crate::util::new_socket_addr_from_defaults;
 use crate::TestRequest;
 use crate::TestRequestConfig;
 use crate::TestServerConfig;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-
-use std::net::SocketAddr;
 
 ///
 /// The `TestServer` represents your application, running as a web server,
@@ -57,7 +55,8 @@ impl TestServer {
     ///
     /// See the `TestServerConfig` for more information on each configuration setting.
     pub fn new_with_config(app: IntoMakeService<Router>, config: TestServerConfig) -> Result<Self> {
-        let socket_address = build_socket_address(&config)?;
+        let socket_address = new_socket_addr_from_defaults(config.ip, config.port)
+            .context("Cannot create socket address for use")?;
         let listener = TcpListener::bind(socket_address)
             .with_context(|| "Failed to create TCPListener for TestServer")?;
         let server = AxumServer::from_tcp(listener)
@@ -178,15 +177,6 @@ impl Drop for TestServer {
     }
 }
 
-fn build_socket_address(config: &TestServerConfig) -> Result<SocketAddr> {
-    let socket_address = match config.socket_address {
-        Some(socket_address) => socket_address,
-        None => new_random_socket_addr().context("Cannot create socket address for use")?,
-    };
-
-    Ok(socket_address)
-}
-
 fn build_request_path(root_path: &str, sub_path: &str) -> String {
     if sub_path == "" {
         return format!("http://{}", root_path.to_string());
@@ -203,13 +193,15 @@ fn build_request_path(root_path: &str, sub_path: &str) -> String {
 mod server_address {
     use super::*;
     use ::axum::Router;
+    use ::local_ip_address::local_ip;
     use ::regex::Regex;
 
     #[tokio::test]
     async fn it_should_return_address_used_from_config() {
-        let socket_address = SocketAddr::from(([127, 0, 0, 1], 3000));
+        let ip = local_ip().unwrap();
         let config = TestServerConfig {
-            socket_address: Some(socket_address),
+            ip: Some(ip),
+            port: Some(3000),
             ..TestServerConfig::default()
         };
 
@@ -217,7 +209,8 @@ mod server_address {
         let app = Router::new().into_make_service();
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
-        assert_eq!(server.server_address(), "127.0.0.1:3000")
+        let expected_ip_port = format!("{}:3000", ip);
+        assert_eq!(server.server_address(), expected_ip_port);
     }
 
     #[tokio::test]
@@ -225,7 +218,7 @@ mod server_address {
         let app = Router::new().into_make_service();
         let server = TestServer::new(app).expect("Should create test server");
 
-        let address_regex = Regex::new("^0\\.0\\.0\\.0:[0-9]+$").unwrap();
+        let address_regex = Regex::new("^127\\.0\\.0\\.1:[0-9]+$").unwrap();
         let is_match = address_regex.is_match(&server.server_address());
         assert!(is_match);
     }

@@ -1,4 +1,4 @@
-use ::std::net::SocketAddr;
+use ::std::net::IpAddr;
 
 /// The basic setup for the `TestServer`.
 #[derive(Debug, Clone)]
@@ -8,10 +8,15 @@ pub struct TestServerConfig {
     /// This overrides the default 'best efforts' approach of requests.
     pub default_content_type: Option<String>,
 
-    /// Set the socket to use for the server.
+    /// Set the IP to use for the server.
     ///
-    /// **Defaults** to a _random_ socket.
-    pub socket_address: Option<SocketAddr>,
+    /// **Defaults** to `127.0.0.1`.
+    pub ip: Option<IpAddr>,
+
+    /// Set the port number to use for the server.
+    ///
+    /// **Defaults** to a _random_ port.
+    pub port: Option<u16>,
 
     /// Set for the server to save cookies that are returned,
     /// for use in future requests.
@@ -27,7 +32,8 @@ impl Default for TestServerConfig {
     fn default() -> Self {
         Self {
             default_content_type: None,
-            socket_address: None,
+            ip: None,
+            port: None,
             save_cookies: false,
         }
     }
