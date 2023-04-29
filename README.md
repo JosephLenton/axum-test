@@ -51,10 +51,9 @@ This is primarily for testing Axum services.
 ### Runs on a random port, allowing multiple to run at once
 
 When you start the server, you can spin it up on a random port.
-Allowing you to run multiple servers in parallel.
+It allows multiple E2E tests to run in parallel, each on their own webserver.
 
-This is to allow multiple E2E tests to run in parallel.
-Each with their own webserver.
+This behaviour can be changed in the `TestServerConfig`, by selecting a custom ip or port to always use.
 
 ### Remembers cookies across requests
 
