@@ -259,7 +259,7 @@ impl TestRequest {
         if self.is_expecting_failure {
             response = response.assert_status_not_ok();
         } else {
-            response = response.assert_status_ok();
+            response = response.assert_status_success();
         }
 
         Ok(response)

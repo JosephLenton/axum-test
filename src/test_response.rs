@@ -205,6 +205,7 @@ impl TestResponse {
 
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
+    #[track_caller]
     pub fn assert_text<C>(self, other: C) -> Self
     where
         C: AsRef<str>,
@@ -223,6 +224,7 @@ impl TestResponse {
     /// Other can be your own Serde model that you wish to deserialise
     /// the data into, or it can be a `json!` blob created using
     /// the `::serde_json::json` macro.
+    #[track_caller]
     pub fn assert_json<T>(self, other: &T) -> Self
     where
         for<'de> T: Deserialize<'de> + PartialEq<T> + Debug,
@@ -233,28 +235,49 @@ impl TestResponse {
         self
     }
 
+    /// Assert the response status code is 400
+    #[track_caller]
     pub fn assert_status_bad_request(self) -> Self {
         self.assert_status(StatusCode::BAD_REQUEST)
     }
 
+    /// Assert the response status code is 404
+    #[track_caller]
     pub fn assert_status_not_found(self) -> Self {
         self.assert_status(StatusCode::NOT_FOUND)
     }
 
+    /// Assert the response status code is 200
+    #[track_caller]
     pub fn assert_status_ok(self) -> Self {
         self.assert_status(StatusCode::OK)
     }
 
+    /// Assert the response status code is 200-299
+    #[track_caller]
+    pub fn assert_status_success(self) -> Self {
+        assert!(
+            self.status_code.is_success(),
+            "expected status code to be 2xx, got {}",
+            self.status_code
+        );
+        self
+    }
+
+    /// Assert the response status code is _not_ 200
+    #[track_caller]
     pub fn assert_status_not_ok(self) -> Self {
         self.assert_not_status(StatusCode::OK)
     }
 
+    #[track_caller]
     pub fn assert_status(self, status_code: StatusCode) -> Self {
         assert_eq!(self.status_code(), status_code);
 
         self
     }
 
+    #[track_caller]
     pub fn assert_not_status(self, status_code: StatusCode) -> Self {
         assert_ne!(self.status_code(), status_code);
 

@@ -202,7 +202,7 @@ impl Future for TestRequestFuture {
                             if self.is_expecting_failure {
                                 test_response = test_response.assert_status_not_ok();
                             } else {
-                                test_response = test_response.assert_status_ok();
+                                test_response = test_response.assert_status_success();
                             }
 
                             return Poll::Ready(test_response);
