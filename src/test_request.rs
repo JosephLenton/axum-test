@@ -144,7 +144,7 @@ impl TestRequest {
     }
 
     /// Marks that this request should expect to succeed.
-    /// Success is deemend as returning a 200.
+    /// Success is deemend as returning a 2xx status code.
     ///
     /// Note this is the default behaviour when creating a new `TestRequest`.
     pub fn expect_success(mut self) -> Self {
