@@ -147,6 +147,9 @@
 //! Where you want the test to fail as quickly, and skip on writing error handling code.
 //!
 
+mod into_test_server_core;
+pub use self::into_test_server_core::*;
+
 mod test_server;
 pub use self::test_server::*;
 
