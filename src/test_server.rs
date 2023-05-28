@@ -1,7 +1,5 @@
 use ::anyhow::Context;
 use ::anyhow::Result;
-use ::axum::routing::IntoMakeService;
-use ::axum::Router;
 use ::axum::Server as AxumServer;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
@@ -9,10 +7,10 @@ use ::hyper::http::Method;
 use ::std::net::TcpListener;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
-use ::tokio::spawn;
 use ::tokio::task::JoinHandle;
 
 use crate::util::new_socket_addr_from_defaults;
+use crate::IntoTestServerThread;
 use crate::TestRequest;
 use crate::TestRequestConfig;
 use crate::TestServerConfig;
@@ -45,7 +43,11 @@ impl TestServer {
     ///
     /// This is the same as creating a new `TestServer` with a configuration,
     /// and passing `TestServerConfig::default()`.
-    pub fn new(app: IntoMakeService<Router>) -> Result<Self> {
+    ///
+    pub fn new<A>(app: A) -> Result<Self>
+    where
+        A: IntoTestServerThread,
+    {
         Self::new_with_config(app, TestServerConfig::default())
     }
 
@@ -54,18 +56,18 @@ impl TestServer {
     /// This includes which port to run on, or default settings.
     ///
     /// See the `TestServerConfig` for more information on each configuration setting.
-    pub fn new_with_config(app: IntoMakeService<Router>, config: TestServerConfig) -> Result<Self> {
+    pub fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
+    where
+        A: IntoTestServerThread,
+    {
         let socket_address = new_socket_addr_from_defaults(config.ip, config.port)
             .context("Cannot create socket address for use")?;
         let listener = TcpListener::bind(socket_address)
             .with_context(|| "Failed to create TCPListener for TestServer")?;
-        let server = AxumServer::from_tcp(listener)
-            .with_context(|| "Failed to create ::axum::Server for TestServer")?
-            .serve(app);
+        let server_builder = AxumServer::from_tcp(listener)
+            .with_context(|| "Failed to create ::axum::Server for TestServer")?;
 
-        let server_thread = spawn(async move {
-            server.await.expect("Expect server to start serving");
-        });
+        let server_thread = app.into_server_thread(server_builder);
 
         let shared_state = ServerSharedState::new();
         let shared_state_mutex = Mutex::new(shared_state);
