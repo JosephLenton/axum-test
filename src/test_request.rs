@@ -144,7 +144,7 @@ impl TestRequest {
     }
 
     /// Marks that this request should expect to succeed.
-    /// Success is deemend as returning a 200.
+    /// Success is deemend as returning a 2xx status code.
     ///
     /// Note this is the default behaviour when creating a new `TestRequest`.
     pub fn expect_success(mut self) -> Self {
@@ -307,7 +307,9 @@ mod test_expect_success {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get(&"/ping");
+        server.get(&"/ping")
+            .expect_success()
+            .await;
     }
 
     #[tokio::test]
@@ -325,7 +327,26 @@ mod test_expect_success {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get(&"/accepted");
+        server.get(&"/accepted")
+            .expect_success()
+            .await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_on_404() {
+        // Build an application with a route.
+        let app = Router::new()
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server
+            .get(&"/some_unknown_route")
+            .expect_success()
+            .await;
     }
 }
 
@@ -334,6 +355,7 @@ mod test_expect_failure {
     use super::*;
 
     use crate::TestServer;
+    use ::axum::http::StatusCode;
     use ::axum::routing::get;
     use ::axum::Router;
 
@@ -347,7 +369,49 @@ mod test_expect_failure {
 
         // Get the request.
         server
-            .get(&"/some_unknown_end_point")
+            .get(&"/some_unknown_route")
+            .expect_failure()
+            .await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_success_is_returned() {
+        async fn get_ping() -> &'static str {
+            "pong!"
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/ping")
+            .expect_failure()
+            .await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_on_other_2xx_status_code() {
+        async fn get_accepted() -> StatusCode {
+            StatusCode::ACCEPTED
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/accepted", get(get_accepted))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/accepted")
             .expect_failure()
             .await;
     }

@@ -205,6 +205,7 @@ impl TestResponse {
 
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
+    #[track_caller]
     pub fn assert_text<C>(&self, other: C)
     where
         C: AsRef<str>,
@@ -221,6 +222,7 @@ impl TestResponse {
     /// Other can be your own Serde model that you wish to deserialise
     /// the data into, or it can be a `json!` blob created using
     /// the `::serde_json::json` macro.
+    #[track_caller]
     pub fn assert_json<T>(&self, other: &T)
     where
         for<'de> T: Deserialize<'de> + PartialEq<T> + Debug,
@@ -229,36 +231,50 @@ impl TestResponse {
         assert_eq!(own_json, *other);
     }
 
-    /// This will panic if the status code is **outside** the 2xx range.
+    /// This will panic if the status code is **within** the 2xx range.
+    /// i.e. The range from 200-299.
+    #[track_caller]
     pub fn assert_status_success(&self) {
         assert!(200 <= self.status_code.as_u16() && self.status_code.as_u16() <= 299);
     }
 
-    /// This will panic if the status code is **within** the 2xx range.
+    /// This will panic if the status code is **outside** the 2xx range.
+    /// i.e. A status code less than 200, or 300 or more.
+    #[track_caller]
     pub fn assert_status_failure(&self) {
         assert!(self.status_code.as_u16() < 200 || 299 < self.status_code.as_u16());
     }
 
+    /// Assert the response status code is 400.
+    #[track_caller]
     pub fn assert_status_bad_request(&self) {
         self.assert_status(StatusCode::BAD_REQUEST)
     }
 
+    /// Assert the response status code is 404.
+    #[track_caller]
     pub fn assert_status_not_found(&self) {
         self.assert_status(StatusCode::NOT_FOUND)
     }
 
+    /// Assert the response status code is 200.
+    #[track_caller]
     pub fn assert_status_ok(&self) {
         self.assert_status(StatusCode::OK)
     }
 
+    /// Assert the response status code is **not** 200.
+    #[track_caller]
     pub fn assert_status_not_ok(&self) {
         self.assert_not_status(StatusCode::OK)
     }
 
+    #[track_caller]
     pub fn assert_status(&self, status_code: StatusCode) {
         assert_eq!(self.status_code(), status_code);
     }
 
+    #[track_caller]
     pub fn assert_not_status(&self, status_code: StatusCode) {
         assert_ne!(self.status_code(), status_code);
     }
