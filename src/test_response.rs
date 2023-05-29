@@ -205,14 +205,12 @@ impl TestResponse {
 
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
-    pub fn assert_text<C>(self, other: C) -> Self
+    pub fn assert_text<C>(&self, other: C)
     where
         C: AsRef<str>,
     {
         let other_contents = other.as_ref();
         assert_eq!(&self.text(), other_contents);
-
-        self
     }
 
     /// Deserializes the contents of the request,
@@ -223,41 +221,35 @@ impl TestResponse {
     /// Other can be your own Serde model that you wish to deserialise
     /// the data into, or it can be a `json!` blob created using
     /// the `::serde_json::json` macro.
-    pub fn assert_json<T>(self, other: &T) -> Self
+    pub fn assert_json<T>(&self, other: &T)
     where
         for<'de> T: Deserialize<'de> + PartialEq<T> + Debug,
     {
         let own_json: T = self.json();
         assert_eq!(own_json, *other);
-
-        self
     }
 
-    pub fn assert_status_bad_request(self) -> Self {
+    pub fn assert_status_bad_request(&self) {
         self.assert_status(StatusCode::BAD_REQUEST)
     }
 
-    pub fn assert_status_not_found(self) -> Self {
+    pub fn assert_status_not_found(&self) {
         self.assert_status(StatusCode::NOT_FOUND)
     }
 
-    pub fn assert_status_ok(self) -> Self {
+    pub fn assert_status_ok(&self) {
         self.assert_status(StatusCode::OK)
     }
 
-    pub fn assert_status_not_ok(self) -> Self {
+    pub fn assert_status_not_ok(&self) {
         self.assert_not_status(StatusCode::OK)
     }
 
-    pub fn assert_status(self, status_code: StatusCode) -> Self {
+    pub fn assert_status(&self, status_code: StatusCode) {
         assert_eq!(self.status_code(), status_code);
-
-        self
     }
 
-    pub fn assert_not_status(self, status_code: StatusCode) -> Self {
+    pub fn assert_not_status(&self, status_code: StatusCode) {
         assert_ne!(self.status_code(), status_code);
-
-        self
     }
 }

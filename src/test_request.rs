@@ -253,13 +253,13 @@ impl TestRequest {
             ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
-        let mut response = TestResponse::new(path, parts, response_bytes);
+        let response = TestResponse::new(path, parts, response_bytes);
 
         // Assert if ok or not.
         if self.is_expecting_failure {
-            response = response.assert_status_not_ok();
+            response.assert_status_not_ok();
         } else {
-            response = response.assert_status_ok();
+            response.assert_status_ok();
         }
 
         Ok(response)
