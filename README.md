@@ -63,7 +63,7 @@ and then included into the next request. Like a web browser.
 
 ### Fails fast on unexpected requests
 
-By default; all requests will panic if the server fails to return a 200.
-This can be switched to panic when the server _doesn't_ return a 200.
+By default; all requests will panic if the server fails to return a 2xx status code.
+This [can be switched](https://docs.rs/axum-test/latest/axum_test/struct.TestRequest.html#method.expect_failure) to panic when the server _doesn't_ return a 200.
 
 This is a very opinionated design choice, and is done to help test writers fail fast when writing tests.
