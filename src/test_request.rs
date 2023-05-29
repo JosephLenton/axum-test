@@ -307,9 +307,7 @@ mod test_expect_success {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get(&"/ping")
-            .expect_success()
-            .await;
+        server.get(&"/ping").expect_success().await;
     }
 
     #[tokio::test]
@@ -327,26 +325,20 @@ mod test_expect_success {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get(&"/accepted")
-            .expect_success()
-            .await;
+        server.get(&"/accepted").expect_success().await;
     }
 
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_on_404() {
         // Build an application with a route.
-        let app = Router::new()
-            .into_make_service();
+        let app = Router::new().into_make_service();
 
         // Run the server.
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server
-            .get(&"/some_unknown_route")
-            .expect_success()
-            .await;
+        server.get(&"/some_unknown_route").expect_success().await;
     }
 }
 
@@ -368,10 +360,7 @@ mod test_expect_failure {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server
-            .get(&"/some_unknown_route")
-            .expect_failure()
-            .await;
+        server.get(&"/some_unknown_route").expect_failure().await;
     }
 
     #[tokio::test]
@@ -390,9 +379,7 @@ mod test_expect_failure {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get(&"/ping")
-            .expect_failure()
-            .await;
+        server.get(&"/ping").expect_failure().await;
     }
 
     #[tokio::test]
@@ -411,8 +398,6 @@ mod test_expect_failure {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get(&"/accepted")
-            .expect_failure()
-            .await;
+        server.get(&"/accepted").expect_failure().await;
     }
 }
