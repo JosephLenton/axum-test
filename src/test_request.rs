@@ -413,3 +413,136 @@ mod test_expect_failure {
         server.get(&"/accepted").expect_failure().await;
     }
 }
+
+#[cfg(test)]
+mod test_add_header {
+    use super::*;
+
+    use ::axum::async_trait;
+    use ::axum::extract::FromRequestParts;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::hyper::http::request::Parts;
+    use ::hyper::http::HeaderName;
+    use ::hyper::http::HeaderValue;
+    use ::hyper::StatusCode;
+    use ::std::marker::Sync;
+
+    use crate::TestServer;
+
+    const TEST_HEADER_NAME: &'static str = &"test-header";
+    const TEST_HEADER_CONTENT: &'static str = &"Test header content";
+
+    struct TestHeader(Vec<u8>);
+
+    #[async_trait]
+    impl<S: Sync> FromRequestParts<S> for TestHeader {
+        type Rejection = (StatusCode, &'static str);
+
+        async fn from_request_parts(
+            parts: &mut Parts,
+            _state: &S,
+        ) -> Result<TestHeader, Self::Rejection> {
+            parts
+                .headers
+                .get(HeaderName::from_static(TEST_HEADER_NAME))
+                .map(|v| TestHeader(v.as_bytes().to_vec()))
+                .ok_or((StatusCode::BAD_REQUEST, "Missing test header"))
+        }
+    }
+
+    async fn ping_header(TestHeader(header): TestHeader) -> Vec<u8> {
+        header
+    }
+
+    #[tokio::test]
+    async fn it_should_send_the_header() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/header", get(ping_header))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Send a request with the header
+        let response = server
+            .get(&"/header")
+            .add_header(
+                HeaderName::from_static(TEST_HEADER_NAME),
+                HeaderValue::from_static(TEST_HEADER_CONTENT),
+            )
+            .await;
+
+        // Check it sent back the right text
+        response.assert_text(TEST_HEADER_CONTENT)
+    }
+}
+
+#[cfg(test)]
+mod test_clear_headers {
+    use super::*;
+
+    use ::axum::async_trait;
+    use ::axum::extract::FromRequestParts;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::hyper::http::request::Parts;
+    use ::hyper::http::HeaderName;
+    use ::hyper::http::HeaderValue;
+    use ::hyper::StatusCode;
+    use ::std::marker::Sync;
+
+    use crate::TestServer;
+
+    const TEST_HEADER_NAME: &'static str = &"test-header";
+    const TEST_HEADER_CONTENT: &'static str = &"Test header content";
+
+    struct TestHeader(Vec<u8>);
+
+    #[async_trait]
+    impl<S: Sync> FromRequestParts<S> for TestHeader {
+        type Rejection = (StatusCode, &'static str);
+
+        async fn from_request_parts(
+            parts: &mut Parts,
+            _state: &S,
+        ) -> Result<TestHeader, Self::Rejection> {
+            parts
+                .headers
+                .get(HeaderName::from_static(TEST_HEADER_NAME))
+                .map(|v| TestHeader(v.as_bytes().to_vec()))
+                .ok_or((StatusCode::BAD_REQUEST, "Missing test header"))
+        }
+    }
+
+    async fn ping_header(TestHeader(header): TestHeader) -> Vec<u8> {
+        header
+    }
+
+    #[tokio::test]
+    async fn it_should_send_the_header() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/header", get(ping_header))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Send a request with the header
+        let response = server
+            .get(&"/header")
+            .add_header(
+                HeaderName::from_static(TEST_HEADER_NAME),
+                HeaderValue::from_static(TEST_HEADER_CONTENT),
+            )
+            .clear_headers()
+            .expect_failure()
+            .await;
+
+        // Check it sent back the right text
+        response.assert_status_bad_request();
+        response.assert_text("Missing test header");
+    }
+}
