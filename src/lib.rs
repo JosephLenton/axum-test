@@ -560,8 +560,8 @@ mod test_custom_headers {
     use ::axum::Router;
     use ::hyper::http::request::Parts;
     use ::hyper::http::HeaderName;
+    use ::hyper::http::HeaderValue;
     use ::hyper::StatusCode;
-    use hyper::http::HeaderValue;
 
     const TEST_HEADER_NAME: &'static str = &"test-header";
     const TEST_HEADER_CONTENT: &'static str = &"Test header content";
