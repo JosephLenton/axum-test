@@ -134,6 +134,18 @@ impl TestRequest {
         self
     }
 
+    /// Clears all headers set.
+    pub fn clear_headers(mut self) -> Self {
+        self.headers = vec![];
+        self
+    }
+
+    /// Adds a header to be sent with this request.
+    pub fn add_header<'c>(mut self, name: HeaderName, value: HeaderValue) -> Self {
+        self.headers.push((name, value));
+        self
+    }
+
     /// Marks that this request should expect to fail.
     /// Failiure is deemend as any response that isn't a 200.
     ///
