@@ -21,6 +21,7 @@ use ::std::fmt::Display;
 use ::std::future::IntoFuture;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
+use serde_json::value;
 
 use crate::ServerSharedState;
 use crate::TestResponse;
@@ -131,6 +132,18 @@ impl TestRequest {
     /// Adds a Cookie to be sent with this request.
     pub fn add_cookie<'c>(mut self, cookie: Cookie<'c>) -> Self {
         self.cookies.add(cookie.into_owned());
+        self
+    }
+
+    /// Clears all headers set.
+    pub fn clear_headers(mut self) -> Self {
+        self.headers = vec![];
+        self
+    }
+
+    /// Adds a header to be sent with this request.
+    pub fn add_header<'c>(mut self, name: HeaderName, value: HeaderValue) -> Self {
+        self.headers.push((name, value));
         self
     }
 
