@@ -574,7 +574,7 @@ mod test_custom_headers {
 
         async fn from_request_parts(
             parts: &mut Parts,
-            state: &S,
+            _state: &S,
         ) -> Result<TestHeader, Self::Rejection> {
             parts
                 .headers
