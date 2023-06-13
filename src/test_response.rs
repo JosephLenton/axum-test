@@ -235,14 +235,16 @@ impl TestResponse {
     /// i.e. The range from 200-299.
     #[track_caller]
     pub fn assert_status_success(&self) {
-        assert!(200 <= self.status_code.as_u16() && self.status_code.as_u16() <= 299);
+        let status_code = self.status_code.as_u16();
+        assert!(200 <= status_code && status_code <= 299, "Expect status code _within_ 2xx range, got {}", status_code);
     }
 
     /// This will panic if the status code is **outside** the 2xx range.
     /// i.e. A status code less than 200, or 300 or more.
     #[track_caller]
     pub fn assert_status_failure(&self) {
-        assert!(self.status_code.as_u16() < 200 || 299 < self.status_code.as_u16());
+        let status_code = self.status_code.as_u16();
+        assert!(status_code < 200 || 299 < status_code, "Expect status code _outside_ 2xx range, got {}", status_code);
     }
 
     /// Assert the response status code is 400.
@@ -277,5 +279,113 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_not_status(&self, status_code: StatusCode) {
         assert_ne!(self.status_code(), status_code);
+    }
+}
+
+#[cfg(test)]
+mod test_assert_success {
+    use ::axum::http::StatusCode;
+    use ::axum::routing::Router;
+    use ::axum::routing::get;
+    use crate::TestServer;
+
+    pub async fn route_get_pass() -> StatusCode {
+        StatusCode::OK
+    }
+
+    pub async fn route_get_fail() -> StatusCode {
+        StatusCode::SERVICE_UNAVAILABLE
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_when_200() {
+        let router: Router = Router::new()
+            .route(&"/pass", get(route_get_pass))
+            .route(&"/fail", get(route_get_fail));
+
+        let server = TestServer::new(
+            router.into_make_service()
+        )
+        .unwrap();
+
+        let response = server
+            .get(&"/pass")
+            .await;
+
+        response.assert_status_success()
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_not_200() {
+        let router: Router = Router::new()
+            .route(&"/pass", get(route_get_pass))
+            .route(&"/fail", get(route_get_fail));
+
+        let server = TestServer::new(
+            router.into_make_service()
+        )
+        .unwrap();
+
+        let response = server
+            .get(&"/fail")
+            .expect_failure()
+            .await;
+
+        response.assert_status_success()
+    }
+}
+
+#[cfg(test)]
+mod test_assert_failure {
+    use ::axum::http::StatusCode;
+    use ::axum::routing::Router;
+    use ::axum::routing::get;
+    use crate::TestServer;
+
+    pub async fn route_get_pass() -> StatusCode {
+        StatusCode::OK
+    }
+
+    pub async fn route_get_fail() -> StatusCode {
+        StatusCode::SERVICE_UNAVAILABLE
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_when_not_200() {
+        let router: Router = Router::new()
+            .route(&"/pass", get(route_get_pass))
+            .route(&"/fail", get(route_get_fail));
+
+        let server = TestServer::new(
+            router.into_make_service()
+        )
+        .unwrap();
+
+        let response = server
+            .get(&"/fail")
+            .expect_failure()
+            .await;
+
+        response.assert_status_failure()
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_200() {
+        let router: Router = Router::new()
+            .route(&"/pass", get(route_get_pass))
+            .route(&"/fail", get(route_get_fail));
+
+        let server = TestServer::new(
+            router.into_make_service()
+        )
+        .unwrap();
+
+        let response = server
+            .get(&"/pass")
+            .await;
+
+        response.assert_status_failure()
     }
 }

@@ -297,8 +297,6 @@ fn build_content_type_header(content_type: String) -> Result<(HeaderName, Header
 
 #[cfg(test)]
 mod test_expect_success {
-    use super::*;
-
     use crate::TestServer;
     use ::axum::http::StatusCode;
     use ::axum::routing::get;
@@ -356,8 +354,6 @@ mod test_expect_success {
 
 #[cfg(test)]
 mod test_expect_failure {
-    use super::*;
-
     use crate::TestServer;
     use ::axum::http::StatusCode;
     use ::axum::routing::get;
