@@ -4,6 +4,9 @@ use ::axum::Server as AxumServer;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::hyper::http::Method;
+use ::lazy_static::lazy_static;
+use ::regex::Regex;
+use ::regex::RegexBuilder;
 use ::std::net::TcpListener;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
@@ -17,6 +20,13 @@ use crate::TestServerConfig;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
+
+lazy_static! {
+    static ref STARTS_HTTP_REGEX: Regex = RegexBuilder::new("^http(s?)://(.+)")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+}
 
 ///
 /// The `TestServer` represents your application, running as a web server,
@@ -188,7 +198,60 @@ fn build_request_path(root_path: &str, sub_path: &str) -> String {
         return format!("http://{}{}", root_path, sub_path);
     }
 
+    if starts_with_http(sub_path) {
+        return sub_path.to_string();
+    }
+
     format!("http://{}/{}", root_path, sub_path)
+}
+
+fn starts_with_http(path: &str) -> bool {
+    STARTS_HTTP_REGEX.is_match(path)
+}
+
+#[cfg(test)]
+mod starts_with_http {
+    use super::*;
+
+    #[test]
+    fn it_should_be_true_for_http() {
+        assert_eq!(starts_with_http(&"http://example.com"), true);
+    }
+
+    #[test]
+    fn it_should_be_true_for_http_mixed_case() {
+        assert_eq!(starts_with_http(&"hTtP://example.com"), true);
+    }
+
+    #[test]
+    fn it_should_be_false_for_http_on_own() {
+        assert_eq!(starts_with_http(&"http://"), false);
+    }
+
+    #[test]
+    fn it_should_be_false_for_http_in_middle() {
+        assert_eq!(starts_with_http(&"something/http://"), false);
+    }
+
+    #[test]
+    fn it_should_be_true_for_https() {
+        assert_eq!(starts_with_http(&"https://example.com"), true);
+    }
+
+    #[test]
+    fn it_should_be_true_for_https_mixed_case() {
+        assert_eq!(starts_with_http(&"hTtPs://example.com"), true);
+    }
+
+    #[test]
+    fn it_should_be_false_for_https_on_own() {
+        assert_eq!(starts_with_http(&"https://"), false);
+    }
+
+    #[test]
+    fn it_should_be_false_for_https_in_middle() {
+        assert_eq!(starts_with_http(&"something/https://"), false);
+    }
 }
 
 #[cfg(test)]

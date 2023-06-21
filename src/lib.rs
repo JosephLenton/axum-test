@@ -173,6 +173,8 @@ mod test_get {
     use ::axum::routing::get;
     use ::axum::Router;
 
+    use crate::util::new_random_socket_addr;
+
     async fn get_ping() -> &'static str {
         "pong!"
     }
@@ -189,6 +191,30 @@ mod test_get {
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
+    }
+
+    #[tokio::test]
+    async fn it_sound_get_using_absolute_path() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+
+        // Run the server.
+        let address = new_random_socket_addr().unwrap();
+        let ip = address.ip();
+        let port = address.port();
+        let test_config = TestServerConfig {
+            ip: Some(ip),
+            port: Some(port),
+            ..TestServerConfig::default()
+        };
+        let server =
+            TestServer::new_with_config(app, test_config).expect("Should create test server");
+
+        // Get the request.
+        let absolute_url = format!("http://{ip}:{port}/ping");
+        server.get(&absolute_url).await.assert_text(&"pong!");
     }
 }
 

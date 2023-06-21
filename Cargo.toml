@@ -17,7 +17,9 @@ axum = "0.6.10"
 anyhow = "1.0.69"
 cookie = "0.17.0"
 hyper = { version = "0.14.24", features = ["client", "http1"] }
+lazy_static = "1.4.0"
 portpicker = "0.1.1"
+regex = "1.8.4"
 serde = { version = "1.0.152" }
 serde_json = "1.0.93"
 tokio = { version = "1.26.0", features = ["rt", "time"] }
