@@ -236,7 +236,11 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status_success(&self) {
         let status_code = self.status_code.as_u16();
-        assert!(200 <= status_code && status_code <= 299, "Expect status code _within_ 2xx range, got {}", status_code);
+        assert!(
+            200 <= status_code && status_code <= 299,
+            "Expect status code _within_ 2xx range, got {}",
+            status_code
+        );
     }
 
     /// This will panic if the status code is **outside** the 2xx range.
@@ -244,7 +248,11 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status_failure(&self) {
         let status_code = self.status_code.as_u16();
-        assert!(status_code < 200 || 299 < status_code, "Expect status code _outside_ 2xx range, got {}", status_code);
+        assert!(
+            status_code < 200 || 299 < status_code,
+            "Expect status code _outside_ 2xx range, got {}",
+            status_code
+        );
     }
 
     /// Assert the response status code is 400.
@@ -284,10 +292,10 @@ impl TestResponse {
 
 #[cfg(test)]
 mod test_assert_success {
-    use ::axum::http::StatusCode;
-    use ::axum::routing::Router;
-    use ::axum::routing::get;
     use crate::TestServer;
+    use ::axum::http::StatusCode;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
 
     pub async fn route_get_pass() -> StatusCode {
         StatusCode::OK
@@ -303,14 +311,9 @@ mod test_assert_success {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(
-            router.into_make_service()
-        )
-        .unwrap();
+        let server = TestServer::new(router.into_make_service()).unwrap();
 
-        let response = server
-            .get(&"/pass")
-            .await;
+        let response = server.get(&"/pass").await;
 
         response.assert_status_success()
     }
@@ -322,15 +325,9 @@ mod test_assert_success {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(
-            router.into_make_service()
-        )
-        .unwrap();
+        let server = TestServer::new(router.into_make_service()).unwrap();
 
-        let response = server
-            .get(&"/fail")
-            .expect_failure()
-            .await;
+        let response = server.get(&"/fail").expect_failure().await;
 
         response.assert_status_success()
     }
@@ -338,10 +335,10 @@ mod test_assert_success {
 
 #[cfg(test)]
 mod test_assert_failure {
-    use ::axum::http::StatusCode;
-    use ::axum::routing::Router;
-    use ::axum::routing::get;
     use crate::TestServer;
+    use ::axum::http::StatusCode;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
 
     pub async fn route_get_pass() -> StatusCode {
         StatusCode::OK
@@ -357,15 +354,9 @@ mod test_assert_failure {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(
-            router.into_make_service()
-        )
-        .unwrap();
+        let server = TestServer::new(router.into_make_service()).unwrap();
 
-        let response = server
-            .get(&"/fail")
-            .expect_failure()
-            .await;
+        let response = server.get(&"/fail").expect_failure().await;
 
         response.assert_status_failure()
     }
@@ -377,14 +368,9 @@ mod test_assert_failure {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(
-            router.into_make_service()
-        )
-        .unwrap();
+        let server = TestServer::new(router.into_make_service()).unwrap();
 
-        let response = server
-            .get(&"/pass")
-            .await;
+        let response = server.get(&"/pass").await;
 
         response.assert_status_failure()
     }

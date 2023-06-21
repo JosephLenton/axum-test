@@ -4,6 +4,9 @@ use ::axum::Server as AxumServer;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::hyper::http::Method;
+use ::lazy_static::lazy_static;
+use ::regex::Regex;
+use ::regex::RegexBuilder;
 use ::std::net::TcpListener;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
@@ -17,6 +20,13 @@ use crate::TestServerConfig;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
+
+lazy_static! {
+    static ref STARTS_HTTP_REGEX: Regex = RegexBuilder::new("^http(s?)://(.+)")
+        .case_insensitive(true)
+        .build()
+        .unwrap();
+}
 
 ///
 /// The `TestServer` represents your application, running as a web server,
@@ -35,6 +45,7 @@ pub struct TestServer {
     server_address: String,
     save_cookies: bool,
     default_content_type: Option<String>,
+    is_requests_http_restricted: bool,
 }
 
 impl TestServer {
@@ -79,6 +90,7 @@ impl TestServer {
             server_address: socket_address.to_string(),
             save_cookies: config.save_cookies,
             default_content_type: config.default_content_type,
+            is_requests_http_restricted: config.restrict_requests_with_http_schema,
         };
 
         Ok(this)
@@ -161,7 +173,8 @@ impl TestServer {
     }
 
     pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
-        let full_request_path = build_request_path(&self.server_address, path);
+        let full_request_path =
+            build_request_path(&self.server_address, path, self.is_requests_http_restricted);
 
         TestRequestConfig {
             is_saving_cookies: self.save_cookies,
@@ -179,7 +192,11 @@ impl Drop for TestServer {
     }
 }
 
-fn build_request_path(root_path: &str, sub_path: &str) -> String {
+fn build_request_path(
+    root_path: &str,
+    sub_path: &str,
+    is_requests_http_restructed: bool,
+) -> String {
     if sub_path == "" {
         return format!("http://{}", root_path.to_string());
     }
@@ -188,7 +205,62 @@ fn build_request_path(root_path: &str, sub_path: &str) -> String {
         return format!("http://{}{}", root_path, sub_path);
     }
 
+    if !is_requests_http_restructed {
+        if starts_with_http(sub_path) {
+            return sub_path.to_string();
+        }
+    }
+
     format!("http://{}/{}", root_path, sub_path)
+}
+
+fn starts_with_http(path: &str) -> bool {
+    STARTS_HTTP_REGEX.is_match(path)
+}
+
+#[cfg(test)]
+mod starts_with_http {
+    use super::*;
+
+    #[test]
+    fn it_should_be_true_for_http() {
+        assert_eq!(starts_with_http(&"http://example.com"), true);
+    }
+
+    #[test]
+    fn it_should_be_true_for_http_mixed_case() {
+        assert_eq!(starts_with_http(&"hTtP://example.com"), true);
+    }
+
+    #[test]
+    fn it_should_be_false_for_http_on_own() {
+        assert_eq!(starts_with_http(&"http://"), false);
+    }
+
+    #[test]
+    fn it_should_be_false_for_http_in_middle() {
+        assert_eq!(starts_with_http(&"something/http://"), false);
+    }
+
+    #[test]
+    fn it_should_be_true_for_https() {
+        assert_eq!(starts_with_http(&"https://example.com"), true);
+    }
+
+    #[test]
+    fn it_should_be_true_for_https_mixed_case() {
+        assert_eq!(starts_with_http(&"hTtPs://example.com"), true);
+    }
+
+    #[test]
+    fn it_should_be_false_for_https_on_own() {
+        assert_eq!(starts_with_http(&"https://"), false);
+    }
+
+    #[test]
+    fn it_should_be_false_for_https_in_middle() {
+        assert_eq!(starts_with_http(&"something/https://"), false);
+    }
 }
 
 #[cfg(test)]
