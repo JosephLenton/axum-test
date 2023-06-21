@@ -194,7 +194,7 @@ mod test_get {
     }
 
     #[tokio::test]
-    async fn it_sound_get_using_absolute_path() {
+    async fn it_should_get_using_absolute_path() {
         // Build an application with a route.
         let app = Router::new()
             .route("/ping", get(get_ping))
@@ -215,6 +215,35 @@ mod test_get {
         // Get the request.
         let absolute_url = format!("http://{ip}:{port}/ping");
         server.get(&absolute_url).await.assert_text(&"pong!");
+    }
+
+    #[tokio::test]
+    async fn it_should_not_get_using_absolute_path_if_restricted() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+
+        // Run the server.
+        let address = new_random_socket_addr().unwrap();
+        let ip = address.ip();
+        let port = address.port();
+        let test_config = TestServerConfig {
+            ip: Some(ip),
+            port: Some(port),
+            restrict_requests_with_http_schema: true, // Key part of the test!
+            ..TestServerConfig::default()
+        };
+        let server =
+            TestServer::new_with_config(app, test_config).expect("Should create test server");
+
+        // Get the request.
+        let absolute_url = format!("http://{ip}:{port}/ping");
+        server
+            .get(&absolute_url)
+            .expect_failure()
+            .await
+            .assert_status_not_found();
     }
 }
 

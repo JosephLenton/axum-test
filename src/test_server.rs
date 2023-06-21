@@ -45,6 +45,7 @@ pub struct TestServer {
     server_address: String,
     save_cookies: bool,
     default_content_type: Option<String>,
+    is_requests_http_restricted: bool,
 }
 
 impl TestServer {
@@ -89,6 +90,7 @@ impl TestServer {
             server_address: socket_address.to_string(),
             save_cookies: config.save_cookies,
             default_content_type: config.default_content_type,
+            is_requests_http_restricted: config.restrict_requests_with_http_schema,
         };
 
         Ok(this)
@@ -171,7 +173,8 @@ impl TestServer {
     }
 
     pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
-        let full_request_path = build_request_path(&self.server_address, path);
+        let full_request_path =
+            build_request_path(&self.server_address, path, self.is_requests_http_restricted);
 
         TestRequestConfig {
             is_saving_cookies: self.save_cookies,
@@ -189,7 +192,11 @@ impl Drop for TestServer {
     }
 }
 
-fn build_request_path(root_path: &str, sub_path: &str) -> String {
+fn build_request_path(
+    root_path: &str,
+    sub_path: &str,
+    is_requests_http_restructed: bool,
+) -> String {
     if sub_path == "" {
         return format!("http://{}", root_path.to_string());
     }
@@ -198,8 +205,10 @@ fn build_request_path(root_path: &str, sub_path: &str) -> String {
         return format!("http://{}{}", root_path, sub_path);
     }
 
-    if starts_with_http(sub_path) {
-        return sub_path.to_string();
+    if !is_requests_http_restructed {
+        if starts_with_http(sub_path) {
+            return sub_path.to_string();
+        }
     }
 
     format!("http://{}/{}", root_path, sub_path)
