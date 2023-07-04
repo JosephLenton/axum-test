@@ -22,7 +22,10 @@ portpicker = "0.1.1"
 regex = "1.8.4"
 serde = { version = "1.0.152" }
 serde_json = "1.0.93"
+serde_urlencoded = "0.7.1"
+smallvec = "1.10.0"
 tokio = { version = "1.26.0", features = ["rt", "time"] }
+url = "2.4.0"
 
 [dev-dependencies]
 axum-extra = { version = "0.7.0", features = ["cookie"] }

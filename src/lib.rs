@@ -147,6 +147,8 @@
 //! Where you want the test to fail as quickly, and skip on writing error handling code.
 //!
 
+pub(crate) mod internals;
+
 mod into_test_server_core;
 pub use self::into_test_server_core::*;
 

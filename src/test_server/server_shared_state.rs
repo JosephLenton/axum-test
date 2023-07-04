@@ -3,25 +3,33 @@ use ::anyhow::Result;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::hyper::http::HeaderValue;
+use ::serde::Serialize;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 
+use crate::internals::QueryParamsStore;
 use crate::util::with_this_mut;
 
 #[derive(Debug)]
 pub(crate) struct ServerSharedState {
     cookies: CookieJar,
+    query_params: QueryParamsStore,
 }
 
 impl ServerSharedState {
     pub(crate) fn new() -> Self {
         Self {
             cookies: CookieJar::new(),
+            query_params: QueryParamsStore::new(),
         }
     }
 
     pub(crate) fn cookies<'a>(&'a self) -> &'a CookieJar {
         &self.cookies
+    }
+
+    pub(crate) fn query_params<'a>(&'a self) -> &'a QueryParamsStore {
+        &self.query_params
     }
 
     /// Adds the given cookies.
@@ -73,5 +81,14 @@ impl ServerSharedState {
         with_this_mut(this, "add_cookie", |this| {
             this.cookies.add(cookie.into_owned());
         })
+    }
+
+    pub(crate) fn add_query_param<V>(this: &mut Arc<Mutex<Self>>, query_params: V) -> Result<()>
+    where
+        V: Serialize
+    {
+        with_this_mut(this, "add_query_param", |this| {
+            this.query_params.add(query_params)
+        })?
     }
 }

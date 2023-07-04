@@ -7,6 +7,7 @@ use ::hyper::http::Method;
 use ::lazy_static::lazy_static;
 use ::regex::Regex;
 use ::regex::RegexBuilder;
+use ::serde::Serialize;
 use ::std::net::TcpListener;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
@@ -128,6 +129,16 @@ impl TestServer {
     pub fn add_cookie(&mut self, cookie: Cookie) {
         ServerSharedState::add_cookie(&mut self.state, cookie)
             .with_context(|| format!("Trying to add_cookie"))
+            .unwrap()
+    }
+
+    /// Adds query parameters to be sent with this request.
+    pub fn add_query_param<V>(mut self, query_params: V)
+    where
+        V: Serialize
+    {
+        ServerSharedState::add_query_param(&mut self.state, query_params)
+            .with_context(|| format!("Trying to add_query_param"))
             .unwrap()
     }
 

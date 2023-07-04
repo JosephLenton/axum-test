@@ -21,9 +21,11 @@ use ::std::fmt::Display;
 use ::std::future::IntoFuture;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
+use ::url::Url;
 
 use crate::ServerSharedState;
 use crate::TestResponse;
+use crate::internals::QueryParamsStore;
 
 mod test_request_config;
 pub(crate) use self::test_request_config::*;
@@ -73,6 +75,7 @@ pub struct TestRequest {
     body: Option<Body>,
     headers: Vec<(HeaderName, HeaderValue)>,
     cookies: CookieJar,
+    query_params: QueryParamsStore,
 
     is_expecting_failure: bool,
 }
@@ -92,6 +95,7 @@ impl TestRequest {
         })?;
 
         let cookies = server_locked.cookies().clone();
+        let query_params = server_locked.query_params().clone();
 
         ::std::mem::drop(server_locked);
 
@@ -101,6 +105,7 @@ impl TestRequest {
             body: None,
             headers: vec![],
             cookies,
+            query_params,
             is_expecting_failure: false,
         })
     }
@@ -134,6 +139,16 @@ impl TestRequest {
         self
     }
 
+    /// Adds query parameters to be sent with this request.
+    pub fn add_query_param<V>(mut self, query_params: V) -> Self
+    where
+        V: Serialize
+    {
+        self.query_params.add(query_params)
+            .expect("It should serialize query parameters");
+        self
+    }
+    
     /// Clears all headers set.
     pub fn clear_headers(mut self) -> Self {
         self.headers = vec![];
@@ -224,7 +239,13 @@ impl TestRequest {
         let save_cookies = self.config.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
 
-        let mut request_builder = Request::builder().uri(&full_request_path).method(method);
+        let mut url : Url = full_request_path.parse()?;
+        // Add all the query params we have
+        if self.query_params.has_content() {
+            url.set_query(Some(&self.query_params.to_string()));
+        }
+
+        let mut request_builder = Request::builder().uri(url.as_str()).method(method);
 
         // Add all the headers we have.
         let mut headers = self.headers;
@@ -540,5 +561,91 @@ mod test_clear_headers {
         // Check it sent back the right text
         response.assert_status_bad_request();
         response.assert_text("Missing test header");
+    }
+}
+
+#[cfg(test)]
+mod test_add_query_param {
+    use ::axum::extract::Query;
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    use crate::TestServer;
+
+    #[derive(Deserialize, Serialize)]
+    struct QueryParam {
+        message: String
+    }
+
+    async fn get_query_param(
+        Query(params): Query<QueryParam>
+    ) -> String {
+        params.message
+    }
+
+    #[derive(Deserialize, Serialize)]
+    struct QueryParam2 {
+        message: String,
+        other: String,
+    }
+
+    async fn get_query_param_2(
+        Query(params): Query<QueryParam2>
+    ) -> String {
+        format!("{}-{}", params.message, params.other)
+    }
+
+    #[tokio::test]
+    async fn it_sound_pass_up_query_params_from_serialization() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/query", get(get_query_param))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/query").add_query_param(QueryParam {
+            message: "it works".to_string()
+        }).await.assert_text(&"it works");
+    }
+
+    #[tokio::test]
+    async fn it_sound_pass_up_query_params_from_pairs() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/query", get(get_query_param))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/query")
+            .add_query_param(("message", "it works"))
+            .await
+            .assert_text(&"it works");
+    }
+
+    #[tokio::test]
+    async fn it_sound_pass_up_multiple_query_params_from_multiple_calls() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/query-2", get(get_query_param_2))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/query-2")
+            .add_query_param(("message", "it works"))
+            .add_query_param(("other", "yup"))
+            .await
+            .assert_text(&"it works-yup");
     }
 }
