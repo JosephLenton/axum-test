@@ -39,12 +39,6 @@ impl QueryParamsStore {
 
 impl Display for QueryParamsStore {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        if self.is_empty() {
-            return Ok(());
-        }
-
-        write!(f, "?")?;
-
         let mut is_joining = false;
         for query in &self.query_params {
             if is_joining {

@@ -133,12 +133,12 @@ impl TestServer {
     }
 
     /// Adds query parameters to be sent with this request.
-    pub fn add_query_param<V>(mut self, query_params: V)
+    pub fn add_query_params<V>(mut self, query_params: V)
     where
         V: Serialize
     {
-        ServerSharedState::add_query_param(&mut self.state, query_params)
-            .with_context(|| format!("Trying to add_query_param"))
+        ServerSharedState::add_query_params(&mut self.state, query_params)
+            .with_context(|| format!("Trying to add_query_params"))
             .unwrap()
     }
 

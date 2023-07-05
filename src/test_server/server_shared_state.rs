@@ -83,11 +83,11 @@ impl ServerSharedState {
         })
     }
 
-    pub(crate) fn add_query_param<V>(this: &mut Arc<Mutex<Self>>, query_params: V) -> Result<()>
+    pub(crate) fn add_query_params<V>(this: &mut Arc<Mutex<Self>>, query_params: V) -> Result<()>
     where
         V: Serialize
     {
-        with_this_mut(this, "add_query_param", |this| {
+        with_this_mut(this, "add_query_params", |this| {
             this.query_params.add(query_params)
         })?
     }

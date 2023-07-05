@@ -139,14 +139,98 @@ impl TestRequest {
         self
     }
 
-    /// Adds query parameters to be sent with this request.
-    pub fn add_query_param<V>(mut self, query_params: V) -> Self
+    /// Adds the structure given as query parameters for this request.
+    /// 
+    /// This is designed to take a list of parameters, or a body of parameters,
+    /// and then serializes them into the parameters of the request.
+    /// 
+    /// # Sending a body of parameters using `json!`
+    /// 
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    /// use ::serde_json::json;
+    /// 
+    /// let app = Router::new().into_make_service();
+    /// let server = TestServer::new(app)?;
+    /// 
+    /// let response = server.get(&"/my-end-point")
+    ///     .add_query_params(json!({
+    ///         "username": "Brian",
+    ///         "age": 20
+    ///     }))
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    /// 
+    /// # Sending a body of parameters with Serde
+    /// 
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    /// use ::serde::Deserialize;
+    /// use ::serde::Serialize;
+    /// 
+    /// #[derive(Serialize, Deserialize)]
+    /// struct UserQueryParams {
+    ///     username: String,
+    ///     age: u32,
+    /// }
+    /// 
+    /// let app = Router::new().into_make_service();
+    /// let server = TestServer::new(app)?;
+    /// 
+    /// let response = server.get(&"/my-end-point")
+    ///     .add_query_params(UserQueryParams {
+    ///         username: "Brian".to_string(),
+    ///         age: 20
+    ///     })
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    /// 
+    /// # Sending a list of parameters
+    /// 
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    /// 
+    /// let app = Router::new().into_make_service();
+    /// let server = TestServer::new(app)?;
+    /// 
+    /// let response = server.get(&"/my-end-point")
+    ///     .add_query_params(&[
+    ///         ("username", "Brian"),
+    ///         ("age", "20"),
+    ///     ])
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    /// 
+    pub fn add_query_params<V>(mut self, query_params: V) -> Self
     where
         V: Serialize
     {
         self.query_params.add(query_params)
             .expect("It should serialize query parameters");
         self
+    }
+
+    /// Adds query parameters to be sent with this request.
+    pub fn add_query_param<V>(self, key: &str, value: V) -> Self
+    where
+        V: Serialize
+    {
+        self.add_query_params(&[(key, value)])
     }
     
     /// Clears all headers set.
@@ -565,17 +649,18 @@ mod test_clear_headers {
 }
 
 #[cfg(test)]
-mod test_add_query_param {
+mod test_add_query_params {
     use ::axum::extract::Query;
     use ::axum::routing::get;
     use ::axum::Router;
 
     use ::serde::Deserialize;
     use ::serde::Serialize;
+    use ::serde_json::json;
 
     use crate::TestServer;
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize)]
     struct QueryParam {
         message: String
     }
@@ -586,7 +671,7 @@ mod test_add_query_param {
         params.message
     }
 
-    #[derive(Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize)]
     struct QueryParam2 {
         message: String,
         other: String,
@@ -609,7 +694,7 @@ mod test_add_query_param {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        server.get(&"/query").add_query_param(QueryParam {
+        server.get(&"/query").add_query_params(QueryParam {
             message: "it works".to_string()
         }).await.assert_text(&"it works");
     }
@@ -626,7 +711,117 @@ mod test_add_query_param {
 
         // Get the request.
         server.get(&"/query")
-            .add_query_param(("message", "it works"))
+            .add_query_params(&[("message", "it works")])
+            .await
+            .assert_text(&"it works");
+    }
+
+    #[tokio::test]
+    async fn it_sound_pass_up_multiple_query_params_from_multiple_params() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/query-2", get(get_query_param_2))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/query-2")
+            .add_query_params(&[
+                ("message", "it works"),
+                ("other", "yup")
+            ])
+            .await
+            .assert_text(&"it works-yup");
+    }
+
+    #[tokio::test]
+    async fn it_sound_pass_up_multiple_query_params_from_multiple_calls() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/query-2", get(get_query_param_2))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/query-2")
+            .add_query_params(&[("message", "it works")])
+            .add_query_params(&[("other", "yup")])
+            .await
+            .assert_text(&"it works-yup");
+    }
+
+    #[tokio::test]
+    async fn it_sound_pass_up_multiple_query_params_from_json() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/query-2", get(get_query_param_2))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/query-2")
+            .add_query_params(json!({
+                "message": "it works",
+                "other": "yup"
+            }))
+            .await
+            .assert_text(&"it works-yup");
+    }
+}
+
+#[cfg(test)]
+mod test_add_query_param {
+    use ::axum::extract::Query;
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    use crate::TestServer;
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct QueryParam {
+        message: String
+    }
+
+    async fn get_query_param(
+        Query(params): Query<QueryParam>
+    ) -> String {
+        params.message
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct QueryParam2 {
+        message: String,
+        other: String,
+    }
+
+    async fn get_query_param_2(
+        Query(params): Query<QueryParam2>
+    ) -> String {
+        format!("{}-{}", params.message, params.other)
+    }
+
+    #[tokio::test]
+    async fn it_sound_pass_up_query_params_from_pairs() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/query", get(get_query_param))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/query")
+            .add_query_param("message", "it works")
             .await
             .assert_text(&"it works");
     }
@@ -643,8 +838,8 @@ mod test_add_query_param {
 
         // Get the request.
         server.get(&"/query-2")
-            .add_query_param(("message", "it works"))
-            .add_query_param(("other", "yup"))
+            .add_query_param("message", "it works")
+            .add_query_param("other", "yup")
             .await
             .assert_text(&"it works-yup");
     }
