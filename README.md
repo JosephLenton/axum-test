@@ -30,7 +30,7 @@ This is primarily for testing Axum services.
   }
 
   #[tokio::test]
-  async fn it_sound_get() {
+  async fn it_should_get() {
       // Build an application with a route.
       let app = Router::new()
           .route("/ping", get(get_ping))

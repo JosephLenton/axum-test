@@ -147,6 +147,8 @@
 //! Where you want the test to fail as quickly, and skip on writing error handling code.
 //!
 
+pub(crate) mod internals;
+
 mod into_test_server_core;
 pub use self::into_test_server_core::*;
 
@@ -180,7 +182,7 @@ mod test_get {
     }
 
     #[tokio::test]
-    async fn it_sound_get() {
+    async fn it_should_get() {
         // Build an application with a route.
         let app = Router::new()
             .route("/ping", get(get_ping))

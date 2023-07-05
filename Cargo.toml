@@ -1,7 +1,7 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "10.0.0"
+version = "10.1.0"
 edition = "2021"
 license = "MIT"
 description = "For spinning up and testing Axum servers"
@@ -22,7 +22,10 @@ portpicker = "0.1.1"
 regex = "1.8.4"
 serde = { version = "1.0.152" }
 serde_json = "1.0.93"
+serde_urlencoded = "0.7.1"
+smallvec = "1.10.0"
 tokio = { version = "1.26.0", features = ["rt", "time"] }
+url = "2.4.0"
 
 [dev-dependencies]
 axum-extra = { version = "0.7.0", features = ["cookie"] }
