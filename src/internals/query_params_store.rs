@@ -3,12 +3,12 @@ use ::serde::Serialize;
 use ::serde_urlencoded::to_string;
 use ::smallvec::SmallVec;
 use ::std::fmt::Display;
-use ::std::fmt::Result as FmtResult;
 use ::std::fmt::Formatter;
+use ::std::fmt::Result as FmtResult;
 
 #[derive(Clone, Debug)]
 pub struct QueryParamsStore {
-    query_params: SmallVec<[String; 0]>
+    query_params: SmallVec<[String; 0]>,
 }
 
 impl QueryParamsStore {
@@ -20,12 +20,16 @@ impl QueryParamsStore {
 
     pub fn add<V>(&mut self, query_params: V) -> Result<()>
     where
-        V: Serialize
+        V: Serialize,
     {
         let value_raw = to_string(query_params)?;
         self.query_params.push(value_raw);
 
         Ok(())
+    }
+
+    pub fn clear(&mut self) {
+        self.query_params.clear();
     }
 
     pub fn is_empty(&self) -> bool {
