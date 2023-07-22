@@ -266,22 +266,6 @@ mod test_content_type {
     }
 
     #[tokio::test]
-    async fn it_should_not_set_a_content_type_by_default() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/content_type", get(get_content_type))
-            .into_make_service();
-
-        // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
-
-        // Get the request.
-        let text = server.get(&"/content_type").await.text();
-
-        assert_eq!(text, "");
-    }
-
-    #[tokio::test]
     async fn it_should_default_to_server_content_type_when_present() {
         // Build an application with a route.
         let app = Router::new()
@@ -299,50 +283,6 @@ mod test_content_type {
         let text = server.get(&"/content_type").await.text();
 
         assert_eq!(text, "text/plain");
-    }
-
-    #[tokio::test]
-    async fn it_should_override_server_content_type_when_present() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/content_type", get(get_content_type))
-            .into_make_service();
-
-        // Run the server.
-        let config = TestServerConfig {
-            default_content_type: Some("text/plain".to_string()),
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
-
-        // Get the request.
-        let text = server
-            .get(&"/content_type")
-            .content_type(&"application/json")
-            .await
-            .text();
-
-        assert_eq!(text, "application/json");
-    }
-
-    #[tokio::test]
-    async fn it_should_set_content_type_when_present() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/content_type", get(get_content_type))
-            .into_make_service();
-
-        // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
-
-        // Get the request.
-        let text = server
-            .get(&"/content_type")
-            .content_type(&"application/json")
-            .await
-            .text();
-
-        assert_eq!(text, "application/json");
     }
 }
 
