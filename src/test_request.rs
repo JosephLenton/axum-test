@@ -15,6 +15,7 @@ use ::hyper::http::Request;
 use ::hyper::Client;
 use ::serde::Serialize;
 use ::serde_json::to_vec as json_to_vec;
+use ::serde_urlencoded::to_string;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
@@ -31,6 +32,7 @@ mod test_request_config;
 pub(crate) use self::test_request_config::*;
 
 const JSON_CONTENT_TYPE: &'static str = &"application/json";
+const FORM_CONTENT_TYPE: &'static str = &"application/x-www-form-urlencoded";
 const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 
 ///
@@ -272,37 +274,40 @@ impl TestRequest {
         self
     }
 
-    /// Set the body of the request to send up as Json.
-    pub fn json<J>(mut self, body: &J) -> Self
+    /// Set the body of the request to send up as Json,
+    /// and changes the content type to `application/json`.
+    pub fn json<J>(self, body: &J) -> Self
     where
         J: ?Sized + Serialize,
     {
         let body_bytes = json_to_vec(body).expect("It should serialize the content into JSON");
-        let body: Body = body_bytes.into();
-        self.body = Some(body);
 
-        if self.config.content_type == None {
-            self.config.content_type = Some(JSON_CONTENT_TYPE.to_string());
-        }
-
-        self
+        self.bytes(body_bytes.into())
+            .content_type(JSON_CONTENT_TYPE)
     }
 
-    /// Set raw text as the body of the request.
-    ///
-    /// If there isn't a content type set, this will default to `text/plain`.
-    pub fn text<T>(mut self, raw_text: T) -> Self
+    /// Sets the body of the request, with the content type
+    /// of 'application/x-www-form-urlencoded'.
+    pub fn form<F>(self, body: &F) -> Self
+    where
+        F: ?Sized + Serialize,
+    {
+        let body_text = to_string(body).expect("It should serialize the content into a Form");
+
+        self.bytes(body_text.into())
+            .content_type(FORM_CONTENT_TYPE)
+    }
+
+    /// Set raw text as the body of the request,
+    /// and sets the content type to `text/plain`.
+    pub fn text<T>(self, raw_text: T) -> Self
     where
         T: Display,
     {
         let body_text = format!("{}", raw_text);
-        let body_bytes = Bytes::from(body_text.into_bytes());
 
-        if self.config.content_type == None {
-            self.config.content_type = Some(TEXT_CONTENT_TYPE.to_string());
-        }
-
-        self.bytes(body_bytes)
+        self.bytes(body_text.into())
+            .content_type(TEXT_CONTENT_TYPE)
     }
 
     /// Set raw bytes as the body of the request.
@@ -407,6 +412,308 @@ fn build_content_type_header(content_type: String) -> Result<(HeaderName, Header
         .with_context(|| format!("Failed to store header content type '{}'", content_type))?;
 
     Ok((header::CONTENT_TYPE, header_value))
+}
+
+#[cfg(test)]
+mod test_content_type {
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    use ::axum::http::header::CONTENT_TYPE;
+    use ::axum::http::HeaderMap;
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    async fn get_content_type(headers: HeaderMap) -> String {
+        headers
+            .get(CONTENT_TYPE)
+            .map(|h| h.to_str().unwrap().to_string())
+            .unwrap_or_else(|| "".to_string())
+    }
+
+    #[tokio::test]
+    async fn it_should_not_set_a_content_type_by_default() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", get(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server.get(&"/content_type").await.text();
+
+        assert_eq!(text, "");
+    }
+
+    #[tokio::test]
+    async fn it_should_override_server_content_type_when_present() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", get(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let config = TestServerConfig {
+            default_content_type: Some("text/plain".to_string()),
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .get(&"/content_type")
+            .content_type(&"application/json")
+            .await
+            .text();
+
+        assert_eq!(text, "application/json");
+    }
+
+    #[tokio::test]
+    async fn it_should_set_content_type_when_present() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", get(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .get(&"/content_type")
+            .content_type(&"application/custom")
+            .await
+            .text();
+
+        assert_eq!(text, "application/custom");
+    }
+}
+
+#[cfg(test)]
+mod test_json {
+    use crate::TestServer;
+
+    use ::axum::http::header::CONTENT_TYPE;
+    use ::axum::http::HeaderMap;
+    use ::axum::routing::post;
+    use ::axum::Router;
+    use ::axum::Json;
+    use ::serde_json::json;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[tokio::test]
+    async fn it_should_pass_json_up_to_be_read() {
+        #[derive(Deserialize, Serialize)]
+        struct TestJson {
+            name: String,
+            age: u32,
+            pets: Option<String>,
+        }
+
+        async fn get_json(Json(json): Json<TestJson>) -> String {
+            format!("json: {}, {}, {}", json.name, json.age, json.pets.unwrap_or_else(|| "pandas".to_string()))
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/json", post(get_json))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/json")
+            .json(&TestJson {
+                name: "Joe".to_string(),
+                age: 20,
+                pets: Some("foxes".to_string()),
+            })
+            .await
+            .text();
+
+        assert_eq!(text, "json: Joe, 20, foxes");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_json_content_type_for_json() {
+        async fn get_content_type(headers: HeaderMap) -> String {
+            headers
+                .get(CONTENT_TYPE)
+                .map(|h| h.to_str().unwrap().to_string())
+                .unwrap_or_else(|| "".to_string())
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", post(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .json(&json!({}))
+            .await
+            .text();
+
+        assert_eq!(text, "application/json");
+    }
+}
+
+#[cfg(test)]
+mod test_form {
+    use crate::TestServer;
+
+    use ::axum::http::header::CONTENT_TYPE;
+    use ::axum::http::HeaderMap;
+    use ::axum::routing::post;
+    use ::axum::Form;
+    use ::axum::Router;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[tokio::test]
+    async fn it_should_pass_form_up_to_be_read() {
+        #[derive(Deserialize, Serialize)]
+        struct TestForm {
+            name: String,
+            age: u32,
+            pets: Option<String>,
+        }
+
+        async fn get_form(Form(form): Form<TestForm>) -> String {
+            format!("form: {}, {}, {}", form.name, form.age, form.pets.unwrap_or_else(|| "pandas".to_string()))
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/form", post(get_form))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/form")
+            .form(&TestForm {
+                name: "Joe".to_string(),
+                age: 20,
+                pets: Some("foxes".to_string()),
+            })
+            .await
+            .text();
+
+        assert_eq!(text, "form: Joe, 20, foxes");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_form_content_type_for_form() {
+        async fn get_content_type(headers: HeaderMap) -> String {
+            headers
+                .get(CONTENT_TYPE)
+                .map(|h| h.to_str().unwrap().to_string())
+                .unwrap_or_else(|| "".to_string())
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", post(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        #[derive(Serialize)]
+        struct MyForm {
+            message: String
+        }
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .form(&MyForm {
+                message: "hello".to_string()
+            })
+            .await
+            .text();
+
+        assert_eq!(text, "application/x-www-form-urlencoded");
+    }
+}
+
+#[cfg(test)]
+mod test_text {
+    use crate::TestServer;
+
+    use ::axum::http::header::CONTENT_TYPE;
+    use ::axum::http::HeaderMap;
+    use ::axum::routing::post;
+    use ::axum::Router;
+    use ::axum::extract::RawBody;
+    use ::hyper::body::to_bytes;
+
+    #[tokio::test]
+    async fn it_should_pass_text_up_to_be_read() {
+        async fn get_text(RawBody(body): RawBody) -> String {
+            let bytes = to_bytes(body).await.expect("Should read body to bytes");
+            let body_text = String::from_utf8_lossy(&bytes);
+
+            format!("{}", body_text)
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/text", post(get_text))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/text")
+            .text(&"hello!")
+            .await
+            .text();
+
+        assert_eq!(text, "hello!");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_text_content_type_for_text() {
+        async fn get_content_type(headers: HeaderMap) -> String {
+            headers
+                .get(CONTENT_TYPE)
+                .map(|h| h.to_str().unwrap().to_string())
+                .unwrap_or_else(|| "".to_string())
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", post(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .text(&"hello!")
+            .await
+            .text();
+
+        assert_eq!(text, "text/plain");
+    }
 }
 
 #[cfg(test)]
