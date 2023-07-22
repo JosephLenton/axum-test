@@ -407,7 +407,7 @@ mod test_json {
         #[derive(Serialize, Deserialize, PartialEq, Debug)]
         struct ExampleResponse {
             name: String,
-            age: u32
+            age: u32,
         }
 
         async fn route_get_json() -> Json<ExampleResponse> {
@@ -425,10 +425,13 @@ mod test_json {
 
         let response = server.get(&"/json").await.json::<ExampleResponse>();
 
-        assert_eq!(response, ExampleResponse {
-            name: "Joe".to_string(),
-            age: 20,
-        });
+        assert_eq!(
+            response,
+            ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            }
+        );
     }
 }
 
@@ -446,7 +449,7 @@ mod test_form {
         #[derive(Serialize, Deserialize, PartialEq, Debug)]
         struct ExampleResponse {
             name: String,
-            age: u32
+            age: u32,
         }
 
         async fn route_get_form() -> Form<ExampleResponse> {
@@ -464,10 +467,13 @@ mod test_form {
 
         let response = server.get(&"/form").await.form::<ExampleResponse>();
 
-        assert_eq!(response, ExampleResponse {
-            name: "Joe".to_string(),
-            age: 20,
-        });
+        assert_eq!(
+            response,
+            ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            }
+        );
     }
 }
 
