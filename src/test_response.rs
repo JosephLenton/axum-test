@@ -203,6 +203,23 @@ impl TestResponse {
             .unwrap()
     }
 
+    /// Reads the response from the server as an urlencoded Form,
+    /// and then deserialise the contents into the structure given.
+    #[must_use]
+    pub fn form<T>(&self) -> T
+    where
+        for<'de> T: Deserialize<'de>,
+    {
+        serde_urlencoded::from_bytes::<T>(&self.response_body)
+            .with_context(|| {
+                format!(
+                    "Deserializing response from Form for request {}",
+                    self.request_url
+                )
+            })
+            .unwrap()
+    }
+
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
     #[track_caller]
@@ -373,5 +390,113 @@ mod test_assert_failure {
         let response = server.get(&"/pass").await;
 
         response.assert_status_failure()
+    }
+}
+
+#[cfg(test)]
+mod test_json {
+    use crate::TestServer;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::axum::Json;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[tokio::test]
+    async fn it_should_deserialize_into_json() {
+        #[derive(Serialize, Deserialize, PartialEq, Debug)]
+        struct ExampleResponse {
+            name: String,
+            age: u32,
+        }
+
+        async fn route_get_json() -> Json<ExampleResponse> {
+            Json(ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            })
+        }
+
+        let app = Router::new()
+            .route(&"/json", get(route_get_json))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/json").await.json::<ExampleResponse>();
+
+        assert_eq!(
+            response,
+            ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            }
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_form {
+    use crate::TestServer;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::axum::Form;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[tokio::test]
+    async fn it_should_deserialize_into_form() {
+        #[derive(Serialize, Deserialize, PartialEq, Debug)]
+        struct ExampleResponse {
+            name: String,
+            age: u32,
+        }
+
+        async fn route_get_form() -> Form<ExampleResponse> {
+            Form(ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            })
+        }
+
+        let app = Router::new()
+            .route(&"/form", get(route_get_form))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/form").await.form::<ExampleResponse>();
+
+        assert_eq!(
+            response,
+            ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            }
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_text {
+    use crate::TestServer;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+
+    #[tokio::test]
+    async fn it_should_deserialize_into_text() {
+        async fn route_get_text() -> String {
+            "hello!".to_string()
+        }
+
+        let app = Router::new()
+            .route(&"/text", get(route_get_text))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/text").await.text();
+
+        assert_eq!(response, "hello!");
     }
 }

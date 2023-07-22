@@ -294,8 +294,7 @@ impl TestRequest {
     {
         let body_text = to_string(body).expect("It should serialize the content into a Form");
 
-        self.bytes(body_text.into())
-            .content_type(FORM_CONTENT_TYPE)
+        self.bytes(body_text.into()).content_type(FORM_CONTENT_TYPE)
     }
 
     /// Set raw text as the body of the request,
@@ -306,8 +305,7 @@ impl TestRequest {
     {
         let body_text = format!("{}", raw_text);
 
-        self.bytes(body_text.into())
-            .content_type(TEXT_CONTENT_TYPE)
+        self.bytes(body_text.into()).content_type(TEXT_CONTENT_TYPE)
     }
 
     /// Set raw bytes as the body of the request.
@@ -499,11 +497,11 @@ mod test_json {
     use ::axum::http::header::CONTENT_TYPE;
     use ::axum::http::HeaderMap;
     use ::axum::routing::post;
-    use ::axum::Router;
     use ::axum::Json;
-    use ::serde_json::json;
+    use ::axum::Router;
     use ::serde::Deserialize;
     use ::serde::Serialize;
+    use ::serde_json::json;
 
     #[tokio::test]
     async fn it_should_pass_json_up_to_be_read() {
@@ -515,7 +513,12 @@ mod test_json {
         }
 
         async fn get_json(Json(json): Json<TestJson>) -> String {
-            format!("json: {}, {}, {}", json.name, json.age, json.pets.unwrap_or_else(|| "pandas".to_string()))
+            format!(
+                "json: {}, {}, {}",
+                json.name,
+                json.age,
+                json.pets.unwrap_or_else(|| "pandas".to_string())
+            )
         }
 
         // Build an application with a route.
@@ -558,11 +561,7 @@ mod test_json {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        let text = server
-            .post(&"/content_type")
-            .json(&json!({}))
-            .await
-            .text();
+        let text = server.post(&"/content_type").json(&json!({})).await.text();
 
         assert_eq!(text, "application/json");
     }
@@ -590,7 +589,12 @@ mod test_form {
         }
 
         async fn get_form(Form(form): Form<TestForm>) -> String {
-            format!("form: {}, {}, {}", form.name, form.age, form.pets.unwrap_or_else(|| "pandas".to_string()))
+            format!(
+                "form: {}, {}, {}",
+                form.name,
+                form.age,
+                form.pets.unwrap_or_else(|| "pandas".to_string())
+            )
         }
 
         // Build an application with a route.
@@ -634,14 +638,14 @@ mod test_form {
 
         #[derive(Serialize)]
         struct MyForm {
-            message: String
+            message: String,
         }
 
         // Get the request.
         let text = server
             .post(&"/content_type")
             .form(&MyForm {
-                message: "hello".to_string()
+                message: "hello".to_string(),
             })
             .await
             .text();
@@ -654,11 +658,11 @@ mod test_form {
 mod test_text {
     use crate::TestServer;
 
+    use ::axum::extract::RawBody;
     use ::axum::http::header::CONTENT_TYPE;
     use ::axum::http::HeaderMap;
     use ::axum::routing::post;
     use ::axum::Router;
-    use ::axum::extract::RawBody;
     use ::hyper::body::to_bytes;
 
     #[tokio::test]
@@ -679,11 +683,7 @@ mod test_text {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        let text = server
-            .post(&"/text")
-            .text(&"hello!")
-            .await
-            .text();
+        let text = server.post(&"/text").text(&"hello!").await.text();
 
         assert_eq!(text, "hello!");
     }
@@ -706,11 +706,7 @@ mod test_text {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        let text = server
-            .post(&"/content_type")
-            .text(&"hello!")
-            .await
-            .text();
+        let text = server.post(&"/content_type").text(&"hello!").await.text();
 
         assert_eq!(text, "text/plain");
     }
