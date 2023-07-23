@@ -14,6 +14,10 @@ Using full E2E tests.
 Some of the design decisions behind this are very opinionated,
 to encourage one to write good tests.
 
+## Examples
+
+You can find a thorough example in the [/examples folder](/examples/example-todo/).
+
 ## Features
 
 This is for spinning up an Axum service, that you can then query directly.
