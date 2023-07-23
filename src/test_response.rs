@@ -47,16 +47,23 @@ impl TestResponse {
         &self.request_url
     }
 
-    /// Returns the raw underlying response, as it's raw bytes.
+    /// Returns the raw underlying response as `Bytes`.
     #[must_use]
-    pub fn bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn as_bytes<'a>(&'a self) -> &'a Bytes {
         &self.response_body
+    }
+
+    /// Consumes this result returning the underlying `Bytes`
+    /// returned in the response.
+    #[must_use]
+    pub fn into_bytes<'a>(self) -> Bytes {
+        self.response_body
     }
 
     /// Returns the underlying response, as a raw UTF-8 string.
     #[must_use]
     pub fn text(&self) -> String {
-        String::from_utf8_lossy(&self.response_body).to_string()
+        String::from_utf8_lossy(&self.as_bytes()).to_string()
     }
 
     /// The status_code of the response.
@@ -193,7 +200,7 @@ impl TestResponse {
     where
         for<'de> T: Deserialize<'de>,
     {
-        serde_json::from_slice::<T>(&self.response_body)
+        serde_json::from_slice::<T>(&self.as_bytes())
             .with_context(|| {
                 format!(
                     "Deserializing response from JSON for request {}",
@@ -210,7 +217,7 @@ impl TestResponse {
     where
         for<'de> T: Deserialize<'de>,
     {
-        serde_urlencoded::from_bytes::<T>(&self.response_body)
+        serde_urlencoded::from_bytes::<T>(&self.as_bytes())
             .with_context(|| {
                 format!(
                     "Deserializing response from Form for request {}",
@@ -322,6 +329,12 @@ impl TestResponse {
     }
 }
 
+impl From<TestResponse> for Bytes {
+    fn from(response: TestResponse) -> Self {
+        response.into_bytes()
+    }
+}
+
 #[cfg(test)]
 mod test_assert_success {
     use crate::TestServer;
@@ -409,6 +422,36 @@ mod test_assert_failure {
 }
 
 #[cfg(test)]
+mod test_into_bytes {
+    use crate::TestServer;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::axum::Json;
+    use ::serde_json::json;
+    use ::serde_json::Value;
+
+    async fn route_get_json() -> Json<Value> {
+        Json(json!({
+            "message": "it works?"
+        }))
+    }
+
+    #[tokio::test]
+    async fn it_should_deserialize_into_json() {
+        let app = Router::new()
+            .route(&"/json", get(route_get_json))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        let bytes = server.get(&"/json").await.into_bytes();
+        let text = String::from_utf8_lossy(&bytes);
+
+        assert_eq!(text, r#"{"message":"it works?"}"#);
+    }
+}
+
+#[cfg(test)]
 mod test_json {
     use crate::TestServer;
     use ::axum::routing::get;
@@ -417,21 +460,21 @@ mod test_json {
     use ::serde::Deserialize;
     use ::serde::Serialize;
 
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_json() -> Json<ExampleResponse> {
+        Json(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
     #[tokio::test]
     async fn it_should_deserialize_into_json() {
-        #[derive(Serialize, Deserialize, PartialEq, Debug)]
-        struct ExampleResponse {
-            name: String,
-            age: u32,
-        }
-
-        async fn route_get_json() -> Json<ExampleResponse> {
-            Json(ExampleResponse {
-                name: "Joe".to_string(),
-                age: 20,
-            })
-        }
-
         let app = Router::new()
             .route(&"/json", get(route_get_json))
             .into_make_service();
@@ -459,21 +502,21 @@ mod test_form {
     use ::serde::Deserialize;
     use ::serde::Serialize;
 
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_form() -> Form<ExampleResponse> {
+        Form(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
     #[tokio::test]
     async fn it_should_deserialize_into_form() {
-        #[derive(Serialize, Deserialize, PartialEq, Debug)]
-        struct ExampleResponse {
-            name: String,
-            age: u32,
-        }
-
-        async fn route_get_form() -> Form<ExampleResponse> {
-            Form(ExampleResponse {
-                name: "Joe".to_string(),
-                age: 20,
-            })
-        }
-
         let app = Router::new()
             .route(&"/form", get(route_get_form))
             .into_make_service();
