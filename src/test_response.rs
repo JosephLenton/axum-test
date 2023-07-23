@@ -9,7 +9,7 @@ use ::hyper::http::response::Parts;
 use ::hyper::http::HeaderMap;
 use ::hyper::http::HeaderValue;
 use ::hyper::http::StatusCode;
-use ::serde::Deserialize;
+use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
@@ -198,7 +198,7 @@ impl TestResponse {
     #[must_use]
     pub fn json<T>(&self) -> T
     where
-        for<'de> T: Deserialize<'de>,
+        T: DeserializeOwned,
     {
         serde_json::from_slice::<T>(&self.as_bytes())
             .with_context(|| {
@@ -215,7 +215,7 @@ impl TestResponse {
     #[must_use]
     pub fn form<T>(&self) -> T
     where
-        for<'de> T: Deserialize<'de>,
+        T: DeserializeOwned,
     {
         serde_urlencoded::from_bytes::<T>(&self.as_bytes())
             .with_context(|| {
@@ -250,7 +250,7 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_json<T>(&self, other: &T)
     where
-        for<'de> T: Deserialize<'de> + PartialEq<T> + Debug,
+        T: DeserializeOwned + PartialEq<T> + Debug,
     {
         let own_json: T = self.json();
         assert_eq!(own_json, *other);
@@ -264,7 +264,7 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_form<T>(&self, other: &T)
     where
-        for<'de> T: Deserialize<'de> + PartialEq<T> + Debug,
+        T: DeserializeOwned + PartialEq<T> + Debug,
     {
         let own_json: T = self.form();
         assert_eq!(own_json, *other);
