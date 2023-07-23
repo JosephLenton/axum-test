@@ -1,4 +1,4 @@
-use ::hyper::http::Method;
+use ::http::Method;
 
 #[derive(Debug, Clone)]
 pub struct TestRequestConfig {

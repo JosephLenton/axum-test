@@ -166,7 +166,7 @@ pub use self::test_response::*;
 
 pub mod util;
 
-pub use ::hyper::http;
+pub use ::http;
 
 #[cfg(test)]
 mod test_get {
@@ -253,10 +253,10 @@ mod test_get {
 mod test_content_type {
     use super::*;
 
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::get;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
 
     async fn get_content_type(headers: HeaderMap) -> String {
         headers

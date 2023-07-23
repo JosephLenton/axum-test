@@ -16,6 +16,7 @@ auto-future = "1.0.0"
 axum = "0.6.10"
 anyhow = "1.0.69"
 cookie = "0.17.0"
+http = "0.2.9"
 hyper = { version = "0.14.24", features = ["client", "http1"] }
 lazy_static = "1.4.0"
 portpicker = "0.1.1"

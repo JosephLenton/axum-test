@@ -2,16 +2,16 @@ use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::auto_future::AutoFuture;
-use ::axum::http::HeaderValue;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
+use ::http::header::SET_COOKIE;
+use ::http::HeaderValue;
+use ::http::Request;
 use ::hyper::body::to_bytes;
 use ::hyper::body::Body;
 use ::hyper::body::Bytes;
 use ::hyper::header;
 use ::hyper::header::HeaderName;
-use ::hyper::http::header::SET_COOKIE;
-use ::hyper::http::Request;
 use ::hyper::Client;
 use ::serde::Serialize;
 use ::serde_json::to_vec as json_to_vec;
@@ -417,10 +417,10 @@ mod test_content_type {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::get;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
 
     async fn get_content_type(headers: HeaderMap) -> String {
         headers
@@ -494,11 +494,11 @@ mod test_content_type {
 mod test_json {
     use crate::TestServer;
 
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::post;
     use ::axum::Json;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
     use ::serde::Deserialize;
     use ::serde::Serialize;
     use ::serde_json::json;
@@ -571,11 +571,11 @@ mod test_json {
 mod test_form {
     use crate::TestServer;
 
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::post;
     use ::axum::Form;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
     use ::serde::Deserialize;
     use ::serde::Serialize;
 
@@ -659,10 +659,10 @@ mod test_text {
     use crate::TestServer;
 
     use ::axum::extract::RawBody;
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::post;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
     use ::hyper::body::to_bytes;
 
     #[tokio::test]
@@ -715,9 +715,9 @@ mod test_text {
 #[cfg(test)]
 mod test_expect_success {
     use crate::TestServer;
-    use ::axum::http::StatusCode;
     use ::axum::routing::get;
     use ::axum::Router;
+    use ::http::StatusCode;
 
     #[tokio::test]
     async fn it_should_not_panic_if_success_is_returned() {
@@ -772,9 +772,9 @@ mod test_expect_success {
 #[cfg(test)]
 mod test_expect_failure {
     use crate::TestServer;
-    use ::axum::http::StatusCode;
     use ::axum::routing::get;
     use ::axum::Router;
+    use ::http::StatusCode;
 
     #[tokio::test]
     async fn it_should_not_panic_if_expect_failure_on_404() {
@@ -835,9 +835,9 @@ mod test_add_header {
     use ::axum::extract::FromRequestParts;
     use ::axum::routing::get;
     use ::axum::Router;
-    use ::hyper::http::request::Parts;
-    use ::hyper::http::HeaderName;
-    use ::hyper::http::HeaderValue;
+    use ::http::request::Parts;
+    use ::http::HeaderName;
+    use ::http::HeaderValue;
     use ::hyper::StatusCode;
     use ::std::marker::Sync;
 
@@ -900,9 +900,9 @@ mod test_clear_headers {
     use ::axum::extract::FromRequestParts;
     use ::axum::routing::get;
     use ::axum::Router;
-    use ::hyper::http::request::Parts;
-    use ::hyper::http::HeaderName;
-    use ::hyper::http::HeaderValue;
+    use ::http::request::Parts;
+    use ::http::HeaderName;
+    use ::http::HeaderValue;
     use ::hyper::StatusCode;
     use ::std::marker::Sync;
 

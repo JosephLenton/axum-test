@@ -3,7 +3,7 @@ use ::anyhow::Result;
 use ::axum::Server as AxumServer;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
-use ::hyper::http::Method;
+use ::http::Method;
 use ::lazy_static::lazy_static;
 use ::regex::Regex;
 use ::regex::RegexBuilder;
