@@ -231,10 +231,11 @@ impl TestResponse {
         assert_eq!(&self.text(), other_contents);
     }
 
-    /// Deserializes the contents of the request,
-    /// and asserts if it matches the value given.
+    /// Deserializes the contents of the request as JSON,
+    /// and asserts it matches the value given.
     ///
-    /// If `other` does not match, then this will panic.
+    /// If `other` does not match, or the response is not JSON,
+    /// then this will panic.
     ///
     /// Other can be your own Serde model that you wish to deserialise
     /// the data into, or it can be a `json!` blob created using
@@ -245,6 +246,20 @@ impl TestResponse {
         for<'de> T: Deserialize<'de> + PartialEq<T> + Debug,
     {
         let own_json: T = self.json();
+        assert_eq!(own_json, *other);
+    }
+
+    /// Deserializes the contents of the request as an url encoded form,
+    /// and asserts it matches the value given.
+    ///
+    /// If `other` does not match, or the response cannot be deserialized,
+    /// then this will panic.
+    #[track_caller]
+    pub fn assert_form<T>(&self, other: &T)
+    where
+        for<'de> T: Deserialize<'de> + PartialEq<T> + Debug,
+    {
+        let own_json: T = self.form();
         assert_eq!(own_json, *other);
     }
 
@@ -474,6 +489,158 @@ mod test_form {
                 age: 20,
             }
         );
+    }
+}
+
+#[cfg(test)]
+mod test_assert_json {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::axum::Form;
+    use ::axum::Json;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_form() -> Form<ExampleResponse> {
+        Form(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    async fn route_get_json() -> Json<ExampleResponse> {
+        Json(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    #[tokio::test]
+    async fn it_should_match_json_returned() {
+        let app = Router::new()
+            .route(&"/json", get(route_get_json))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_json(&ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        });
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_different() {
+        let app = Router::new()
+            .route(&"/json", get(route_get_json))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_json(&ExampleResponse {
+            name: "Julia".to_string(),
+            age: 25,
+        });
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_form() {
+        let app = Router::new()
+            .route(&"/form", get(route_get_form))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/form").await.assert_json(&ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        });
+    }
+}
+
+#[cfg(test)]
+mod test_assert_form {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::axum::Form;
+    use ::axum::Json;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_form() -> Form<ExampleResponse> {
+        Form(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    async fn route_get_json() -> Json<ExampleResponse> {
+        Json(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    #[tokio::test]
+    async fn it_should_match_form_returned() {
+        let app = Router::new()
+            .route(&"/form", get(route_get_form))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/form").await.assert_form(&ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        });
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_different() {
+        let app = Router::new()
+            .route(&"/form", get(route_get_form))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/form").await.assert_form(&ExampleResponse {
+            name: "Julia".to_string(),
+            age: 25,
+        });
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_json() {
+        let app = Router::new()
+            .route(&"/json", get(route_get_json))
+            .into_make_service();
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_form(&ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        });
     }
 }
 
