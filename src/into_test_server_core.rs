@@ -40,7 +40,7 @@ where
 }
 
 #[cfg(test)]
-mod test_IntoTestServerThread_for_IntoMakeService {
+mod test_into_test_server_thread_for_into_make_service {
     use ::axum::extract::State;
     use ::axum::routing::get;
     use ::axum::Router;
@@ -86,7 +86,7 @@ mod test_IntoTestServerThread_for_IntoMakeService {
 }
 
 #[cfg(test)]
-mod test_IntoTestServerThread_for_IntoMakeServiceWithConnectInfo {
+mod test_into_test_server_thread_for_into_make_service_with_connect_info {
     use ::axum::routing::get;
     use ::axum::Router;
     use ::std::net::SocketAddr;

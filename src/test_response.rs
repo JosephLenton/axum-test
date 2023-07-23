@@ -15,8 +15,75 @@ use ::std::fmt::Debug;
 use ::std::fmt::Display;
 
 ///
-/// The `TestResponse` represents the result of a `TestRequest`.
-/// It is returned when you call await on a `TestRequest` object.
+/// The `TestResponse` is the result of a request created using a [`TestServer`].
+/// The `TestServer` builds a [`TestRequest`], which when awaited, will produce
+/// this type.
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use ::axum::Json;
+/// use ::axum::routing::Router;
+/// use ::axum::routing::get;
+/// use ::serde::Deserialize;
+/// use ::serde::Serialize;
+///
+/// use ::axum_test::TestServer;
+///
+/// let app = Router::new()
+///     .route(&"/test", get(|| async { "hello!" }))
+///     .into_make_service();
+///
+/// let server = TestServer::new(app)?;
+///
+/// // This builds a `TestResponse`
+/// let response = server.get(&"/todo").await;
+/// #
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Extracting Response
+///
+/// The functions [`TestResponse::json`], [`TestResponse::text`], and [`TestResponse::form`],
+/// allow you to extract the underlying response content in different formats.
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// # use ::axum::Json;
+/// # use ::axum::routing::Router;
+/// # use ::axum::routing::get;
+/// # use ::serde::Deserialize;
+/// # use ::serde::Serialize;
+/// # use ::axum_test::TestServer;
+/// #
+/// # #[derive(Serialize, Deserialize, Debug)]
+/// # struct Todo {}
+/// #
+/// # let app = Router::new()
+/// #     .route(&"/test", get(|| async { "hello!" }))
+/// #     .into_make_service();
+/// #
+/// # let server = TestServer::new(app)?;
+/// let todo_response = server.get(&"/todo")
+///         .await
+///         .json::<Todo>();
+///
+/// let response_as_raw_text = server.get(&"/todo")
+///         .await
+///         .text();
+/// #
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Full code examples can be found within their documentation.
+///
+/// [`TestResponse::as_bytes`] and [`TestResponse::into_bytes`] offer the
+/// underlying raw bytes, to allow custom decoding.
+///
+/// # Assertions
 ///
 /// Inside are the contents of the response, the status code, and some
 /// debugging information. You can use this to deserialise the data
@@ -41,10 +108,111 @@ impl TestResponse {
         }
     }
 
-    /// The URL that was used to produce this response.
+    /// Returns the underlying response, as a UTF-8 string.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Json;
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::serde_json::json;
+    /// use ::serde_json::Value;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// async fn route_get_todo() -> Json<Value> {
+    ///     Json(json!({
+    ///         "description": "buy milk",
+    ///     }))
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/todo", get(route_get_todo))
+    ///     .into_make_service();
+    ///
+    /// let server = TestServer::new(app)?;
+    /// let response = server.get(&"/todo").await;
+    ///
+    /// // Extract the response as a string on it's own.
+    /// let raw_text = response.text();
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     #[must_use]
-    pub fn request_url<'a>(&'a self) -> &'a str {
-        &self.request_url
+    pub fn text(&self) -> String {
+        String::from_utf8_lossy(&self.as_bytes()).to_string()
+    }
+
+    /// Extracts the response from the server as JSON,
+    /// deserialised into the type given.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Json;
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::serde::Deserialize;
+    /// use ::serde::Serialize;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// #[derive(Serialize, Deserialize, Debug)]
+    /// struct Todo {
+    ///     description: String,
+    /// }
+    ///
+    /// async fn route_get_todo() -> Json<Todo> {
+    ///     Json(Todo {
+    ///         description: "buy milk".to_string(),
+    ///     })
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/todo", get(route_get_todo))
+    ///     .into_make_service();
+    ///
+    /// let server = TestServer::new(app)?;
+    /// let response = server.get(&"/todo").await;
+    ///
+    /// // Extract the response as a `Todo` item.
+    /// let todo = response.json::<Todo>();
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn json<T>(&self) -> T
+    where
+        T: DeserializeOwned,
+    {
+        serde_json::from_slice::<T>(&self.as_bytes())
+            .with_context(|| {
+                format!(
+                    "Deserializing response from JSON for request {}",
+                    self.request_url
+                )
+            })
+            .unwrap()
+    }
+
+    /// Reads the response from the server as an urlencoded Form,
+    /// and then deserialise the contents into the structure given.
+    #[must_use]
+    pub fn form<T>(&self) -> T
+    where
+        T: DeserializeOwned,
+    {
+        serde_urlencoded::from_bytes::<T>(&self.as_bytes())
+            .with_context(|| {
+                format!(
+                    "Deserializing response from Form for request {}",
+                    self.request_url
+                )
+            })
+            .unwrap()
     }
 
     /// Returns the raw underlying response as `Bytes`.
@@ -60,16 +228,16 @@ impl TestResponse {
         self.response_body
     }
 
-    /// Returns the underlying response, as a raw UTF-8 string.
-    #[must_use]
-    pub fn text(&self) -> String {
-        String::from_utf8_lossy(&self.as_bytes()).to_string()
-    }
-
     /// The status_code of the response.
     #[must_use]
     pub fn status_code(&self) -> StatusCode {
         self.status_code
+    }
+
+    /// The URL that was used to produce this response.
+    #[must_use]
+    pub fn request_url<'a>(&'a self) -> &'a str {
+        &self.request_url
     }
 
     /// Finds a header with the given name.
@@ -193,40 +361,6 @@ impl TestResponse {
         })
     }
 
-    /// Reads the response from the server as JSON text,
-    /// and then deserialise the contents into the structure given.
-    #[must_use]
-    pub fn json<T>(&self) -> T
-    where
-        T: DeserializeOwned,
-    {
-        serde_json::from_slice::<T>(&self.as_bytes())
-            .with_context(|| {
-                format!(
-                    "Deserializing response from JSON for request {}",
-                    self.request_url
-                )
-            })
-            .unwrap()
-    }
-
-    /// Reads the response from the server as an urlencoded Form,
-    /// and then deserialise the contents into the structure given.
-    #[must_use]
-    pub fn form<T>(&self) -> T
-    where
-        T: DeserializeOwned,
-    {
-        serde_urlencoded::from_bytes::<T>(&self.as_bytes())
-            .with_context(|| {
-                format!(
-                    "Deserializing response from Form for request {}",
-                    self.request_url
-                )
-            })
-            .unwrap()
-    }
-
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
     #[track_caller]
@@ -243,10 +377,6 @@ impl TestResponse {
     ///
     /// If `other` does not match, or the response is not JSON,
     /// then this will panic.
-    ///
-    /// Other can be your own Serde model that you wish to deserialise
-    /// the data into, or it can be a `json!` blob created using
-    /// the `::serde_json::json` macro.
     #[track_caller]
     pub fn assert_json<T>(&self, other: &T)
     where
