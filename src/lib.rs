@@ -31,8 +31,7 @@
 //!     .route("/users", put(route_put_user))
 //!     .into_make_service();
 //!
-//! let server = TestServer::new(my_app)
-//!     .unwrap();
+//! let server = TestServer::new(my_app)?;
 //! #
 //! # Ok(())
 //! # }
@@ -59,8 +58,7 @@
 //! #     .route("/users", put(put_user))
 //! #     .into_make_service();
 //! #
-//! # let server = TestServer::new(my_app)
-//! #     .unwrap();
+//! # let server = TestServer::new(my_app)?;
 //! #
 //! let response = server.put("/users")
 //!     .json(&json!({
@@ -96,8 +94,8 @@
 //!     save_cookies: true,
 //!     ..TestServerConfig::default()
 //! };
-//! let server = TestServer::new_with_config(my_app, config)
-//!     .unwrap();
+//!
+//! let server = TestServer::new_with_config(my_app, config)?;
 //! #
 //! # Ok(())
 //! # }
@@ -132,8 +130,7 @@
 //!     ..TestServerConfig::default()
 //! };
 //!
-//! let server = TestServer::new_with_config(my_app, config)
-//!     .unwrap();
+//! let server = TestServer::new_with_config(my_app, config)?;
 //! #
 //! # Ok(())
 //! # }
@@ -165,8 +162,7 @@
 //!     .route("/users", put(put_user))
 //!     .into_make_service();
 //!
-//! let server = TestServer::new(my_app)
-//!     .unwrap();
+//! let server = TestServer::new(my_app)?;
 //!
 //! let response = server.put("/users")
 //!     .content_type(&"application/json")

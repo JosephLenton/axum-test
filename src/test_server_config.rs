@@ -1,6 +1,41 @@
 use ::std::net::IpAddr;
 
-/// The basic setup for the `TestServer`.
+/// This is for customising the [`crate::TestServer`] on construction.
+///
+/// It implements [`Default`] to ease building configurations:
+///
+/// ```rust
+/// use ::axum_test::TestServerConfig;
+///
+/// let config = TestServerConfig {
+///     save_cookies: true,
+///     ..TestServerConfig::default()
+/// };
+/// ```
+///
+/// These can be passed to `TestServer::new_with_config`:
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use ::axum::Router;
+/// use ::axum_test::TestServer;
+/// use ::axum_test::TestServerConfig;
+///
+/// let my_app = Router::new()
+///     .into_make_service();
+///
+/// let config = TestServerConfig {
+///     save_cookies: true,
+///     ..TestServerConfig::default()
+/// };
+///
+/// // Build the Test Server
+/// let server = TestServer::new_with_config(my_app, config)?;
+/// #
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct TestServerConfig {
     /// Set the default content type for all requests created by the `TestServer`.
