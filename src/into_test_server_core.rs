@@ -8,12 +8,11 @@ use ::tokio::spawn;
 use ::tokio::task::JoinHandle;
 
 /// This exists to gloss over the differences between Axum's
-/// `IntoMakeService` and `IntoMakeServiceWithConnectInfo` types.
-/// In theory it also allows others as well.
+/// [`::axum::routing::IntoMakeService`] and [`::axum::extract::connect_info::IntoMakeServiceWithConnectInfo`] types.
 ///
 /// This is a trait for turning those types into a thread, that is
-/// running a web server. The server should be built using the `Builder`
-/// provided.
+/// running a web server.
+///
 pub trait IntoTestServerThread {
     fn into_server_thread(self, server_builder: Builder<AddrIncoming>) -> JoinHandle<()>;
 }

@@ -45,7 +45,7 @@ use ::std::fmt::Display;
 ///
 /// # Extracting Response
 ///
-/// The functions [`crate::TestResponse::json`], [`crate::TestResponse::text`], and [`crate::TestResponse::form`],
+/// The functions [`crate::TestResponse::json()`], [`crate::TestResponse::text()`], and [`crate::TestResponse::form()`],
 /// allow you to extract the underlying response content in different formats.
 ///
 /// ```rust
@@ -78,17 +78,41 @@ use ::std::fmt::Display;
 /// # }
 /// ```
 ///
-/// Full code examples can be found within their documentation.
-///
-/// [`crate::TestResponse::as_bytes`] and [`crate::TestResponse::into_bytes`] offer the
+/// [`crate::TestResponse::as_bytes()`] and [`crate::TestResponse::into_bytes()`] offer the
 /// underlying raw bytes, to allow custom decoding.
+///
+/// Full code examples can be found within their documentation.
 ///
 /// # Assertions
 ///
-/// Inside are the contents of the response, the status code, and some
-/// debugging information. You can use this to deserialise the data
-/// returned into a specific format (i.e. deserialising from JSON),
-/// and validating the response looks how you expect.
+/// The result of a response can also be asserted using the many assertion functions.
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use ::axum::Json;
+/// use ::axum::routing::Router;
+/// use ::axum::routing::get;
+/// use ::serde::Deserialize;
+/// use ::serde::Serialize;
+///
+/// use ::axum_test::TestServer;
+///
+/// let app = Router::new()
+///     .route(&"/test", get(|| async { "hello!" }))
+///     .into_make_service();
+///
+/// let server = TestServer::new(app)?;
+///
+/// let response = server.get(&"/todo").await;
+///
+/// // These assertions will panic if they are not fullfilled by the response.
+/// response.assert_status_ok();
+/// response.assert_text("hello!");
+/// #
+/// # Ok(())
+/// # }
+/// ```
 ///
 #[derive(Clone, Debug)]
 pub struct TestResponse {

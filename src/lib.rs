@@ -1,12 +1,12 @@
 //!
 //! Axum Test is a library for writing tests for web servers written using Axum:
 //!
-//!  * You spin up a [`TestServer`] within a test
-//!  * Use that to create requests against your application
-//!  * Receive the response
-//!  * Assert the response is how you expect
+//!  * You create a [`TestServer`] within a test,
+//!  * use that to build [`TestRequest`] against your application,
+//!  * receive back a [`TestResponse`],
+//!  * then assert the response is how you expect.
 //!
-//! It icludes built in suppot for serializing and deserializing with Serde,
+//! It includes built in suppot for serializing and deserializing with Serde,
 //! support for cookies and headers, and other common bits you would expect.
 //!
 //! ## Getting Started

@@ -30,14 +30,40 @@ lazy_static! {
 }
 
 ///
-/// The `TestServer` represents your application, running as a web server,
-/// and you can make web requests to your application.
-///
-/// For most people's needs, this is where to start when writing a test.
-/// This allows you Allowing you to create new requests that will go to this server.
+/// The `TestServer` runs your application,
+/// allowing you to make web requests against it.
 ///
 /// You can make a request against the `TestServer` by calling the
-/// `get`, `post`, `put`, `delete`, and `patch` methods (you can also use `method`).
+/// [`crate::TestServer::get()`], [`crate::TestServer::post()`], [`crate::TestServer::put()`],
+/// [`crate::TestServer::delete()`], and [`crate::TestServer::patch()`] methods.
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use ::axum::Json;
+/// use ::axum::routing::Router;
+/// use ::axum::routing::get;
+/// use ::serde::Deserialize;
+/// use ::serde::Serialize;
+///
+/// use ::axum_test::TestServer;
+///
+/// let app = Router::new()
+///     .route(&"/test", get(|| async { "hello!" }))
+///     .into_make_service();
+///
+/// let server = TestServer::new(app)?;
+///
+/// // The different responses one can make:
+/// let get_response = server.get(&"/todo").await;
+/// let post_response = server.post(&"/todo").await;
+/// let put_response = server.put(&"/todo").await;
+/// let delete_response = server.delete(&"/todo").await;
+/// let patch_response = server.patch(&"/todo").await;
+/// #
+/// # Ok(())
+/// # }
+/// ```
 ///
 #[derive(Debug)]
 pub struct TestServer {
@@ -50,8 +76,8 @@ pub struct TestServer {
 }
 
 impl TestServer {
-    /// This will take the given app, and run it.
-    /// It will use a randomly selected port for running.
+    /// This will run the given Axum app,
+    /// and run it on a random local address.
     ///
     /// This is the same as creating a new `TestServer` with a configuration,
     /// and passing `TestServerConfig::default()`.
@@ -63,11 +89,11 @@ impl TestServer {
         Self::new_with_config(app, TestServerConfig::default())
     }
 
-    /// This very similar to `TestServer::new()`,
+    /// This very similar to [`TestServer::new()`],
     /// however you can customise some of the configuration.
     /// This includes which port to run on, or default settings.
     ///
-    /// See the `TestServerConfig` for more information on each configuration setting.
+    /// See the [`TestServerConfig`] for more information on each configuration setting.
     pub fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
     where
         A: IntoTestServerThread,
@@ -97,7 +123,7 @@ impl TestServer {
         Ok(this)
     }
 
-    /// Returns the address for the test server.
+    /// Returns the local web address for the test server.
     ///
     /// By default this will be something like `0.0.0.0:1234`,
     /// where `1234` is a randomly assigned port numbr.
