@@ -38,11 +38,6 @@ use ::std::net::IpAddr;
 /// ```
 #[derive(Debug, Clone)]
 pub struct TestServerConfig {
-    /// Set the default content type for all requests created by the `TestServer`.
-    ///
-    /// This overrides the default 'best efforts' approach of requests.
-    pub default_content_type: Option<String>,
-
     /// Set the IP to use for the server.
     ///
     /// **Defaults** to `127.0.0.1`.
@@ -77,16 +72,21 @@ pub struct TestServerConfig {
     ///
     /// **Defaults** to false (being turned off).
     pub restrict_requests_with_http_schema: bool,
+
+    /// Set the default content type for all requests created by the `TestServer`.
+    ///
+    /// This overrides the default 'best efforts' approach of requests.
+    pub default_content_type: Option<String>,
 }
 
 impl Default for TestServerConfig {
     fn default() -> Self {
         Self {
-            default_content_type: None,
             ip: None,
             port: None,
             save_cookies: false,
             restrict_requests_with_http_schema: false,
+            default_content_type: None,
         }
     }
 }
