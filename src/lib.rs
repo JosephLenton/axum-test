@@ -1,21 +1,21 @@
 //!
-//! Axum Test is a library for writing tests for web servers written using Axum.
+//! Axum Test is a library for writing tests for web servers written using Axum:
 //!
-//!  * You can spin up a `TestServer` within a test.
-//!  * Create requests that will run against that.
-//!  * Retrieve what they happen to return.
-//!  * Assert that the response works how you expect.
+//!  * You spin up a [`TestServer`] within a test
+//!  * Use that to create requests against your application
+//!  * Receive the response
+//!  * Assert the response is how you expect
 //!
-//! It icludes built in suppot with Serde, Cookies,
-//! and other common crates for working with the web.
+//! It icludes built in suppot for serializing and deserializing with Serde,
+//! support for cookies and headers, and other common bits you would expect.
 //!
 //! ## Getting Started
 //!
-//! In essence; create your Axum application, create a `TestServer`,
-//! and then make requests against it.
+//! Create a [`TestServer`] running your Axum [`::axum::Router`]:
 //!
 //! ```rust
-//! # ::tokio_test::block_on(async {
+//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! #
 //! use ::axum::Router;
 //! use ::axum::extract::Json;
 //! use ::axum::routing::put;
@@ -23,34 +23,68 @@
 //! use ::serde_json::json;
 //! use ::serde_json::Value;
 //!
-//! async fn put_user(Json(user): Json<Value>) -> () {
+//! async fn route_put_user(Json(user): Json<Value>) -> () {
 //!     // todo
 //! }
 //!
 //! let my_app = Router::new()
-//!     .route("/users", put(put_user))
+//!     .route("/users", put(route_put_user))
 //!     .into_make_service();
 //!
 //! let server = TestServer::new(my_app)
 //!     .unwrap();
+//! #
+//! # Ok(())
+//! # }
+//! ```
 //!
+//! It will be running on a random address,
+//! allowing many to be run in parallel across tests.
+//!
+//! Then make requests against it:
+//!
+//! ```rust
+//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! #
+//! # use ::axum::Router;
+//! # use ::axum::extract::Json;
+//! # use ::axum::routing::put;
+//! # use ::axum_test::TestServer;
+//! # use ::serde_json::json;
+//! # use ::serde_json::Value;
+//! #
+//! # async fn put_user(Json(user): Json<Value>) -> () {}
+//! #
+//! # let my_app = Router::new()
+//! #     .route("/users", put(put_user))
+//! #     .into_make_service();
+//! #
+//! # let server = TestServer::new(my_app)
+//! #     .unwrap();
+//! #
 //! let response = server.put("/users")
 //!     .json(&json!({
 //!         "username": "Terrance Pencilworth",
 //!     }))
 //!     .await;
-//! # })
+//! #
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ## Features
 //!
 //! ### Auto Cookie Saving 🍪
 //!
-//! When you build a `TestServer`, you can turn on a feature to automatically save cookies
-//! across requests. This is used for automatically saving things like session cookies.
+//! This feature allows the server to save cookies and reuse these on future requests.
+//! For example saving session cookies, like a browser would.
+//!
+//! This feature is disabled by default, and can be enabled by setting `save_cookies` to true on the [`TestServerConfig`],
+//! and passing this to the [`TestServer`] on construction.
 //!
 //! ```rust
-//! # ::tokio_test::block_on(async {
+//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! #
 //! use ::axum::Router;
 //! use ::axum_test::TestServer;
 //! use ::axum_test::TestServerConfig;
@@ -64,14 +98,16 @@
 //! };
 //! let server = TestServer::new_with_config(my_app, config)
 //!     .unwrap();
-//! # })
+//! #
+//! # Ok(())
+//! # }
 //! ```
 //!
-//! Then when you make a request, any cookies that are returned will be reused
-//! by the next request. This is on a per server basis (it doesn't save across servers).
+//! When you make a request, any cookies returned will be reused by the next request,
+//! created by that same server.
 //!
-//! You can turn this on or off per request, using `TestRequest::do_save_cookies'
-//! and TestRequest::do_not_save_cookies'.
+//! You can turn this on or off per request, using `TestRequest::do_save_cookies`
+//! and `TestRequest::do_not_save_cookies`.
 //!
 //! ### Content Type 📇
 //!
@@ -82,7 +118,8 @@
 //! When creating the `TestServer` instance, using `new_with_config`.
 //!
 //! ```rust
-//! # ::tokio_test::block_on(async {
+//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! #
 //! use ::axum::Router;
 //! use ::axum_test::TestServer;
 //! use ::axum_test::TestServerConfig;
@@ -97,7 +134,9 @@
 //!
 //! let server = TestServer::new_with_config(my_app, config)
 //!     .unwrap();
-//! # })
+//! #
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! If there is no default, then a `TestRequest` will try to guess the content type.
@@ -109,7 +148,8 @@
 //! By calling `TestRequest::content_type` on it.
 //!
 //! ```rust
-//! # ::tokio_test::block_on(async {
+//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! #
 //! use ::axum::Router;
 //! use ::axum::extract::Json;
 //! use ::axum::routing::put;
@@ -134,7 +174,9 @@
 //!         "username": "Terrance Pencilworth",
 //!     }))
 //!     .await;
-//! # })
+//! #
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! ### Fail Fast
