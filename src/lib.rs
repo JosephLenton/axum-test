@@ -11,7 +11,7 @@
 //!
 //! ## Getting Started
 //!
-//! Create a [`TestServer`] running your Axum [`::axum::Router`]:
+//! Create a [`TestServer`] running your Axum [`Router`](::axum::Router):
 //!
 //! ```rust
 //! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {

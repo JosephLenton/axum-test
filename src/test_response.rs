@@ -310,7 +310,7 @@ impl TestResponse {
 
     /// Finds a header with the given name.
     /// If there are multiple headers with the same name,
-    /// then only the first [`http::HeaderValue`] will be returned.
+    /// then only the first [`HeaderValue`](::http::HeaderValue) will be returned.
     ///
     /// `None` is returned when no header was found.
     #[must_use]
@@ -382,7 +382,7 @@ impl TestResponse {
         None
     }
 
-    /// Finds a [`cookie::Cookie`] with the given name.
+    /// Finds a [`Cookie`](::cookie::Cookie) with the given name.
     /// If there are multiple matching cookies,
     /// then only the first will be returned.
     ///
@@ -400,7 +400,7 @@ impl TestResponse {
     }
 
     /// Returns all of the cookies contained in the response,
-    /// within a [`cookie::CookieJar`] object.
+    /// within a [`CookieJar`](::cookie::CookieJar) object.
     ///
     /// See the `cookie` crate for details.
     #[must_use]
