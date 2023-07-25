@@ -49,7 +49,7 @@ lazy_static! {
 /// use ::axum_test::TestServer;
 ///
 /// let app = Router::new()
-///     .route(&"/test", get(|| async { "hello!" }))
+///     .route(&"/todo", get(|| async { "hello!" }))
 ///     .into_make_service();
 ///
 /// let server = TestServer::new(app)?;

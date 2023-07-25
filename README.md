@@ -8,11 +8,8 @@
   [![docs](https://docs.rs/axum-test/badge.svg)](https://docs.rs/axum-test)
 </div>
 
-This is a project to make it easier to test applications built using Axum.
-Using full E2E tests.
-
-Some of the design decisions behind this are very opinionated,
-to encourage one to write good tests.
+This is a project to make it easier to test applications built using Axum,
+using full E2E tests.
 
 ## Examples
 
@@ -20,8 +17,8 @@ You can find a thorough example in the [/examples folder](/examples/example-todo
 
 ## Features
 
-This is for spinning up an Axum service, that you can then query directly.
-This is primarily for testing Axum services.
+You can start a webserver running your application, query it with requests,
+and then assert the responses returned:
 
 ```rust
   use ::axum::Router;
@@ -52,22 +49,26 @@ This is primarily for testing Axum services.
   }
 ```
 
-### Runs on a random port, allowing multiple to run at once
-
-When you start the server, you can spin it up on a random port.
-It allows multiple E2E tests to run in parallel, each on their own webserver.
+The `TestServer` will start on a random port, allowing multiple servers to run in parallel.
+That allows tests to be run in parallel.
 
 This behaviour can be changed in the `TestServerConfig`, by selecting a custom ip or port to always use.
 
+### Request building
+
+Querying your application on the `TestServer` supports all of the common request building you would expect.
+
+ - Serlializing and deserializing Json and Form content using Serde
+ - Cookie setting and reading
+ - Access to setting and reading headers
+ - Status code reading and assertions
+ - Assertions for defining what you expect to have returned
+
 ### Remembers cookies across requests
 
-It is common in E2E tests that step 1 is to login, and step 2 is the main request.
-To make this easier cookies returned from the server will be preserved,
-and then included into the next request. Like a web browser.
+`axum-test` supports preserving Cookies from responses,
+for use in follow up requests to same `TestServer`.
+This is similar to how a browser will store cookies from requests,
+and can help with tests where you need to authenticate first.
 
-### Fails fast on unexpected requests
-
-By default; all requests will panic if the server fails to return a 2xx status code.
-This [can be switched](https://docs.rs/axum-test/latest/axum_test/struct.TestRequest.html#method.expect_failure) to panic when the server _doesn't_ return a 200.
-
-This is a very opinionated design choice, and is done to help test writers fail fast when writing tests.
+This is _off_ by default, and can be enabled in the `TestServerConfig` by setting `save_cookies` to true.

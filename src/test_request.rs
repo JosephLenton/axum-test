@@ -50,14 +50,10 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 ///
 /// The `TestRequest` allows the caller to fill in the rest of the request
 /// to be sent to the server. Including the headers, the body, cookies,
-/// and content type.
-///
-/// For example to send a JSON request:
-///
+/// and the content type, using the relevant functions.
 ///
 /// The TestRequest struct provides a number of methods to set up the request,
 /// such as json, text, bytes, expect_failure, content_type, etc.
-/// The do_save_cookies and do_not_save_cookies methods are used to control cookie handling.
 ///
 /// ## Sending
 ///
@@ -69,6 +65,15 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// ```
 ///
 /// You will receive back a `TestResponse`.
+///
+/// ## Cookie Saving
+///
+/// [`crate::TestRequest::do_save_cookies'] and [`crate::TestRequest::do_not_save_cookies']
+/// methods allow you to set the request to save cookies to the `TestServer`,
+/// for reuse on any future requests.
+///
+/// This behaviour is **off** by default, and can be changed for all `TestRequests`
+/// when building the `TestServer`. By building it with a `TestServerConfig` where `save_cookies` is set to true.
 ///
 /// ## Expecting Failure and Success
 ///
@@ -323,21 +328,53 @@ impl TestRequest {
         self
     }
 
-    /// Marks that this request should expect to fail.
-    /// Failiure is deemend as any response that isn't a 200.
+    /// Marks that this request is expected to always return a HTTP
+    /// status code within the 2xx range (200 to 299).
     ///
-    /// By default, requests are expct to always succeed.
-    pub fn expect_failure(mut self) -> Self {
-        self.is_expecting_success = Some(false);
+    /// If a code _outside_ of that range is returned,
+    /// then this will panic.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Json;
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::put;
+    /// use ::serde_json::json;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/todo", put(|| async { unimplemented!() }))
+    ///     .into_make_service();
+    ///
+    /// let server = TestServer::new(app)?;
+    ///
+    /// // If this doesn't return a value in the 2xx range,
+    /// // then it will panic.
+    /// server.put(&"/todo")
+    ///     .expect_success()
+    ///     .json(json!({
+    ///         "task": "buy milk",
+    ///     }))
+    ///     .await;
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    pub fn expect_success(mut self) -> Self {
+        self.is_expecting_success = Some(true);
         self
     }
 
-    /// Marks that this request should expect to succeed.
-    /// Success is deemend as returning a 2xx status code.
+    /// Marks that this request is expected to return a HTTP status code
+    /// outside of the 2xx range.
     ///
-    /// Note this is the default behaviour when creating a new `TestRequest`.
-    pub fn expect_success(mut self) -> Self {
-        self.is_expecting_success = Some(true);
+    /// If a code _within_ the 2xx range is returned,
+    /// then this will panic.
+    pub fn expect_failure(mut self) -> Self {
+        self.is_expecting_success = Some(false);
         self
     }
 
