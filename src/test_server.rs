@@ -49,7 +49,7 @@ lazy_static! {
 /// use ::axum_test::TestServer;
 ///
 /// let app = Router::new()
-///     .route(&"/test", get(|| async { "hello!" }))
+///     .route(&"/todo", get(|| async { "hello!" }))
 ///     .into_make_service();
 ///
 /// let server = TestServer::new(app)?;
@@ -71,6 +71,7 @@ pub struct TestServer {
     server_thread: JoinHandle<()>,
     server_address: String,
     save_cookies: bool,
+    expect_success_by_default: bool,
     default_content_type: Option<String>,
     is_requests_http_restricted: bool,
 }
@@ -116,6 +117,7 @@ impl TestServer {
             server_thread,
             server_address: socket_address.to_string(),
             save_cookies: config.save_cookies,
+            expect_success_by_default: config.expect_success_by_default,
             default_content_type: config.default_content_type,
             is_requests_http_restricted: config.restrict_requests_with_http_schema,
         };
@@ -232,6 +234,7 @@ impl TestServer {
 
         TestRequestConfig {
             is_saving_cookies: self.save_cookies,
+            is_expecting_success_by_default: self.expect_success_by_default,
             content_type: self.default_content_type.clone(),
             full_request_path,
             method,
@@ -617,5 +620,64 @@ mod test_clear_query_params {
             .get(&"/query")
             .await
             .assert_text(&"has first? true, has second? true");
+    }
+}
+
+#[cfg(test)]
+mod test_expect_success_by_default {
+    use super::*;
+
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    #[tokio::test]
+    async fn it_should_not_panic_by_default_if_accessing_404_route() {
+        let app = Router::new().into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        server.get(&"/some_unknown_route").await;
+    }
+
+    #[tokio::test]
+    async fn it_should_not_panic_by_default_if_accessing_200_route() {
+        let app = Router::new()
+            .route("/known_route", get(|| async { "🦊🦊🦊" }))
+            .into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        server.get(&"/known_route").await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_by_default_if_accessing_404_route_and_expect_success_on() {
+        let app = Router::new().into_make_service();
+        let server = TestServer::new_with_config(
+            app,
+            TestServerConfig {
+                expect_success_by_default: true,
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        server.get(&"/some_unknown_route").await;
+    }
+
+    #[tokio::test]
+    async fn it_should_not_panic_by_default_if_accessing_200_route_and_expect_success_on() {
+        let app = Router::new()
+            .route("/known_route", get(|| async { "🦊🦊🦊" }))
+            .into_make_service();
+        let server = TestServer::new_with_config(
+            app,
+            TestServerConfig {
+                expect_success_by_default: true,
+                ..TestServerConfig::default()
+            },
+        )
+        .expect("Should create test server");
+
+        server.get(&"/known_route").await;
     }
 }

@@ -57,6 +57,15 @@ pub struct TestServerConfig {
     /// **Defaults** to false (being turned off).
     pub save_cookies: bool,
 
+    /// Sets requests made by the server to always expect a status code returned in the 2xx range,
+    /// and to panic if that is missing.
+    ///
+    /// This is useful when making multiple requests at a start of test
+    /// which you presume should always work. It also helps to make tests more explicit.
+    ///
+    /// **Defaults** to false (being turned off).
+    pub expect_success_by_default: bool,
+
     /// If you make a request with a 'http://' schema,
     /// then it will ignore the Test Server's address.
     ///
@@ -85,6 +94,7 @@ impl Default for TestServerConfig {
             ip: None,
             port: None,
             save_cookies: false,
+            expect_success_by_default: false,
             restrict_requests_with_http_schema: false,
             default_content_type: None,
         }

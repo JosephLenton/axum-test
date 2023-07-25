@@ -279,11 +279,7 @@ mod test_get {
 
         // Get the request.
         let absolute_url = format!("http://{ip}:{port}/ping");
-        server
-            .get(&absolute_url)
-            .expect_failure()
-            .await
-            .assert_status_not_found();
+        server.get(&absolute_url).await.assert_status_not_found();
     }
 }
 
