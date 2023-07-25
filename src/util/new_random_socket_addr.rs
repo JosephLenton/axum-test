@@ -1,3 +1,4 @@
+use crate::util::ReservedPort;
 use ::anyhow::anyhow;
 use ::anyhow::Result;
 use ::portpicker::pick_unused_port;
@@ -10,15 +11,20 @@ pub(crate) const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0
 pub(crate) fn new_socket_addr_from_defaults(
     maybe_ip: Option<IpAddr>,
     maybe_port: Option<u16>,
-) -> Result<SocketAddr> {
-    let socket_addr = match (maybe_ip, maybe_port) {
-        (Some(ip), Some(port)) => SocketAddr::new(ip, port),
-        (None, Some(port)) => SocketAddr::new(DEFAULT_IP_ADDRESS, port),
-        (Some(ip), None) => SocketAddr::new(ip, new_random_port()?),
-        (None, None) => new_random_socket_addr()?,
+) -> Result<(Option<ReservedPort>, SocketAddr)> {
+    let (reserved_port, port) = match maybe_port {
+        None => {
+            let reserved_port = ReservedPort::reserve()?;
+            let port = reserved_port.port();
+            (Some(reserved_port), port)
+        }
+        Some(port) => (None, port),
     };
 
-    Ok(socket_addr)
+    let ip = maybe_ip.unwrap_or(DEFAULT_IP_ADDRESS);
+    let socket_addr = SocketAddr::new(ip, port);
+
+    Ok((reserved_port, socket_addr))
 }
 
 /// Generates a `SocketAddr` on the IP 127.0.0.1, using a random port.
@@ -42,12 +48,13 @@ mod test_new_socket_addr_from_defaults {
     use super::*;
     use ::regex::Regex;
     use std::net::Ipv4Addr;
+
     #[test]
     fn it_should_create_default_ip_with_random_port_when_none() {
         let ip = None;
         let port = None;
 
-        let socket_addr = new_socket_addr_from_defaults(ip, port).unwrap();
+        let (_, socket_addr) = new_socket_addr_from_defaults(ip, port).unwrap();
         let addr = format!("{}", socket_addr);
 
         let regex = Regex::new("^127\\.0\\.0\\.1:[0-9]+$").unwrap();
@@ -60,7 +67,7 @@ mod test_new_socket_addr_from_defaults {
         let ip = Some(IpAddr::V4(Ipv4Addr::new(123, 210, 7, 8)));
         let port = None;
 
-        let socket_addr = new_socket_addr_from_defaults(ip, port).unwrap();
+        let (_, socket_addr) = new_socket_addr_from_defaults(ip, port).unwrap();
         let addr = format!("{}", socket_addr);
 
         let regex = Regex::new("^123\\.210\\.7\\.8:[0-9]+$").unwrap();
@@ -73,7 +80,7 @@ mod test_new_socket_addr_from_defaults {
         let ip = None;
         let port = Some(123);
 
-        let socket_addr = new_socket_addr_from_defaults(ip, port).unwrap();
+        let (_, socket_addr) = new_socket_addr_from_defaults(ip, port).unwrap();
         let addr = format!("{}", socket_addr);
 
         assert_eq!(addr, "127.0.0.1:123");
@@ -84,9 +91,27 @@ mod test_new_socket_addr_from_defaults {
         let ip = Some(IpAddr::V4(Ipv4Addr::new(123, 210, 7, 8)));
         let port = Some(123);
 
-        let socket_addr = new_socket_addr_from_defaults(ip, port).unwrap();
+        let (_, socket_addr) = new_socket_addr_from_defaults(ip, port).unwrap();
         let addr = format!("{}", socket_addr);
 
         assert_eq!(addr, "123.210.7.8:123");
+    }
+
+    #[test]
+    fn it_should_reserve_a_port_when_one_is_not_provided() {
+        let ip = None;
+        let port = None;
+
+        let (maybe_reserved_port, _) = new_socket_addr_from_defaults(ip, port).unwrap();
+        assert!(maybe_reserved_port.is_some());
+    }
+
+    #[test]
+    fn it_should_not_reserve_a_port_when_one_is_provided() {
+        let ip = None;
+        let port = Some(1234);
+
+        let (maybe_reserved_port, _) = new_socket_addr_from_defaults(ip, port).unwrap();
+        assert!(maybe_reserved_port.is_none());
     }
 }
