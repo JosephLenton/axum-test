@@ -2,16 +2,16 @@ use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::auto_future::AutoFuture;
-use ::axum::http::HeaderValue;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
+use ::http::header::SET_COOKIE;
+use ::http::HeaderValue;
+use ::http::Request;
 use ::hyper::body::to_bytes;
 use ::hyper::body::Body;
 use ::hyper::body::Bytes;
 use ::hyper::header;
 use ::hyper::header::HeaderName;
-use ::hyper::http::header::SET_COOKIE;
-use ::hyper::http::Request;
 use ::hyper::Client;
 use ::serde::Serialize;
 use ::serde_json::to_vec as json_to_vec;
@@ -36,21 +36,24 @@ const FORM_CONTENT_TYPE: &'static str = &"application/x-www-form-urlencoded";
 const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 
 ///
-/// A `TestRequest` represents a HTTP request to the test server.
+/// A `TestRequest` is for building and executing a HTTP request to the [`crate::TestServer`].
 ///
-/// ## Creating
+/// ## Building
 ///
-/// Requests are created by the `TestServer`. You do not create them yourself.
+/// Requests are created by the [`crate::TestServer`], using it's builder functions.
+/// They correspond to the appropriate HTTP method.
+/// Such as [`crate::TestServer::get()`], [`crate::TestServer::post()`], and so on.
 ///
-/// The `TestServer` has functions corresponding to specific requests.
-/// For example calling `TestServer::get` to create a new HTTP GET request,
-/// or `TestServer::post to create a HTTP POST request.
+/// See that for documentation.
 ///
 /// ## Customising
 ///
 /// The `TestRequest` allows the caller to fill in the rest of the request
-/// to be sent to the server. Including the headers, the body, cookies, the content type,
-/// and other relevant details.
+/// to be sent to the server. Including the headers, the body, cookies,
+/// and content type.
+///
+/// For example to send a JSON request:
+///
 ///
 /// The TestRequest struct provides a number of methods to set up the request,
 /// such as json, text, bytes, expect_failure, content_type, etc.
@@ -66,6 +69,19 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// ```
 ///
 /// You will receive back a `TestResponse`.
+///
+/// ## Expecting Failure and Success
+///
+/// When making a request you can mark it to expect a response within,
+/// or outside, of the 2xx range of HTTP status codes.
+///
+/// If the response returns a status code different to what is expected,
+/// then it will panic.
+///
+/// This is useful when making multiple requests within a test.
+/// As it can find issues earlier than later.
+///
+/// See the [`crate::TestRequest::expect_failure()`] and [`crate::TestRequest::expect_success()`] functions.
 ///
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]
@@ -112,7 +128,57 @@ impl TestRequest {
         })
     }
 
-    /// Any cookies returned will be saved to the `TestServer` that created this,
+    /// Set the body of the request to send up as Json,
+    /// and changes the content type to `application/json`.
+    pub fn json<J>(self, body: &J) -> Self
+    where
+        J: ?Sized + Serialize,
+    {
+        let body_bytes = json_to_vec(body).expect("It should serialize the content into JSON");
+
+        self.bytes(body_bytes.into())
+            .content_type(JSON_CONTENT_TYPE)
+    }
+
+    /// Sets the body of the request, with the content type
+    /// of 'application/x-www-form-urlencoded'.
+    pub fn form<F>(self, body: &F) -> Self
+    where
+        F: ?Sized + Serialize,
+    {
+        let body_text = to_string(body).expect("It should serialize the content into a Form");
+
+        self.bytes(body_text.into()).content_type(FORM_CONTENT_TYPE)
+    }
+
+    /// Set raw text as the body of the request,
+    /// and sets the content type to `text/plain`.
+    pub fn text<T>(self, raw_text: T) -> Self
+    where
+        T: Display,
+    {
+        let body_text = format!("{}", raw_text);
+
+        self.bytes(body_text.into()).content_type(TEXT_CONTENT_TYPE)
+    }
+
+    /// Set raw bytes as the body of the request.
+    ///
+    /// The content type is left unchanged.
+    pub fn bytes(mut self, body_bytes: Bytes) -> Self {
+        let body: Body = body_bytes.into();
+
+        self.body = Some(body);
+        self
+    }
+
+    /// Set the content type to use for this request in the header.
+    pub fn content_type(mut self, content_type: &str) -> Self {
+        self.config.content_type = Some(content_type.to_string());
+        self
+    }
+
+    /// Any cookies returned will be saved to the [`crate::TestServer`] that created this,
     /// which will continue to use those cookies on future requests.
     pub fn do_save_cookies(mut self) -> Self {
         self.config.is_saving_cookies = true;
@@ -123,7 +189,7 @@ impl TestRequest {
     /// For use by future requests.
     ///
     /// This is the default behaviour.
-    /// You can change that default in `TestServerConfig`.
+    /// You can change that default in [`crate::TestServerConfig`].
     pub fn do_not_save_cookies(mut self) -> Self {
         self.config.is_saving_cookies = false;
         self
@@ -238,7 +304,7 @@ impl TestRequest {
     }
 
     /// Clears all query params set,
-    /// including any that came from the `TestServer`.
+    /// including any that came from the [`crate::TestServer`].
     pub fn clear_query_params(mut self) -> Self {
         self.query_params.clear();
         self
@@ -271,56 +337,6 @@ impl TestRequest {
     /// Note this is the default behaviour when creating a new `TestRequest`.
     pub fn expect_success(mut self) -> Self {
         self.is_expecting_failure = false;
-        self
-    }
-
-    /// Set the body of the request to send up as Json,
-    /// and changes the content type to `application/json`.
-    pub fn json<J>(self, body: &J) -> Self
-    where
-        J: ?Sized + Serialize,
-    {
-        let body_bytes = json_to_vec(body).expect("It should serialize the content into JSON");
-
-        self.bytes(body_bytes.into())
-            .content_type(JSON_CONTENT_TYPE)
-    }
-
-    /// Sets the body of the request, with the content type
-    /// of 'application/x-www-form-urlencoded'.
-    pub fn form<F>(self, body: &F) -> Self
-    where
-        F: ?Sized + Serialize,
-    {
-        let body_text = to_string(body).expect("It should serialize the content into a Form");
-
-        self.bytes(body_text.into()).content_type(FORM_CONTENT_TYPE)
-    }
-
-    /// Set raw text as the body of the request,
-    /// and sets the content type to `text/plain`.
-    pub fn text<T>(self, raw_text: T) -> Self
-    where
-        T: Display,
-    {
-        let body_text = format!("{}", raw_text);
-
-        self.bytes(body_text.into()).content_type(TEXT_CONTENT_TYPE)
-    }
-
-    /// Set raw bytes as the body of the request.
-    ///
-    /// The content type is left unchanged.
-    pub fn bytes(mut self, body_bytes: Bytes) -> Self {
-        let body: Body = body_bytes.into();
-
-        self.body = Some(body);
-        self
-    }
-
-    /// Set the content type to use for this request in the header.
-    pub fn content_type(mut self, content_type: &str) -> Self {
-        self.config.content_type = Some(content_type.to_string());
         self
     }
 
@@ -417,10 +433,10 @@ mod test_content_type {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::get;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
 
     async fn get_content_type(headers: HeaderMap) -> String {
         headers
@@ -494,11 +510,11 @@ mod test_content_type {
 mod test_json {
     use crate::TestServer;
 
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::post;
     use ::axum::Json;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
     use ::serde::Deserialize;
     use ::serde::Serialize;
     use ::serde_json::json;
@@ -571,11 +587,11 @@ mod test_json {
 mod test_form {
     use crate::TestServer;
 
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::post;
     use ::axum::Form;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
     use ::serde::Deserialize;
     use ::serde::Serialize;
 
@@ -659,10 +675,10 @@ mod test_text {
     use crate::TestServer;
 
     use ::axum::extract::RawBody;
-    use ::axum::http::header::CONTENT_TYPE;
-    use ::axum::http::HeaderMap;
     use ::axum::routing::post;
     use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
     use ::hyper::body::to_bytes;
 
     #[tokio::test]
@@ -715,9 +731,9 @@ mod test_text {
 #[cfg(test)]
 mod test_expect_success {
     use crate::TestServer;
-    use ::axum::http::StatusCode;
     use ::axum::routing::get;
     use ::axum::Router;
+    use ::http::StatusCode;
 
     #[tokio::test]
     async fn it_should_not_panic_if_success_is_returned() {
@@ -772,9 +788,9 @@ mod test_expect_success {
 #[cfg(test)]
 mod test_expect_failure {
     use crate::TestServer;
-    use ::axum::http::StatusCode;
     use ::axum::routing::get;
     use ::axum::Router;
+    use ::http::StatusCode;
 
     #[tokio::test]
     async fn it_should_not_panic_if_expect_failure_on_404() {
@@ -835,9 +851,9 @@ mod test_add_header {
     use ::axum::extract::FromRequestParts;
     use ::axum::routing::get;
     use ::axum::Router;
-    use ::hyper::http::request::Parts;
-    use ::hyper::http::HeaderName;
-    use ::hyper::http::HeaderValue;
+    use ::http::request::Parts;
+    use ::http::HeaderName;
+    use ::http::HeaderValue;
     use ::hyper::StatusCode;
     use ::std::marker::Sync;
 
@@ -900,9 +916,9 @@ mod test_clear_headers {
     use ::axum::extract::FromRequestParts;
     use ::axum::routing::get;
     use ::axum::Router;
-    use ::hyper::http::request::Parts;
-    use ::hyper::http::HeaderName;
-    use ::hyper::http::HeaderValue;
+    use ::http::request::Parts;
+    use ::http::HeaderName;
+    use ::http::HeaderValue;
     use ::hyper::StatusCode;
     use ::std::marker::Sync;
 

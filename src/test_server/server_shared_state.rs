@@ -2,7 +2,7 @@ use ::anyhow::Context;
 use ::anyhow::Result;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
-use ::hyper::http::HeaderValue;
+use ::http::HeaderValue;
 use ::serde::Serialize;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;

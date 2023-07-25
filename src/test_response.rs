@@ -1,27 +1,118 @@
 use ::anyhow::Context;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
+use ::http::header::AsHeaderName;
+use ::http::header::HeaderName;
+use ::http::header::SET_COOKIE;
+use ::http::response::Parts;
+use ::http::HeaderMap;
+use ::http::HeaderValue;
+use ::http::StatusCode;
 use ::hyper::body::Bytes;
-use ::hyper::http::header::AsHeaderName;
-use ::hyper::http::header::HeaderName;
-use ::hyper::http::header::SET_COOKIE;
-use ::hyper::http::response::Parts;
-use ::hyper::http::HeaderMap;
-use ::hyper::http::HeaderValue;
-use ::hyper::http::StatusCode;
 use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
 
 ///
-/// The `TestResponse` represents the result of a `TestRequest`.
-/// It is returned when you call await on a `TestRequest` object.
+/// The `TestResponse` is the result of a request created using a [`crate::TestServer`].
+/// The `TestServer` builds a [`crate::TestRequest`], which when awaited, will produce
+/// this type.
 ///
-/// Inside are the contents of the response, the status code, and some
-/// debugging information. You can use this to deserialise the data
-/// returned into a specific format (i.e. deserialising from JSON),
-/// and validating the response looks how you expect.
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use ::axum::Json;
+/// use ::axum::routing::Router;
+/// use ::axum::routing::get;
+/// use ::serde::Deserialize;
+/// use ::serde::Serialize;
+///
+/// use ::axum_test::TestServer;
+///
+/// let app = Router::new()
+///     .route(&"/test", get(|| async { "hello!" }))
+///     .into_make_service();
+///
+/// let server = TestServer::new(app)?;
+///
+/// // This builds a `TestResponse`
+/// let response = server.get(&"/todo").await;
+/// #
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Extracting Response
+///
+/// The functions [`crate::TestResponse::json()`], [`crate::TestResponse::text()`], and [`crate::TestResponse::form()`],
+/// allow you to extract the underlying response content in different formats.
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// # use ::axum::Json;
+/// # use ::axum::routing::Router;
+/// # use ::axum::routing::get;
+/// # use ::serde::Deserialize;
+/// # use ::serde::Serialize;
+/// # use ::axum_test::TestServer;
+/// #
+/// # #[derive(Serialize, Deserialize, Debug)]
+/// # struct Todo {}
+/// #
+/// # let app = Router::new()
+/// #     .route(&"/test", get(|| async { "hello!" }))
+/// #     .into_make_service();
+/// #
+/// # let server = TestServer::new(app)?;
+/// let todo_response = server.get(&"/todo")
+///         .await
+///         .json::<Todo>();
+///
+/// let response_as_raw_text = server.get(&"/todo")
+///         .await
+///         .text();
+/// #
+/// # Ok(())
+/// # }
+/// ```
+///
+/// [`crate::TestResponse::as_bytes()`] and [`crate::TestResponse::into_bytes()`] offer the
+/// underlying raw bytes, to allow custom decoding.
+///
+/// Full code examples can be found within their documentation.
+///
+/// # Assertions
+///
+/// The result of a response can also be asserted using the many assertion functions.
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use ::axum::Json;
+/// use ::axum::routing::Router;
+/// use ::axum::routing::get;
+/// use ::serde::Deserialize;
+/// use ::serde::Serialize;
+///
+/// use ::axum_test::TestServer;
+///
+/// let app = Router::new()
+///     .route(&"/test", get(|| async { "hello!" }))
+///     .into_make_service();
+///
+/// let server = TestServer::new(app)?;
+///
+/// let response = server.get(&"/todo").await;
+///
+/// // These assertions will panic if they are not fullfilled by the response.
+/// response.assert_status_ok();
+/// response.assert_text("hello!");
+/// #
+/// # Ok(())
+/// # }
+/// ```
 ///
 #[derive(Clone, Debug)]
 pub struct TestResponse {
@@ -41,10 +132,155 @@ impl TestResponse {
         }
     }
 
-    /// The URL that was used to produce this response.
+    /// Returns the underlying response, extracted as a UTF-8 string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Json;
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::serde_json::json;
+    /// use ::serde_json::Value;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// async fn route_get_todo() -> Json<Value> {
+    ///     Json(json!({
+    ///         "description": "buy milk",
+    ///     }))
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/todo", get(route_get_todo))
+    ///     .into_make_service();
+    ///
+    /// let server = TestServer::new(app)?;
+    /// let response = server.get(&"/todo").await;
+    ///
+    /// // Extract the response as a string on it's own.
+    /// let raw_text = response.text();
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
     #[must_use]
-    pub fn request_url<'a>(&'a self) -> &'a str {
-        &self.request_url
+    pub fn text(&self) -> String {
+        String::from_utf8_lossy(&self.as_bytes()).to_string()
+    }
+
+    /// Deserializes the response, as JSON, into the type given.
+    ///
+    /// If deserialization fails then this will panic.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Json;
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::serde::Deserialize;
+    /// use ::serde::Serialize;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// #[derive(Serialize, Deserialize, Debug)]
+    /// struct Todo {
+    ///     description: String,
+    /// }
+    ///
+    /// async fn route_get_todo() -> Json<Todo> {
+    ///     Json(Todo {
+    ///         description: "buy milk".to_string(),
+    ///     })
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/todo", get(route_get_todo))
+    ///     .into_make_service();
+    ///
+    /// let server = TestServer::new(app)?;
+    /// let response = server.get(&"/todo").await;
+    ///
+    /// // Extract the response as a `Todo` item.
+    /// let todo = response.json::<Todo>();
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn json<T>(&self) -> T
+    where
+        T: DeserializeOwned,
+    {
+        serde_json::from_slice::<T>(&self.as_bytes())
+            .with_context(|| {
+                format!(
+                    "Deserializing response from JSON for request {}",
+                    self.request_url
+                )
+            })
+            .unwrap()
+    }
+
+    /// Deserializes the response, as an urlencoded Form, into the type given.
+    ///
+    /// If deserialization fails then this will panic.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Form;
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::serde::Deserialize;
+    /// use ::serde::Serialize;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// #[derive(Serialize, Deserialize, Debug)]
+    /// struct Todo {
+    ///     description: String,
+    /// }
+    ///
+    /// async fn route_get_todo() -> Form<Todo> {
+    ///     Form(Todo {
+    ///         description: "buy milk".to_string(),
+    ///     })
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/todo", get(route_get_todo))
+    ///     .into_make_service();
+    ///
+    /// let server = TestServer::new(app)?;
+    /// let response = server.get(&"/todo").await;
+    ///
+    /// // Extract the response as a `Todo` item.
+    /// let todo = response.form::<Todo>();
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn form<T>(&self) -> T
+    where
+        T: DeserializeOwned,
+    {
+        serde_urlencoded::from_bytes::<T>(&self.as_bytes())
+            .with_context(|| {
+                format!(
+                    "Deserializing response from Form for request {}",
+                    self.request_url
+                )
+            })
+            .unwrap()
     }
 
     /// Returns the raw underlying response as `Bytes`.
@@ -53,17 +289,11 @@ impl TestResponse {
         &self.response_body
     }
 
-    /// Consumes this result returning the underlying `Bytes`
-    /// returned in the response.
+    /// Consumes this returning the underlying `Bytes`
+    /// in the response.
     #[must_use]
     pub fn into_bytes<'a>(self) -> Bytes {
         self.response_body
-    }
-
-    /// Returns the underlying response, as a raw UTF-8 string.
-    #[must_use]
-    pub fn text(&self) -> String {
-        String::from_utf8_lossy(&self.as_bytes()).to_string()
     }
 
     /// The status_code of the response.
@@ -72,9 +302,15 @@ impl TestResponse {
         self.status_code
     }
 
+    /// The URL that was used to produce this response.
+    #[must_use]
+    pub fn request_url<'a>(&'a self) -> &'a str {
+        &self.request_url
+    }
+
     /// Finds a header with the given name.
     /// If there are multiple headers with the same name,
-    /// then only the first will be returned.
+    /// then only the first [`http::HeaderValue`] will be returned.
     ///
     /// `None` is returned when no header was found.
     #[must_use]
@@ -130,6 +366,11 @@ impl TestResponse {
         self.headers.get_all(header_name).iter()
     }
 
+    /// Finds a [`Cookie`] with the given name.
+    /// If there are multiple matching cookies,
+    /// then only the first will be returned.
+    ///
+    /// `None` is returned if no Cookie is found.
     #[must_use]
     pub fn maybe_cookie(&self, cookie_name: &str) -> Option<Cookie<'static>> {
         for cookie in self.iter_cookies() {
@@ -141,6 +382,11 @@ impl TestResponse {
         None
     }
 
+    /// Finds a [`cookie::Cookie`] with the given name.
+    /// If there are multiple matching cookies,
+    /// then only the first will be returned.
+    ///
+    /// If no `Cookie` is found, then this will panic.
     #[must_use]
     pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
         self.maybe_cookie(cookie_name)
@@ -154,7 +400,7 @@ impl TestResponse {
     }
 
     /// Returns all of the cookies contained in the response,
-    /// within a `CookieJar` object.
+    /// within a [`cookie::CookieJar`] object.
     ///
     /// See the `cookie` crate for details.
     #[must_use]
@@ -193,40 +439,6 @@ impl TestResponse {
         })
     }
 
-    /// Reads the response from the server as JSON text,
-    /// and then deserialise the contents into the structure given.
-    #[must_use]
-    pub fn json<T>(&self) -> T
-    where
-        T: DeserializeOwned,
-    {
-        serde_json::from_slice::<T>(&self.as_bytes())
-            .with_context(|| {
-                format!(
-                    "Deserializing response from JSON for request {}",
-                    self.request_url
-                )
-            })
-            .unwrap()
-    }
-
-    /// Reads the response from the server as an urlencoded Form,
-    /// and then deserialise the contents into the structure given.
-    #[must_use]
-    pub fn form<T>(&self) -> T
-    where
-        T: DeserializeOwned,
-    {
-        serde_urlencoded::from_bytes::<T>(&self.as_bytes())
-            .with_context(|| {
-                format!(
-                    "Deserializing response from Form for request {}",
-                    self.request_url
-                )
-            })
-            .unwrap()
-    }
-
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
     #[track_caller]
@@ -243,10 +455,6 @@ impl TestResponse {
     ///
     /// If `other` does not match, or the response is not JSON,
     /// then this will panic.
-    ///
-    /// Other can be your own Serde model that you wish to deserialise
-    /// the data into, or it can be a `json!` blob created using
-    /// the `::serde_json::json` macro.
     #[track_caller]
     pub fn assert_json<T>(&self, other: &T)
     where
@@ -318,11 +526,13 @@ impl TestResponse {
         self.assert_not_status(StatusCode::OK)
     }
 
+    /// Assert the response status code matches the one given.
     #[track_caller]
     pub fn assert_status(&self, status_code: StatusCode) {
         assert_eq!(self.status_code(), status_code);
     }
 
+    /// Assert the response status code does **not** match the one given.
     #[track_caller]
     pub fn assert_not_status(&self, status_code: StatusCode) {
         assert_ne!(self.status_code(), status_code);
@@ -338,9 +548,9 @@ impl From<TestResponse> for Bytes {
 #[cfg(test)]
 mod test_assert_success {
     use crate::TestServer;
-    use ::axum::http::StatusCode;
     use ::axum::routing::get;
     use ::axum::routing::Router;
+    use ::http::StatusCode;
 
     pub async fn route_get_pass() -> StatusCode {
         StatusCode::OK
@@ -381,9 +591,9 @@ mod test_assert_success {
 #[cfg(test)]
 mod test_assert_failure {
     use crate::TestServer;
-    use ::axum::http::StatusCode;
     use ::axum::routing::get;
     use ::axum::routing::Router;
+    use ::http::StatusCode;
 
     pub async fn route_get_pass() -> StatusCode {
         StatusCode::OK

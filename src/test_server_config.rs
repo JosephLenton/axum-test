@@ -1,13 +1,43 @@
 use ::std::net::IpAddr;
 
-/// The basic setup for the `TestServer`.
+/// This is for customising the [`crate::TestServer`] on construction.
+///
+/// It implements [`Default`] to ease building configurations:
+///
+/// ```rust
+/// use ::axum_test::TestServerConfig;
+///
+/// let config = TestServerConfig {
+///     save_cookies: true,
+///     ..TestServerConfig::default()
+/// };
+/// ```
+///
+/// These can be passed to `TestServer::new_with_config`:
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use ::axum::Router;
+/// use ::axum_test::TestServer;
+/// use ::axum_test::TestServerConfig;
+///
+/// let my_app = Router::new()
+///     .into_make_service();
+///
+/// let config = TestServerConfig {
+///     save_cookies: true,
+///     ..TestServerConfig::default()
+/// };
+///
+/// // Build the Test Server
+/// let server = TestServer::new_with_config(my_app, config)?;
+/// #
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct TestServerConfig {
-    /// Set the default content type for all requests created by the `TestServer`.
-    ///
-    /// This overrides the default 'best efforts' approach of requests.
-    pub default_content_type: Option<String>,
-
     /// Set the IP to use for the server.
     ///
     /// **Defaults** to `127.0.0.1`.
@@ -42,16 +72,21 @@ pub struct TestServerConfig {
     ///
     /// **Defaults** to false (being turned off).
     pub restrict_requests_with_http_schema: bool,
+
+    /// Set the default content type for all requests created by the `TestServer`.
+    ///
+    /// This overrides the default 'best efforts' approach of requests.
+    pub default_content_type: Option<String>,
 }
 
 impl Default for TestServerConfig {
     fn default() -> Self {
         Self {
-            default_content_type: None,
             ip: None,
             port: None,
             save_cookies: false,
             restrict_requests_with_http_schema: false,
+            default_content_type: None,
         }
     }
 }
