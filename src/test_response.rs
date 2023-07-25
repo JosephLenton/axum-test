@@ -15,8 +15,8 @@ use ::std::fmt::Debug;
 use ::std::fmt::Display;
 
 ///
-/// The `TestResponse` is the result of a request created using a [`crate::TestServer`].
-/// The `TestServer` builds a [`crate::TestRequest`], which when awaited, will produce
+/// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
+/// The `TestServer` builds a [`TestRequest`](crate::TestRequest), which when awaited, will produce
 /// this type.
 ///
 /// ```rust
@@ -45,7 +45,7 @@ use ::std::fmt::Display;
 ///
 /// # Extracting Response
 ///
-/// The functions [`crate::TestResponse::json()`], [`crate::TestResponse::text()`], and [`crate::TestResponse::form()`],
+/// The functions [`TestResponse::json()`](crate::TestResponse::json()), [`TestResponse::text()`](crate::TestResponse::text()), and [`TestResponse::form()`](crate::TestResponse::form()),
 /// allow you to extract the underlying response content in different formats.
 ///
 /// ```rust
@@ -78,7 +78,7 @@ use ::std::fmt::Display;
 /// # }
 /// ```
 ///
-/// [`crate::TestResponse::as_bytes()`] and [`crate::TestResponse::into_bytes()`] offer the
+/// [`TestResponse::as_bytes()`](crate::TestResponse::as_bytes()) and [`TestResponse::into_bytes()`](crate::TestResponse::into_bytes()) offer the
 /// underlying raw bytes, to allow custom decoding.
 ///
 /// Full code examples can be found within their documentation.

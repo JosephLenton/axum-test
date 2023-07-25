@@ -36,13 +36,13 @@ const FORM_CONTENT_TYPE: &'static str = &"application/x-www-form-urlencoded";
 const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 
 ///
-/// A `TestRequest` is for building and executing a HTTP request to the [`crate::TestServer`].
+/// A `TestRequest` is for building and executing a HTTP request to the [`TestServer`](crate::TestServer).
 ///
 /// ## Building
 ///
-/// Requests are created by the [`crate::TestServer`], using it's builder functions.
+/// Requests are created by the [`TestServer`](crate::TestServer), using it's builder functions.
 /// They correspond to the appropriate HTTP method.
-/// Such as [`crate::TestServer::get()`], [`crate::TestServer::post()`], and so on.
+/// Such as [`TestServer::get()`](crate::TestServer::get()), [`TestServer::post()`](crate::TestServer::post()), and so on.
 ///
 /// See that for documentation.
 ///
@@ -68,7 +68,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 ///
 /// ## Cookie Saving
 ///
-/// [`crate::TestRequest::do_save_cookies'] and [`crate::TestRequest::do_not_save_cookies']
+/// [`TestRequest::do_save_cookies()`](crate::TestRequest::do_save_cookies()) and [`TestRequest::do_not_save_cookies()`](crate::TestRequest::do_not_save_cookies())
 /// methods allow you to set the request to save cookies to the `TestServer`,
 /// for reuse on any future requests.
 ///
@@ -86,7 +86,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// This is useful when making multiple requests within a test.
 /// As it can find issues earlier than later.
 ///
-/// See the [`crate::TestRequest::expect_failure()`] and [`crate::TestRequest::expect_success()`] functions.
+/// See the [`TestRequest::expect_failure()`](crate::TestRequest::expect_failure()) and [`TestRequest::expect_success()`](crate::TestRequest::expect_success()) functions.
 ///
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]
@@ -184,7 +184,7 @@ impl TestRequest {
         self
     }
 
-    /// Any cookies returned will be saved to the [`crate::TestServer`] that created this,
+    /// Any cookies returned will be saved to the [`TestServer`](crate::TestServer) that created this,
     /// which will continue to use those cookies on future requests.
     pub fn do_save_cookies(mut self) -> Self {
         self.config.is_saving_cookies = true;
@@ -195,7 +195,7 @@ impl TestRequest {
     /// For use by future requests.
     ///
     /// This is the default behaviour.
-    /// You can change that default in [`crate::TestServerConfig`].
+    /// You can change that default in [`TestServerConfig`](crate::TestServerConfig).
     pub fn do_not_save_cookies(mut self) -> Self {
         self.config.is_saving_cookies = false;
         self
@@ -310,7 +310,7 @@ impl TestRequest {
     }
 
     /// Clears all query params set,
-    /// including any that came from the [`crate::TestServer`].
+    /// including any that came from the [`TestServer`](crate::TestServer).
     pub fn clear_query_params(mut self) -> Self {
         self.query_params.clear();
         self
