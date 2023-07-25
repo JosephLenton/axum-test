@@ -95,7 +95,7 @@ pub struct TestRequest {
     cookies: CookieJar,
     query_params: QueryParamsStore,
 
-    is_expecting_failure: bool,
+    is_expecting_success: Option<bool>,
 }
 
 impl TestRequest {
@@ -103,6 +103,7 @@ impl TestRequest {
         server_state: Arc<Mutex<ServerSharedState>>,
         config: TestRequestConfig,
     ) -> Result<Self> {
+        let is_expecting_success = config.is_expecting_success_by_default.then_some(true);
         let server_locked = server_state.as_ref().lock().map_err(|err| {
             anyhow!(
                 "Failed to lock InternalTestServer for {} {}, received {:?}",
@@ -124,7 +125,7 @@ impl TestRequest {
             headers: vec![],
             cookies,
             query_params,
-            is_expecting_failure: false,
+            is_expecting_success,
         })
     }
 
@@ -327,7 +328,7 @@ impl TestRequest {
     ///
     /// By default, requests are expct to always succeed.
     pub fn expect_failure(mut self) -> Self {
-        self.is_expecting_failure = true;
+        self.is_expecting_success = Some(false);
         self
     }
 
@@ -336,7 +337,7 @@ impl TestRequest {
     ///
     /// Note this is the default behaviour when creating a new `TestRequest`.
     pub fn expect_success(mut self) -> Self {
-        self.is_expecting_failure = false;
+        self.is_expecting_success = Some(true);
         self
     }
 
@@ -401,10 +402,12 @@ impl TestRequest {
         let response = TestResponse::new(path, parts, response_bytes);
 
         // Assert if ok or not.
-        if self.is_expecting_failure {
-            response.assert_status_failure();
-        } else {
-            response.assert_status_success();
+        if let Some(is_expecting_success) = self.is_expecting_success {
+            if is_expecting_success {
+                response.assert_status_success();
+            } else {
+                response.assert_status_failure();
+            }
         }
 
         Ok(response)
@@ -967,7 +970,6 @@ mod test_clear_headers {
                 HeaderValue::from_static(TEST_HEADER_CONTENT),
             )
             .clear_headers()
-            .expect_failure()
             .await;
 
         // Check it sent back the right text

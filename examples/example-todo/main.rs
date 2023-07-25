@@ -176,6 +176,7 @@ fn new_test_app() -> TestServer {
             // Preserve cookies across requests
             // for the session cookie to work.
             save_cookies: true,
+            expect_success_by_default: true,
             ..TestServerConfig::default()
         },
     )
