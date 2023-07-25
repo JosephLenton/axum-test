@@ -6,7 +6,7 @@
 //!  * receive back a [`TestResponse`],
 //!  * then assert the response is how you expect.
 //!
-//! It includes built in suppot for serializing and deserializing with Serde,
+//! It includes built in suppot for serializing and deserializing request and response bodies using Serde,
 //! support for cookies and headers, and other common bits you would expect.
 //!
 //! ## Getting Started
