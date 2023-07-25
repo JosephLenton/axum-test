@@ -21,6 +21,7 @@ use crate::TestServerConfig;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
+use crate::util::ReservedPort;
 
 lazy_static! {
     static ref STARTS_HTTP_REGEX: Regex = RegexBuilder::new("^http(s?)://(.+)")
@@ -74,6 +75,13 @@ pub struct TestServer {
     expect_success_by_default: bool,
     default_content_type: Option<String>,
     is_requests_http_restricted: bool,
+
+    /// If this has reserved a port for the test,
+    /// then it is stored here.
+    ///
+    /// It's stored here until we `Drop` (as it's reserved).
+    #[allow(dead_code)]
+    maybe_reserved_port: Option<ReservedPort>,
 }
 
 impl TestServer {
@@ -99,8 +107,9 @@ impl TestServer {
     where
         A: IntoTestServerThread,
     {
-        let socket_address = new_socket_addr_from_defaults(config.ip, config.port)
-            .context("Cannot create socket address for use")?;
+        let (maybe_reserved_port, socket_address) =
+            new_socket_addr_from_defaults(config.ip, config.port)
+                .context("Cannot create socket address for use")?;
         let listener = TcpListener::bind(socket_address)
             .with_context(|| "Failed to create TCPListener for TestServer")?;
         let server_builder = AxumServer::from_tcp(listener)
@@ -120,6 +129,7 @@ impl TestServer {
             expect_success_by_default: config.expect_success_by_default,
             default_content_type: config.default_content_type,
             is_requests_http_restricted: config.restrict_requests_with_http_schema,
+            maybe_reserved_port,
         };
 
         Ok(this)

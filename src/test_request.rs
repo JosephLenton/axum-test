@@ -354,7 +354,7 @@ impl TestRequest {
     /// // then it will panic.
     /// server.put(&"/todo")
     ///     .expect_success()
-    ///     .json(json!({
+    ///     .json(&json!({
     ///         "task": "buy milk",
     ///     }))
     ///     .await;
