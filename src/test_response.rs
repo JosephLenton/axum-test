@@ -15,8 +15,8 @@ use ::std::fmt::Debug;
 use ::std::fmt::Display;
 
 ///
-/// The `TestResponse` is the result of a request created using a [`crate::TestServer`].
-/// The `TestServer` builds a [`crate::TestRequest`], which when awaited, will produce
+/// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
+/// The `TestServer` builds a [`TestRequest`](crate::TestRequest), which when awaited, will produce
 /// this type.
 ///
 /// ```rust
@@ -45,7 +45,7 @@ use ::std::fmt::Display;
 ///
 /// # Extracting Response
 ///
-/// The functions [`crate::TestResponse::json()`], [`crate::TestResponse::text()`], and [`crate::TestResponse::form()`],
+/// The functions [`TestResponse::json()`](crate::TestResponse::json()), [`TestResponse::text()`](crate::TestResponse::text()), and [`TestResponse::form()`](crate::TestResponse::form()),
 /// allow you to extract the underlying response content in different formats.
 ///
 /// ```rust
@@ -78,7 +78,7 @@ use ::std::fmt::Display;
 /// # }
 /// ```
 ///
-/// [`crate::TestResponse::as_bytes()`] and [`crate::TestResponse::into_bytes()`] offer the
+/// [`TestResponse::as_bytes()`](crate::TestResponse::as_bytes()) and [`TestResponse::into_bytes()`](crate::TestResponse::into_bytes()) offer the
 /// underlying raw bytes, to allow custom decoding.
 ///
 /// Full code examples can be found within their documentation.
@@ -310,7 +310,7 @@ impl TestResponse {
 
     /// Finds a header with the given name.
     /// If there are multiple headers with the same name,
-    /// then only the first [`http::HeaderValue`] will be returned.
+    /// then only the first [`HeaderValue`](::http::HeaderValue) will be returned.
     ///
     /// `None` is returned when no header was found.
     #[must_use]
@@ -382,7 +382,7 @@ impl TestResponse {
         None
     }
 
-    /// Finds a [`cookie::Cookie`] with the given name.
+    /// Finds a [`Cookie`](::cookie::Cookie) with the given name.
     /// If there are multiple matching cookies,
     /// then only the first will be returned.
     ///
@@ -400,7 +400,7 @@ impl TestResponse {
     }
 
     /// Returns all of the cookies contained in the response,
-    /// within a [`cookie::CookieJar`] object.
+    /// within a [`CookieJar`](::cookie::CookieJar) object.
     ///
     /// See the `cookie` crate for details.
     #[must_use]

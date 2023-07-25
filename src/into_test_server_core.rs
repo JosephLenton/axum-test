@@ -8,7 +8,7 @@ use ::tokio::spawn;
 use ::tokio::task::JoinHandle;
 
 /// This exists to gloss over the differences between Axum's
-/// [`::axum::routing::IntoMakeService`] and [`::axum::extract::connect_info::IntoMakeServiceWithConnectInfo`] types.
+/// [`IntoMakeService`](::axum::routing::IntoMakeService) and [`IntoMakeServiceWithConnectInfo`](::axum::extract::connect_info::IntoMakeServiceWithConnectInfo) types.
 ///
 /// This is a trait for turning those types into a thread, that is
 /// running a web server.

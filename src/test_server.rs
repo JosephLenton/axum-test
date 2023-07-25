@@ -35,8 +35,8 @@ lazy_static! {
 /// allowing you to make web requests against it.
 ///
 /// You can make a request against the `TestServer` by calling the
-/// [`crate::TestServer::get()`], [`crate::TestServer::post()`], [`crate::TestServer::put()`],
-/// [`crate::TestServer::delete()`], and [`crate::TestServer::patch()`] methods.
+/// [`TestServer::get()`](crate::TestServer::get()), [`TestServer::post()`](crate::TestServer::post()), [`TestServer::put()`](crate::TestServer::put()),
+/// [`TestServer::delete()`](crate::TestServer::delete()), and [`TestServer::patch()`](crate::TestServer::patch()) methods.
 ///
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {

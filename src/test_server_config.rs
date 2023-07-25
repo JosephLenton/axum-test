@@ -1,6 +1,6 @@
 use ::std::net::IpAddr;
 
-/// This is for customising the [`crate::TestServer`] on construction.
+/// This is for customising the [`TestServer`](crate::TestServer) on construction.
 ///
 /// It implements [`Default`] to ease building configurations:
 ///
