@@ -19,17 +19,20 @@ pub struct ReservedPort {
 
 impl ReservedPort {
     pub fn reserve_port(port: u16) -> Result<Self> {
-      let mut ports = PORTS_IN_USE
-          .lock()
-          .map_err(|_| anyhow!("Failed to lock internal set of ports in use"))?;
+        let mut ports = PORTS_IN_USE
+            .lock()
+            .map_err(|_| anyhow!("Failed to lock internal set of ports in use"))?;
 
-      if ports.contains(&port) {
-        return Err(anyhow!("Cannot reserve port, port {} is already reserved", port))
-      }
+        if ports.contains(&port) {
+            return Err(anyhow!(
+                "Cannot reserve port, port {} is already reserved",
+                port
+            ));
+        }
 
-      ports.insert(port);
+        ports.insert(port);
 
-      return Ok(Self { port });
+        return Ok(Self { port });
     }
 
     pub fn reserve_random_port() -> Result<Self> {

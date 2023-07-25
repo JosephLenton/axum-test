@@ -107,9 +107,8 @@ impl TestServer {
     where
         A: IntoTestServerThread,
     {
-        let (reserved_port, socket_address) =
-            new_socket_addr_from_defaults(config.ip, config.port)
-                .context("Cannot create socket address for use")?;
+        let (reserved_port, socket_address) = new_socket_addr_from_defaults(config.ip, config.port)
+            .context("Cannot create socket address for use")?;
         let listener = TcpListener::bind(socket_address)
             .with_context(|| "Failed to create TCPListener for TestServer")?;
         let server_builder = AxumServer::from_tcp(listener)
