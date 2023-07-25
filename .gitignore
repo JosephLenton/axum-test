@@ -12,3 +12,5 @@ Cargo.lock
 
 # Local todo file
 /todo.txt
+
+.DS_Store
