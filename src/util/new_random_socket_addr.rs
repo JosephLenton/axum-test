@@ -11,18 +11,13 @@ pub(crate) const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0
 pub(crate) fn new_socket_addr_from_defaults(
     maybe_ip: Option<IpAddr>,
     maybe_port: Option<u16>,
-) -> Result<(Option<ReservedPort>, SocketAddr)> {
-    let (reserved_port, port) = match maybe_port {
-        None => {
-            let reserved_port = ReservedPort::reserve()?;
-            let port = reserved_port.port();
-            (Some(reserved_port), port)
-        }
-        Some(port) => (None, port),
-    };
+) -> Result<(ReservedPort, SocketAddr)> {
+    let reserved_port = maybe_port
+        .map(ReservedPort::reserve_port)
+        .unwrap_or_else(ReservedPort::reserve_random_port)?;
 
     let ip = maybe_ip.unwrap_or(DEFAULT_IP_ADDRESS);
-    let socket_addr = SocketAddr::new(ip, port);
+    let socket_addr = SocketAddr::new(ip, reserved_port.port());
 
     Ok((reserved_port, socket_addr))
 }
@@ -95,23 +90,5 @@ mod test_new_socket_addr_from_defaults {
         let addr = format!("{}", socket_addr);
 
         assert_eq!(addr, "123.210.7.8:123");
-    }
-
-    #[test]
-    fn it_should_reserve_a_port_when_one_is_not_provided() {
-        let ip = None;
-        let port = None;
-
-        let (maybe_reserved_port, _) = new_socket_addr_from_defaults(ip, port).unwrap();
-        assert!(maybe_reserved_port.is_some());
-    }
-
-    #[test]
-    fn it_should_not_reserve_a_port_when_one_is_provided() {
-        let ip = None;
-        let port = Some(1234);
-
-        let (maybe_reserved_port, _) = new_socket_addr_from_defaults(ip, port).unwrap();
-        assert!(maybe_reserved_port.is_none());
     }
 }
