@@ -81,7 +81,7 @@ pub struct TestServer {
     ///
     /// It's stored here until we `Drop` (as it's reserved).
     #[allow(dead_code)]
-    maybe_reserved_port: Option<ReservedPort>,
+    reserved_port: ReservedPort,
 }
 
 impl TestServer {
@@ -107,9 +107,8 @@ impl TestServer {
     where
         A: IntoTestServerThread,
     {
-        let (maybe_reserved_port, socket_address) =
-            new_socket_addr_from_defaults(config.ip, config.port)
-                .context("Cannot create socket address for use")?;
+        let (reserved_port, socket_address) = new_socket_addr_from_defaults(config.ip, config.port)
+            .context("Cannot create socket address for use")?;
         let listener = TcpListener::bind(socket_address)
             .with_context(|| "Failed to create TCPListener for TestServer")?;
         let server_builder = AxumServer::from_tcp(listener)
@@ -129,7 +128,7 @@ impl TestServer {
             expect_success_by_default: config.expect_success_by_default,
             default_content_type: config.default_content_type,
             is_requests_http_restricted: config.restrict_requests_with_http_schema,
-            maybe_reserved_port,
+            reserved_port,
         };
 
         Ok(this)
