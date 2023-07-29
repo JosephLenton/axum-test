@@ -187,8 +187,8 @@
 
 pub(crate) mod internals;
 
-mod into_test_server_core;
-pub use self::into_test_server_core::*;
+mod into_test_server_thread;
+pub use self::into_test_server_thread::*;
 
 mod test_server;
 pub use self::test_server::*;
