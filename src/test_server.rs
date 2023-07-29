@@ -3,17 +3,18 @@ use ::anyhow::Result;
 use ::axum::Server as AxumServer;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
+use ::http::HeaderName;
+use ::http::HeaderValue;
 use ::http::Method;
-use ::lazy_static::lazy_static;
-use ::regex::Regex;
-use ::regex::RegexBuilder;
 use ::serde::Serialize;
 use ::std::net::TcpListener;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 use ::tokio::task::JoinHandle;
+use ::url::Url;
 
 use crate::util::new_socket_addr_from_defaults;
+use crate::util::ReservedPort;
 use crate::IntoTestServerThread;
 use crate::TestRequest;
 use crate::TestRequestConfig;
@@ -21,14 +22,6 @@ use crate::TestServerConfig;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-use crate::util::ReservedPort;
-
-lazy_static! {
-    static ref STARTS_HTTP_REGEX: Regex = RegexBuilder::new("^http(s?)://(.+)")
-        .case_insensitive(true)
-        .build()
-        .unwrap();
-}
 
 ///
 /// The `TestServer` runs your application,
@@ -37,6 +30,7 @@ lazy_static! {
 /// You can make a request against the `TestServer` by calling the
 /// [`TestServer::get()`](crate::TestServer::get()), [`TestServer::post()`](crate::TestServer::post()), [`TestServer::put()`](crate::TestServer::put()),
 /// [`TestServer::delete()`](crate::TestServer::delete()), and [`TestServer::patch()`](crate::TestServer::patch()) methods.
+/// They will return a [`TestRequest`](crate::TestRequest) you can use for request building.
 ///
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -70,11 +64,11 @@ lazy_static! {
 pub struct TestServer {
     state: Arc<Mutex<ServerSharedState>>,
     server_thread: JoinHandle<()>,
-    server_address: String,
+    server_url: Url,
     save_cookies: bool,
     expect_success_by_default: bool,
     default_content_type: Option<String>,
-    is_requests_http_restricted: bool,
+    is_http_path_restricted: bool,
 
     /// If this has reserved a port for the test,
     /// then it is stored here.
@@ -119,81 +113,21 @@ impl TestServer {
         let shared_state = ServerSharedState::new();
         let shared_state_mutex = Mutex::new(shared_state);
         let state = Arc::new(shared_state_mutex);
+        let server_address = format!("http://{socket_address}");
+        let server_url: Url = server_address.parse()?;
 
         let this = Self {
             state,
             server_thread,
-            server_address: socket_address.to_string(),
+            server_url,
             save_cookies: config.save_cookies,
             expect_success_by_default: config.expect_success_by_default,
             default_content_type: config.default_content_type,
-            is_requests_http_restricted: config.restrict_requests_with_http_schema,
+            is_http_path_restricted: config.restrict_requests_with_http_schema,
             reserved_port,
         };
 
         Ok(this)
-    }
-
-    /// Returns the local web address for the test server.
-    ///
-    /// By default this will be something like `0.0.0.0:1234`,
-    /// where `1234` is a randomly assigned port numbr.
-    pub fn server_address<'a>(&'a self) -> &'a str {
-        &self.server_address
-    }
-
-    /// Clears all of the cookies stored internally.
-    pub fn clear_cookies(&mut self) {
-        ServerSharedState::clear_cookies(&mut self.state)
-            .with_context(|| format!("Trying to clear_cookies"))
-            .unwrap()
-    }
-
-    /// Adds extra cookies to be used on *all* future requests.
-    ///
-    /// Any cookies which have the same name as the new cookies,
-    /// will get replaced.
-    pub fn add_cookies(&mut self, cookies: CookieJar) {
-        ServerSharedState::add_cookies(&mut self.state, cookies)
-            .with_context(|| format!("Trying to add_cookies"))
-            .unwrap()
-    }
-
-    /// Adds a cookie to be included on *all* future requests.
-    ///
-    /// If a cookie with the same name already exists,
-    /// then it will be replaced.
-    pub fn add_cookie(&mut self, cookie: Cookie) {
-        ServerSharedState::add_cookie(&mut self.state, cookie)
-            .with_context(|| format!("Trying to add_cookie"))
-            .unwrap()
-    }
-
-    /// Adds query parameters to be sent with this request.
-    pub fn add_query_params<V>(&mut self, query_params: V)
-    where
-        V: Serialize,
-    {
-        ServerSharedState::add_query_params(&mut self.state, query_params)
-            .with_context(|| format!("Trying to add_query_params"))
-            .unwrap()
-    }
-
-    /// Adds query parameters to be sent on *all* future requests.
-    pub fn add_query_param<V>(&mut self, key: &str, value: V)
-    where
-        V: Serialize,
-    {
-        ServerSharedState::add_query_param(&mut self.state, key, value)
-            .with_context(|| format!("Trying to add_query_param"))
-            .unwrap()
-    }
-
-    /// Clears all query params set.
-    pub fn clear_query_params(&mut self) {
-        ServerSharedState::clear_query_params(&mut self.state)
-            .with_context(|| format!("Trying to clear_query_params"))
-            .unwrap()
     }
 
     /// Creates a HTTP GET request to the path.
@@ -237,19 +171,120 @@ impl TestServer {
             .unwrap()
     }
 
-    pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
-        let full_request_path =
-            build_request_path(&self.server_address, path, self.is_requests_http_restricted);
+    /// Returns the local web address for the test server.
+    ///
+    /// By default this will be something like `http://0.0.0.0:1234/`,
+    /// where `1234` is a randomly assigned port numbr.
+    pub fn server_address<'a>(&'a self) -> &'a str {
+        &self.server_url.as_str()
+    }
 
+    /// Adds a cookie to be included on *all* future requests.
+    ///
+    /// If a cookie with the same name already exists,
+    /// then it will be replaced.
+    pub fn add_cookie(&mut self, cookie: Cookie) {
+        ServerSharedState::add_cookie(&mut self.state, cookie)
+            .with_context(|| format!("Trying to call add_cookie"))
+            .unwrap()
+    }
+
+    /// Adds extra cookies to be used on *all* future requests.
+    ///
+    /// Any cookies which have the same name as the new cookies,
+    /// will get replaced.
+    pub fn add_cookies(&mut self, cookies: CookieJar) {
+        ServerSharedState::add_cookies(&mut self.state, cookies)
+            .with_context(|| format!("Trying to call add_cookies"))
+            .unwrap()
+    }
+
+    /// Clears all of the cookies stored internally.
+    pub fn clear_cookies(&mut self) {
+        ServerSharedState::clear_cookies(&mut self.state)
+            .with_context(|| format!("Trying to call clear_cookies"))
+            .unwrap()
+    }
+
+    /// Requests made using this `TestServer` will save their cookies for future requests to send.
+    ///
+    /// This behaviour is off by default.
+    pub fn do_save_cookies(&mut self) {
+        self.save_cookies = true;
+    }
+
+    /// Requests made using this `TestServer` will _not_ save their cookies for future requests to send up.
+    ///
+    /// This is the default behaviour.
+    pub fn do_not_save_cookies(&mut self) {
+        self.save_cookies = false;
+    }
+
+    /// Adds query parameters to be sent on *all* future requests.
+    pub fn add_query_param<V>(&mut self, key: &str, value: V)
+    where
+        V: Serialize,
+    {
+        ServerSharedState::add_query_param(&mut self.state, key, value)
+            .with_context(|| format!("Trying to call add_query_param"))
+            .unwrap()
+    }
+
+    /// Adds query parameters to be sent with this request.
+    pub fn add_query_params<V>(&mut self, query_params: V)
+    where
+        V: Serialize,
+    {
+        ServerSharedState::add_query_params(&mut self.state, query_params)
+            .with_context(|| format!("Trying to call add_query_params"))
+            .unwrap()
+    }
+
+    /// Clears all query params set.
+    pub fn clear_query_params(&mut self) {
+        ServerSharedState::clear_query_params(&mut self.state)
+            .with_context(|| format!("Trying to call clear_query_params"))
+            .unwrap()
+    }
+
+    /// Adds a header to be sent with all future requests built from this `TestServer`.
+    pub fn add_header<'c>(&mut self, name: HeaderName, value: HeaderValue) {
+        ServerSharedState::add_header(&mut self.state, name, value)
+            .with_context(|| format!("Trying to call add_header"))
+            .unwrap()
+    }
+
+    /// Clears all headers set so far.
+    pub fn clear_headers(&mut self) {
+        ServerSharedState::clear_headers(&mut self.state)
+            .with_context(|| format!("Trying to call clear_headers"))
+            .unwrap()
+    }
+
+    pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
         TestRequestConfig {
             is_saving_cookies: self.save_cookies,
             is_expecting_success_by_default: self.expect_success_by_default,
             content_type: self.default_content_type.clone(),
-            full_request_path,
+            full_request_url: build_url(&self.server_url, path, self.is_http_path_restricted),
             method,
             path: path.to_string(),
         }
     }
+}
+
+fn build_url(server_url: &Url, path: &str, is_http_restricted: bool) -> Url {
+    if is_http_restricted {
+        let mut url = server_url.clone();
+        url.set_path(path);
+        return url;
+    }
+
+    path.parse().unwrap_or_else(|_| {
+        let mut url = server_url.clone();
+        url.set_path(path);
+        url
+    })
 }
 
 impl Drop for TestServer {
@@ -258,79 +293,104 @@ impl Drop for TestServer {
     }
 }
 
-fn build_request_path(
-    root_path: &str,
-    sub_path: &str,
-    is_requests_http_restructed: bool,
-) -> String {
-    if sub_path == "" {
-        return format!("http://{}", root_path.to_string());
-    }
-
-    if sub_path.starts_with("/") {
-        return format!("http://{}{}", root_path, sub_path);
-    }
-
-    if !is_requests_http_restructed {
-        if starts_with_http(sub_path) {
-            return sub_path.to_string();
-        }
-    }
-
-    format!("http://{}/{}", root_path, sub_path)
-}
-
-fn starts_with_http(path: &str) -> bool {
-    STARTS_HTTP_REGEX.is_match(path)
-}
-
 #[cfg(test)]
-mod starts_with_http {
+mod test_get {
     use super::*;
 
-    #[test]
-    fn it_should_be_true_for_http() {
-        assert_eq!(starts_with_http(&"http://example.com"), true);
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    use crate::util::new_random_socket_addr;
+
+    async fn get_ping() -> &'static str {
+        "pong!"
     }
 
-    #[test]
-    fn it_should_be_true_for_http_mixed_case() {
-        assert_eq!(starts_with_http(&"hTtP://example.com"), true);
+    #[tokio::test]
+    async fn it_should_get_using_relative_path_with_slash() {
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request _with_ slash
+        server.get(&"/ping").await.assert_text(&"pong!");
     }
 
-    #[test]
-    fn it_should_be_false_for_http_on_own() {
-        assert_eq!(starts_with_http(&"http://"), false);
+    #[tokio::test]
+    async fn it_should_get_using_relative_path_without_slash() {
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request _without_ slash
+        server.get(&"ping").await.assert_text(&"pong!");
     }
 
-    #[test]
-    fn it_should_be_false_for_http_in_middle() {
-        assert_eq!(starts_with_http(&"something/http://"), false);
+    #[tokio::test]
+    async fn it_should_get_using_absolute_path() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+
+        // Run the server.
+        let address = new_random_socket_addr().unwrap();
+        let ip = address.ip();
+        let port = address.port();
+        let test_config = TestServerConfig {
+            ip: Some(ip),
+            port: Some(port),
+            ..TestServerConfig::default()
+        };
+        let server =
+            TestServer::new_with_config(app, test_config).expect("Should create test server");
+
+        // Get the request.
+        let absolute_url = format!("http://{ip}:{port}/ping");
+        let response = server.get(&absolute_url).await;
+
+        response.assert_text(&"pong!");
+        let request_path = response.request_url();
+        assert_eq!(request_path.to_string(), format!("http://{ip}:{port}/ping"));
     }
 
-    #[test]
-    fn it_should_be_true_for_https() {
-        assert_eq!(starts_with_http(&"https://example.com"), true);
-    }
+    #[tokio::test]
+    async fn it_should_not_get_using_absolute_path_if_restricted() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
 
-    #[test]
-    fn it_should_be_true_for_https_mixed_case() {
-        assert_eq!(starts_with_http(&"hTtPs://example.com"), true);
-    }
+        // Run the server.
+        let address = new_random_socket_addr().unwrap();
+        let ip = address.ip();
+        let port = address.port();
+        let test_config = TestServerConfig {
+            ip: Some(ip),
+            port: Some(port),
+            restrict_requests_with_http_schema: true, // Key part of the test!
+            ..TestServerConfig::default()
+        };
+        let server =
+            TestServer::new_with_config(app, test_config).expect("Should create test server");
 
-    #[test]
-    fn it_should_be_false_for_https_on_own() {
-        assert_eq!(starts_with_http(&"https://"), false);
-    }
+        // Get the request.
+        let absolute_url = format!("http://{ip}:{port}/ping");
+        let response = server.get(&absolute_url).await;
 
-    #[test]
-    fn it_should_be_false_for_https_in_middle() {
-        assert_eq!(starts_with_http(&"something/https://"), false);
+        response.assert_status_not_found();
+        let request_path = response.request_url();
+        assert_eq!(
+            request_path.to_string(),
+            format!("http://{ip}:{port}/http://{ip}:{port}/ping")
+        );
     }
 }
 
 #[cfg(test)]
-mod server_address {
+mod test_server_address {
     use super::*;
     use ::axum::Router;
     use ::local_ip_address::local_ip;
@@ -349,7 +409,7 @@ mod server_address {
         let app = Router::new().into_make_service();
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
-        let expected_ip_port = format!("{}:3000", ip);
+        let expected_ip_port = format!("http://{}:3000/", ip);
         assert_eq!(server.server_address(), expected_ip_port);
     }
 
@@ -358,9 +418,257 @@ mod server_address {
         let app = Router::new().into_make_service();
         let server = TestServer::new(app).expect("Should create test server");
 
-        let address_regex = Regex::new("^127\\.0\\.0\\.1:[0-9]+$").unwrap();
+        let address_regex = Regex::new("^http://127\\.0\\.0\\.1:[0-9]+/$").unwrap();
         let is_match = address_regex.is_match(&server.server_address());
         assert!(is_match);
+    }
+}
+
+#[cfg(test)]
+mod test_add_cookie {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::axum_extra::extract::cookie::CookieJar;
+    use ::cookie::Cookie;
+
+    const TEST_COOKIE_NAME: &'static str = &"test-cookie";
+
+    async fn get_cookie(cookies: CookieJar) -> (CookieJar, String) {
+        let cookie = cookies.get(&TEST_COOKIE_NAME);
+        let cookie_value = cookie
+            .map(|c| c.value().to_string())
+            .unwrap_or_else(|| "cookie-not-found".to_string());
+
+        (cookies, cookie_value)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_cookies_added_to_request() {
+        let app = Router::new()
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+        let mut server = TestServer::new(app).expect("Should create test server");
+
+        let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        server.add_cookie(cookie);
+
+        let response_text = server.get(&"/cookie").await.text();
+        assert_eq!(response_text, "my-custom-cookie");
+    }
+}
+
+#[cfg(test)]
+mod test_add_cookies {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use ::cookie::Cookie;
+    use ::cookie::CookieJar;
+
+    async fn route_get_cookies(cookies: AxumCookieJar) -> String {
+        let mut all_cookies = cookies
+            .iter()
+            .map(|cookie| format!("{}={}", cookie.name(), cookie.value()))
+            .collect::<Vec<String>>();
+        all_cookies.sort();
+
+        all_cookies.join(&", ")
+    }
+
+    #[tokio::test]
+    async fn it_should_send_all_cookies_added_by_jar() {
+        let app = Router::new()
+            .route("/cookies", get(route_get_cookies))
+            .into_make_service();
+        let mut server = TestServer::new(app).expect("Should create test server");
+
+        // Build cookies to send up
+        let cookie_1 = Cookie::new("first-cookie", "my-custom-cookie");
+        let cookie_2 = Cookie::new("second-cookie", "other-cookie");
+        let mut cookie_jar = CookieJar::new();
+        cookie_jar.add(cookie_1);
+        cookie_jar.add(cookie_2);
+
+        server.add_cookies(cookie_jar);
+
+        server
+            .get(&"/cookies")
+            .await
+            .assert_text("first-cookie=my-custom-cookie, second-cookie=other-cookie");
+    }
+}
+
+#[cfg(test)]
+mod test_clear_cookies {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use ::cookie::Cookie;
+    use ::cookie::CookieJar;
+
+    async fn route_get_cookies(cookies: AxumCookieJar) -> String {
+        let mut all_cookies = cookies
+            .iter()
+            .map(|cookie| format!("{}={}", cookie.name(), cookie.value()))
+            .collect::<Vec<String>>();
+        all_cookies.sort();
+
+        all_cookies.join(&", ")
+    }
+
+    #[tokio::test]
+    async fn it_should_not_send_cookies_cleared() {
+        let app = Router::new()
+            .route("/cookies", get(route_get_cookies))
+            .into_make_service();
+        let mut server = TestServer::new(app).expect("Should create test server");
+
+        let cookie_1 = Cookie::new("first-cookie", "my-custom-cookie");
+        let cookie_2 = Cookie::new("second-cookie", "other-cookie");
+        let mut cookie_jar = CookieJar::new();
+        cookie_jar.add(cookie_1);
+        cookie_jar.add(cookie_2);
+
+        server.add_cookies(cookie_jar);
+
+        // The important bit of this test
+        server.clear_cookies();
+
+        server.get(&"/cookies").await.assert_text("");
+    }
+}
+
+#[cfg(test)]
+mod test_add_header {
+    use super::*;
+
+    use ::axum::async_trait;
+    use ::axum::extract::FromRequestParts;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::http::request::Parts;
+    use ::http::HeaderName;
+    use ::http::HeaderValue;
+    use ::hyper::StatusCode;
+    use ::std::marker::Sync;
+
+    use crate::TestServer;
+
+    const TEST_HEADER_NAME: &'static str = &"test-header";
+    const TEST_HEADER_CONTENT: &'static str = &"Test header content";
+
+    struct TestHeader(Vec<u8>);
+
+    #[async_trait]
+    impl<S: Sync> FromRequestParts<S> for TestHeader {
+        type Rejection = (StatusCode, &'static str);
+
+        async fn from_request_parts(
+            parts: &mut Parts,
+            _state: &S,
+        ) -> Result<TestHeader, Self::Rejection> {
+            parts
+                .headers
+                .get(HeaderName::from_static(TEST_HEADER_NAME))
+                .map(|v| TestHeader(v.as_bytes().to_vec()))
+                .ok_or((StatusCode::BAD_REQUEST, "Missing test header"))
+        }
+    }
+
+    async fn ping_header(TestHeader(header): TestHeader) -> Vec<u8> {
+        header
+    }
+
+    #[tokio::test]
+    async fn it_should_send_header_added_to_server() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/header", get(ping_header))
+            .into_make_service();
+
+        // Run the server.
+        let mut server = TestServer::new(app).expect("Should create test server");
+        server.add_header(
+            HeaderName::from_static(TEST_HEADER_NAME),
+            HeaderValue::from_static(TEST_HEADER_CONTENT),
+        );
+
+        // Send a request with the header
+        let response = server.get(&"/header").await;
+
+        // Check it sent back the right text
+        response.assert_text(TEST_HEADER_CONTENT)
+    }
+}
+
+#[cfg(test)]
+mod test_clear_headers {
+    use super::*;
+
+    use ::axum::async_trait;
+    use ::axum::extract::FromRequestParts;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::http::request::Parts;
+    use ::http::HeaderName;
+    use ::http::HeaderValue;
+    use ::hyper::StatusCode;
+    use ::std::marker::Sync;
+
+    use crate::TestServer;
+
+    const TEST_HEADER_NAME: &'static str = &"test-header";
+    const TEST_HEADER_CONTENT: &'static str = &"Test header content";
+
+    struct TestHeader(Vec<u8>);
+
+    #[async_trait]
+    impl<S: Sync> FromRequestParts<S> for TestHeader {
+        type Rejection = (StatusCode, &'static str);
+
+        async fn from_request_parts(
+            parts: &mut Parts,
+            _state: &S,
+        ) -> Result<TestHeader, Self::Rejection> {
+            parts
+                .headers
+                .get(HeaderName::from_static(TEST_HEADER_NAME))
+                .map(|v| TestHeader(v.as_bytes().to_vec()))
+                .ok_or((StatusCode::BAD_REQUEST, "Missing test header"))
+        }
+    }
+
+    async fn ping_header(TestHeader(header): TestHeader) -> Vec<u8> {
+        header
+    }
+
+    #[tokio::test]
+    async fn it_should_not_send_headers_cleared_by_server() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/header", get(ping_header))
+            .into_make_service();
+
+        // Run the server.
+        let mut server = TestServer::new(app).expect("Should create test server");
+        server.add_header(
+            HeaderName::from_static(TEST_HEADER_NAME),
+            HeaderValue::from_static(TEST_HEADER_CONTENT),
+        );
+        server.clear_headers();
+
+        // Send a request with the header
+        let response = server.get(&"/header").await;
+
+        // Check it sent back the right text
+        response.assert_status_bad_request();
+        response.assert_text("Missing test header");
     }
 }
 
@@ -688,5 +996,42 @@ mod test_expect_success_by_default {
         .expect("Should create test server");
 
         server.get(&"/known_route").await;
+    }
+}
+
+#[cfg(test)]
+mod test_content_type {
+    use super::*;
+
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
+
+    async fn get_content_type(headers: HeaderMap) -> String {
+        headers
+            .get(CONTENT_TYPE)
+            .map(|h| h.to_str().unwrap().to_string())
+            .unwrap_or_else(|| "".to_string())
+    }
+
+    #[tokio::test]
+    async fn it_should_default_to_server_content_type_when_present() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/content_type", get(get_content_type))
+            .into_make_service();
+
+        // Run the server.
+        let config = TestServerConfig {
+            default_content_type: Some("text/plain".to_string()),
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+
+        // Get the request.
+        let text = server.get(&"/content_type").await.text();
+
+        assert_eq!(text, "text/plain");
     }
 }

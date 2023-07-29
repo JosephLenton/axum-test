@@ -2,16 +2,16 @@ use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::auto_future::AutoFuture;
+use ::bytes::Bytes;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
+use ::http::header;
 use ::http::header::SET_COOKIE;
+use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Request;
 use ::hyper::body::to_bytes;
 use ::hyper::body::Body;
-use ::hyper::body::Bytes;
-use ::hyper::header;
-use ::hyper::header::HeaderName;
 use ::hyper::Client;
 use ::serde::Serialize;
 use ::serde_json::to_vec as json_to_vec;
@@ -22,7 +22,6 @@ use ::std::fmt::Display;
 use ::std::future::IntoFuture;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
-use ::url::Url;
 
 use crate::internals::QueryParamsStore;
 use crate::ServerSharedState;
@@ -120,6 +119,7 @@ impl TestRequest {
 
         let cookies = server_locked.cookies().clone();
         let query_params = server_locked.query_params().clone();
+        let headers = server_locked.headers().clone();
 
         ::std::mem::drop(server_locked);
 
@@ -127,7 +127,7 @@ impl TestRequest {
             config,
             server_state,
             body: None,
-            headers: vec![],
+            headers,
             cookies,
             query_params,
             is_expecting_success,
@@ -184,6 +184,28 @@ impl TestRequest {
         self
     }
 
+    /// Adds a Cookie to be sent with this request.
+    pub fn add_cookie<'c>(mut self, cookie: Cookie<'c>) -> Self {
+        self.cookies.add(cookie.into_owned());
+        self
+    }
+
+    /// Adds many cookies to be used with this request.
+    pub fn add_cookies(mut self, cookies: CookieJar) -> Self {
+        for cookie in cookies.iter() {
+            self.cookies.add(cookie.clone());
+        }
+
+        self
+    }
+
+    /// Clears all cookies used internally within this Request,
+    /// including any that came from the `TestServer`.
+    pub fn clear_cookies(mut self) -> Self {
+        self.cookies = CookieJar::new();
+        self
+    }
+
     /// Any cookies returned will be saved to the [`TestServer`](crate::TestServer) that created this,
     /// which will continue to use those cookies on future requests.
     pub fn do_save_cookies(mut self) -> Self {
@@ -201,17 +223,12 @@ impl TestRequest {
         self
     }
 
-    /// Clears all cookies used internally within this Request,
-    /// including any that came from the `TestServer`.
-    pub fn clear_cookies(mut self) -> Self {
-        self.cookies = CookieJar::new();
-        self
-    }
-
-    /// Adds a Cookie to be sent with this request.
-    pub fn add_cookie<'c>(mut self, cookie: Cookie<'c>) -> Self {
-        self.cookies.add(cookie.into_owned());
-        self
+    /// Adds query parameters to be sent with this request.
+    pub fn add_query_param<V>(self, key: &str, value: V) -> Self
+    where
+        V: Serialize,
+    {
+        self.add_query_params(&[(key, value)])
     }
 
     /// Adds the structure given as query parameters for this request.
@@ -301,14 +318,6 @@ impl TestRequest {
         self
     }
 
-    /// Adds query parameters to be sent with this request.
-    pub fn add_query_param<V>(self, key: &str, value: V) -> Self
-    where
-        V: Serialize,
-    {
-        self.add_query_params(&[(key, value)])
-    }
-
     /// Clears all query params set,
     /// including any that came from the [`TestServer`](crate::TestServer).
     pub fn clear_query_params(mut self) -> Self {
@@ -316,15 +325,15 @@ impl TestRequest {
         self
     }
 
-    /// Clears all headers set.
-    pub fn clear_headers(mut self) -> Self {
-        self.headers = vec![];
-        self
-    }
-
     /// Adds a header to be sent with this request.
     pub fn add_header<'c>(mut self, name: HeaderName, value: HeaderValue) -> Self {
         self.headers.push((name, value));
+        self
+    }
+
+    /// Clears all headers set.
+    pub fn clear_headers(mut self) -> Self {
+        self.headers = vec![];
         self
     }
 
@@ -383,13 +392,12 @@ impl TestRequest {
     }
 
     async fn send(mut self) -> Result<TestResponse> {
-        let full_request_path = self.config.full_request_path;
+        let mut url = self.config.full_request_url;
         let method = self.config.method;
         let path = self.config.path;
         let save_cookies = self.config.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
 
-        let mut url: Url = full_request_path.parse()?;
         // Add all the query params we have
         if self.query_params.has_content() {
             url.set_query(Some(&self.query_params.to_string()));
@@ -436,7 +444,7 @@ impl TestRequest {
             ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
-        let response = TestResponse::new(path, parts, response_bytes);
+        let response = TestResponse::new(path, url, parts, response_bytes);
 
         // Assert if ok or not.
         if let Some(is_expecting_success) = self.is_expecting_success {
@@ -884,6 +892,198 @@ mod test_expect_failure {
 }
 
 #[cfg(test)]
+mod test_add_cookie {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::axum_extra::extract::cookie::CookieJar;
+    use ::cookie::Cookie;
+
+    const TEST_COOKIE_NAME: &'static str = &"test-cookie";
+
+    async fn get_cookie(cookies: CookieJar) -> (CookieJar, String) {
+        let cookie = cookies.get(&TEST_COOKIE_NAME);
+        let cookie_value = cookie
+            .map(|c| c.value().to_string())
+            .unwrap_or_else(|| "cookie-not-found".to_string());
+
+        (cookies, cookie_value)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_cookies_added_to_request() {
+        let app = Router::new()
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        let response_text = server.get(&"/cookie").add_cookie(cookie).await.text();
+        assert_eq!(response_text, "my-custom-cookie");
+    }
+}
+
+#[cfg(test)]
+mod test_add_cookies {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use ::cookie::Cookie;
+    use ::cookie::CookieJar;
+
+    async fn route_get_cookies(cookies: AxumCookieJar) -> String {
+        let mut all_cookies = cookies
+            .iter()
+            .map(|cookie| format!("{}={}", cookie.name(), cookie.value()))
+            .collect::<Vec<String>>();
+        all_cookies.sort();
+
+        all_cookies.join(&", ")
+    }
+
+    #[tokio::test]
+    async fn it_should_send_all_cookies_added_by_jar() {
+        let app = Router::new()
+            .route("/cookies", get(route_get_cookies))
+            .into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Build cookies to send up
+        let cookie_1 = Cookie::new("first-cookie", "my-custom-cookie");
+        let cookie_2 = Cookie::new("second-cookie", "other-cookie");
+        let mut cookie_jar = CookieJar::new();
+        cookie_jar.add(cookie_1);
+        cookie_jar.add(cookie_2);
+
+        server
+            .get(&"/cookies")
+            .add_cookies(cookie_jar)
+            .await
+            .assert_text("first-cookie=my-custom-cookie, second-cookie=other-cookie");
+    }
+}
+
+#[cfg(test)]
+mod test_clear_cookies {
+    use crate::TestServer;
+
+    use ::axum::extract::RawBody;
+    use ::axum::routing::get;
+    use ::axum::routing::put;
+    use ::axum::Router;
+    use ::axum_extra::extract::cookie::Cookie as AxumCookie;
+    use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use ::cookie::Cookie;
+    use ::cookie::CookieJar;
+    use ::hyper::body::to_bytes;
+
+    const TEST_COOKIE_NAME: &'static str = &"test-cookie";
+
+    async fn get_cookie(cookies: AxumCookieJar) -> (AxumCookieJar, String) {
+        let cookie = cookies.get(&TEST_COOKIE_NAME);
+        let cookie_value = cookie
+            .map(|c| c.value().to_string())
+            .unwrap_or_else(|| "cookie-not-found".to_string());
+
+        (cookies, cookie_value)
+    }
+
+    async fn put_cookie(
+        mut cookies: AxumCookieJar,
+        RawBody(body): RawBody,
+    ) -> (AxumCookieJar, &'static str) {
+        let body_bytes = to_bytes(body)
+            .await
+            .expect("Should turn the body into bytes");
+        let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
+        let cookie = AxumCookie::new(TEST_COOKIE_NAME, body_text);
+        cookies = cookies.add(cookie);
+
+        (cookies, &"done")
+    }
+
+    #[tokio::test]
+    async fn it_should_clear_cookie_added_to_request() {
+        let app = Router::new()
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        let response_text = server
+            .get(&"/cookie")
+            .add_cookie(cookie)
+            .clear_cookies()
+            .await
+            .text();
+
+        assert_eq!(response_text, "cookie-not-found");
+    }
+
+    #[tokio::test]
+    async fn it_should_clear_cookie_jar_added_to_request() {
+        let app = Router::new()
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        let mut cookie_jar = CookieJar::new();
+        cookie_jar.add(cookie);
+
+        let response_text = server
+            .get(&"/cookie")
+            .add_cookies(cookie_jar)
+            .clear_cookies()
+            .await
+            .text();
+
+        assert_eq!(response_text, "cookie-not-found");
+    }
+
+    #[tokio::test]
+    async fn it_should_clear_cookies_saved_by_past_request() {
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Create a cookie.
+        server
+            .put(&"/cookie")
+            .text(&"cookie-found!")
+            .do_save_cookies()
+            .await;
+
+        // Check it comes back.
+        let response_text = server.get(&"/cookie").clear_cookies().await.text();
+
+        assert_eq!(response_text, "cookie-not-found");
+    }
+
+    #[tokio::test]
+    async fn it_should_clear_cookies_added_to_test_server() {
+        let app = Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .into_make_service();
+        let mut server = TestServer::new(app).expect("Should create test server");
+
+        let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        server.add_cookie(cookie);
+
+        // Check it comes back.
+        let response_text = server.get(&"/cookie").clear_cookies().await.text();
+
+        assert_eq!(response_text, "cookie-not-found");
+    }
+}
+
+#[cfg(test)]
 mod test_add_header {
     use super::*;
 
@@ -925,7 +1125,7 @@ mod test_add_header {
     }
 
     #[tokio::test]
-    async fn it_should_send_the_header() {
+    async fn it_should_send_header_added_to_request() {
         // Build an application with a route.
         let app = Router::new()
             .route("/header", get(ping_header))
@@ -990,7 +1190,7 @@ mod test_clear_headers {
     }
 
     #[tokio::test]
-    async fn it_should_send_the_header() {
+    async fn it_should_claer_headers_added_to_request() {
         // Build an application with a route.
         let app = Router::new()
             .route("/header", get(ping_header))
@@ -1008,6 +1208,28 @@ mod test_clear_headers {
             )
             .clear_headers()
             .await;
+
+        // Check it sent back the right text
+        response.assert_status_bad_request();
+        response.assert_text("Missing test header");
+    }
+
+    #[tokio::test]
+    async fn it_should_claer_headers_added_to_server() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/header", get(ping_header))
+            .into_make_service();
+
+        // Run the server.
+        let mut server = TestServer::new(app).expect("Should create test server");
+        server.add_header(
+            HeaderName::from_static(TEST_HEADER_NAME),
+            HeaderValue::from_static(TEST_HEADER_CONTENT),
+        );
+
+        // Send a request with the header
+        let response = server.get(&"/header").clear_headers().await;
 
         // Check it sent back the right text
         response.assert_status_bad_request();

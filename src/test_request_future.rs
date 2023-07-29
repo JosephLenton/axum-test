@@ -1,8 +1,8 @@
 use ::anyhow::Context;
 use ::anyhow::Result;
+use ::bytes::Bytes;
 use ::hyper::body::to_bytes;
 use ::hyper::body::Body;
-use ::hyper::body::Bytes;
 use ::hyper::body::HttpBody;
 use ::hyper::client::ResponseFuture;
 use ::hyper::header;
