@@ -387,10 +387,6 @@ impl TestRequest {
         self
     }
 
-    async fn send_or_panic(self) -> TestResponse {
-        self.send().await.expect("Sending request failed")
-    }
-
     async fn send(mut self) -> Result<TestResponse> {
         let mut url = self.config.full_request_url;
         let method = self.config.method;
@@ -464,8 +460,7 @@ impl IntoFuture for TestRequest {
     type IntoFuture = AutoFuture<TestResponse>;
 
     fn into_future(self) -> Self::IntoFuture {
-        let raw_future = self.send_or_panic();
-        AutoFuture::new(raw_future)
+        AutoFuture::new(async { self.send().await.expect("Sending request failed") })
     }
 }
 
