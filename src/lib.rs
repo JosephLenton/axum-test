@@ -187,8 +187,8 @@
 
 pub(crate) mod internals;
 
-mod into_test_server_core;
-pub use self::into_test_server_core::*;
+mod into_test_server_thread;
+pub use self::into_test_server_thread::*;
 
 mod test_server;
 pub use self::test_server::*;
@@ -207,121 +207,7 @@ pub mod util;
 pub use ::http;
 
 #[cfg(test)]
-mod test_get {
-    use super::*;
-
-    use ::axum::routing::get;
-    use ::axum::Router;
-
-    use crate::util::new_random_socket_addr;
-
-    async fn get_ping() -> &'static str {
-        "pong!"
-    }
-
-    #[tokio::test]
-    async fn it_should_get() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/ping", get(get_ping))
-            .into_make_service();
-
-        // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
-
-        // Get the request.
-        server.get(&"/ping").await.assert_text(&"pong!");
-    }
-
-    #[tokio::test]
-    async fn it_should_get_using_absolute_path() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/ping", get(get_ping))
-            .into_make_service();
-
-        // Run the server.
-        let address = new_random_socket_addr().unwrap();
-        let ip = address.ip();
-        let port = address.port();
-        let test_config = TestServerConfig {
-            ip: Some(ip),
-            port: Some(port),
-            ..TestServerConfig::default()
-        };
-        let server =
-            TestServer::new_with_config(app, test_config).expect("Should create test server");
-
-        // Get the request.
-        let absolute_url = format!("http://{ip}:{port}/ping");
-        server.get(&absolute_url).await.assert_text(&"pong!");
-    }
-
-    #[tokio::test]
-    async fn it_should_not_get_using_absolute_path_if_restricted() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/ping", get(get_ping))
-            .into_make_service();
-
-        // Run the server.
-        let address = new_random_socket_addr().unwrap();
-        let ip = address.ip();
-        let port = address.port();
-        let test_config = TestServerConfig {
-            ip: Some(ip),
-            port: Some(port),
-            restrict_requests_with_http_schema: true, // Key part of the test!
-            ..TestServerConfig::default()
-        };
-        let server =
-            TestServer::new_with_config(app, test_config).expect("Should create test server");
-
-        // Get the request.
-        let absolute_url = format!("http://{ip}:{port}/ping");
-        server.get(&absolute_url).await.assert_status_not_found();
-    }
-}
-
-#[cfg(test)]
-mod test_content_type {
-    use super::*;
-
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::http::header::CONTENT_TYPE;
-    use ::http::HeaderMap;
-
-    async fn get_content_type(headers: HeaderMap) -> String {
-        headers
-            .get(CONTENT_TYPE)
-            .map(|h| h.to_str().unwrap().to_string())
-            .unwrap_or_else(|| "".to_string())
-    }
-
-    #[tokio::test]
-    async fn it_should_default_to_server_content_type_when_present() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/content_type", get(get_content_type))
-            .into_make_service();
-
-        // Run the server.
-        let config = TestServerConfig {
-            default_content_type: Some("text/plain".to_string()),
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
-
-        // Get the request.
-        let text = server.get(&"/content_type").await.text();
-
-        assert_eq!(text, "text/plain");
-    }
-}
-
-#[cfg(test)]
-mod test_cookies {
+mod integrated_test_cookie_saving {
     use super::*;
 
     use ::axum::extract::RawBody;

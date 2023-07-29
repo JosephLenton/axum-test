@@ -1,4 +1,5 @@
 use ::anyhow::Context;
+use ::bytes::Bytes;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::http::header::AsHeaderName;
@@ -8,11 +9,11 @@ use ::http::response::Parts;
 use ::http::HeaderMap;
 use ::http::HeaderValue;
 use ::http::StatusCode;
-use ::hyper::body::Bytes;
 use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
+use url::Url;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -116,16 +117,25 @@ use ::std::fmt::Display;
 ///
 #[derive(Clone, Debug)]
 pub struct TestResponse {
-    request_url: String,
+    /// This is the path that the user requested.
+    user_requested_path: String,
+    /// This is the actual url that was used for the request.
+    full_request_url: Url,
     headers: HeaderMap<HeaderValue>,
     status_code: StatusCode,
     response_body: Bytes,
 }
 
 impl TestResponse {
-    pub(crate) fn new(request_url: String, parts: Parts, response_body: Bytes) -> Self {
+    pub(crate) fn new(
+        user_requested_path: String,
+        full_request_url: Url,
+        parts: Parts,
+        response_body: Bytes,
+    ) -> Self {
         Self {
-            request_url,
+            user_requested_path,
+            full_request_url,
             headers: parts.headers,
             status_code: parts.status,
             response_body,
@@ -221,7 +231,7 @@ impl TestResponse {
             .with_context(|| {
                 format!(
                     "Deserializing response from JSON for request {}",
-                    self.request_url
+                    self.user_requested_path
                 )
             })
             .unwrap()
@@ -277,7 +287,7 @@ impl TestResponse {
             .with_context(|| {
                 format!(
                     "Deserializing response from Form for request {}",
-                    self.request_url
+                    self.user_requested_path
                 )
             })
             .unwrap()
@@ -302,10 +312,10 @@ impl TestResponse {
         self.status_code
     }
 
-    /// The URL that was used to produce this response.
+    /// The full URL that was used to produce this response.
     #[must_use]
-    pub fn request_url<'a>(&'a self) -> &'a str {
-        &self.request_url
+    pub fn request_url(&self) -> Url {
+        self.full_request_url.clone()
     }
 
     /// Finds a header with the given name.
@@ -344,7 +354,7 @@ impl TestResponse {
             .with_context(|| {
                 format!(
                     "Cannot find header {} for response {}",
-                    debug_header, self.request_url
+                    debug_header, self.user_requested_path
                 )
             })
             .unwrap()
@@ -393,7 +403,7 @@ impl TestResponse {
             .with_context(|| {
                 format!(
                     "Cannot find cookie {} for response {}",
-                    cookie_name, self.request_url
+                    cookie_name, self.user_requested_path
                 )
             })
             .unwrap()
@@ -423,7 +433,7 @@ impl TestResponse {
                 .with_context(|| {
                     format!(
                         "Reading header 'Set-Cookie' as string for response {}",
-                        self.request_url
+                        self.user_requested_path
                     )
                 })
                 .unwrap();
@@ -432,7 +442,7 @@ impl TestResponse {
                 .with_context(|| {
                     format!(
                         "Parsing 'Set-Cookie' header for response {}",
-                        self.request_url
+                        self.user_requested_path
                     )
                 })
                 .unwrap()

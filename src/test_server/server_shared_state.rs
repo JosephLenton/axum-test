@@ -2,6 +2,7 @@ use ::anyhow::Context;
 use ::anyhow::Result;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
+use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::serde::Serialize;
 use ::std::sync::Arc;
@@ -14,6 +15,7 @@ use crate::util::with_this_mut;
 pub(crate) struct ServerSharedState {
     cookies: CookieJar,
     query_params: QueryParamsStore,
+    headers: Vec<(HeaderName, HeaderValue)>,
 }
 
 impl ServerSharedState {
@@ -21,6 +23,7 @@ impl ServerSharedState {
         Self {
             cookies: CookieJar::new(),
             query_params: QueryParamsStore::new(),
+            headers: Vec::new(),
         }
     }
 
@@ -30,6 +33,10 @@ impl ServerSharedState {
 
     pub(crate) fn query_params<'a>(&'a self) -> &'a QueryParamsStore {
         &self.query_params
+    }
+
+    pub(crate) fn headers<'a>(&'a self) -> &'a Vec<(HeaderName, HeaderValue)> {
+        &self.headers
     }
 
     /// Adds the given cookies.
@@ -103,5 +110,17 @@ impl ServerSharedState {
 
     pub(crate) fn clear_query_params(this: &mut Arc<Mutex<Self>>) -> Result<()> {
         with_this_mut(this, "clear_query_params", |this| this.query_params.clear())
+    }
+
+    pub(crate) fn clear_headers(this: &mut Arc<Mutex<Self>>) -> Result<()> {
+        with_this_mut(this, "clear_headers", |this| this.headers.clear())
+    }
+
+    pub(crate) fn add_header<'c>(
+        this: &mut Arc<Mutex<Self>>,
+        name: HeaderName,
+        value: HeaderValue,
+    ) -> Result<()> {
+        with_this_mut(this, "add_header", |this| this.headers.push((name, value)))
     }
 }
