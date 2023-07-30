@@ -13,6 +13,7 @@ use ::std::sync::Mutex;
 use ::tokio::task::JoinHandle;
 use ::url::Url;
 
+use crate::internals::ExpectedState;
 use crate::util::new_socket_addr_from_defaults;
 use crate::util::ReservedPort;
 use crate::IntoTestServerThread;
@@ -66,7 +67,7 @@ pub struct TestServer {
     server_thread: JoinHandle<()>,
     server_url: Url,
     save_cookies: bool,
-    expect_success_by_default: bool,
+    expected_state: ExpectedState,
     default_content_type: Option<String>,
     is_http_path_restricted: bool,
 
@@ -116,12 +117,17 @@ impl TestServer {
         let server_address = format!("http://{socket_address}");
         let server_url: Url = server_address.parse()?;
 
+        let expected_state = match config.expect_success_by_default {
+            true => ExpectedState::Success,
+            false => ExpectedState::None,
+        };
+
         let this = Self {
             state,
             server_thread,
             server_url,
             save_cookies: config.save_cookies,
-            expect_success_by_default: config.expect_success_by_default,
+            expected_state,
             default_content_type: config.default_content_type,
             is_http_path_restricted: config.restrict_requests_with_http_schema,
             reserved_port,
@@ -220,6 +226,20 @@ impl TestServer {
         self.save_cookies = false;
     }
 
+    /// Requests made using this `TestServer` will assert a HTTP status in the 2xx range will be returned, unless marked otherwise.
+    ///
+    /// By default this behaviour is off.
+    pub fn expect_success(&mut self) {
+        self.expected_state = ExpectedState::Success;
+    }
+
+    /// Requests made using this `TestServer` will assert a HTTP status is outside the 2xx range will be returned, unless marked otherwise.
+    ///
+    /// By default this behaviour is off.
+    pub fn expect_failure(&mut self) {
+        self.expected_state = ExpectedState::Failure;
+    }
+
     /// Adds query parameters to be sent on *all* future requests.
     pub fn add_query_param<V>(&mut self, key: &str, value: V)
     where
@@ -264,7 +284,7 @@ impl TestServer {
     pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
         TestRequestConfig {
             is_saving_cookies: self.save_cookies,
-            is_expecting_success_by_default: self.expect_success_by_default,
+            expected_state: self.expected_state,
             content_type: self.default_content_type.clone(),
             full_request_url: build_url(&self.server_url, path, self.is_http_path_restricted),
             method,

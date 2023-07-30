@@ -23,6 +23,7 @@ use ::std::future::IntoFuture;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 
+use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
 use crate::ServerSharedState;
 use crate::TestResponse;
@@ -99,7 +100,7 @@ pub struct TestRequest {
     cookies: CookieJar,
     query_params: QueryParamsStore,
 
-    is_expecting_success: Option<bool>,
+    expected_state: ExpectedState,
 }
 
 impl TestRequest {
@@ -107,7 +108,7 @@ impl TestRequest {
         server_state: Arc<Mutex<ServerSharedState>>,
         config: TestRequestConfig,
     ) -> Result<Self> {
-        let is_expecting_success = config.is_expecting_success_by_default.then_some(true);
+        let expected_state = config.expected_state;
         let server_locked = server_state.as_ref().lock().map_err(|err| {
             anyhow!(
                 "Failed to lock InternalTestServer for {} {}, received {:?}",
@@ -130,7 +131,7 @@ impl TestRequest {
             headers,
             cookies,
             query_params,
-            is_expecting_success,
+            expected_state,
         })
     }
 
@@ -373,7 +374,7 @@ impl TestRequest {
     /// ```
     ///
     pub fn expect_success(mut self) -> Self {
-        self.is_expecting_success = Some(true);
+        self.expected_state = ExpectedState::Success;
         self
     }
 
@@ -383,7 +384,7 @@ impl TestRequest {
     /// If a code _within_ the 2xx range is returned,
     /// then this will panic.
     pub fn expect_failure(mut self) -> Self {
-        self.is_expecting_success = Some(false);
+        self.expected_state = ExpectedState::Failure;
         self
     }
 
@@ -443,12 +444,10 @@ impl TestRequest {
         let response = TestResponse::new(path, url, parts, response_bytes);
 
         // Assert if ok or not.
-        if let Some(is_expecting_success) = self.is_expecting_success {
-            if is_expecting_success {
-                response.assert_status_success();
-            } else {
-                response.assert_status_failure();
-            }
+        match self.expected_state {
+            ExpectedState::Success => response.assert_status_success(),
+            ExpectedState::Failure => response.assert_status_failure(),
+            ExpectedState::None => {}
         }
 
         Ok(response)
