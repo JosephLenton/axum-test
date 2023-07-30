@@ -825,6 +825,25 @@ mod test_expect_success {
         // Get the request.
         server.get(&"/some_unknown_route").expect_success().await;
     }
+
+    #[tokio::test]
+    async fn it_should_override_what_test_server_has_set() {
+        async fn get_ping() -> &'static str {
+            "pong!"
+        }
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+
+        // Run the server.
+        let mut server = TestServer::new(app).expect("Should create test server");
+        server.expect_failure();
+
+        // Get the request.
+        server.get(&"/ping").expect_success().await;
+    }
 }
 
 #[cfg(test)]
@@ -882,6 +901,19 @@ mod test_expect_failure {
 
         // Get the request.
         server.get(&"/accepted").expect_failure().await;
+    }
+
+    #[tokio::test]
+    async fn it_should_should_override_what_test_server_has_set() {
+        // Build an application with a route.
+        let app = Router::new().into_make_service();
+
+        // Run the server.
+        let mut server = TestServer::new(app).expect("Should create test server");
+        server.expect_success();
+
+        // Get the request.
+        server.get(&"/some_unknown_route").expect_failure().await;
     }
 }
 
