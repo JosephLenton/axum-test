@@ -524,6 +524,12 @@ impl TestResponse {
         self.assert_status(StatusCode::NOT_FOUND)
     }
 
+    /// Assert the response status code is 401.
+    #[track_caller]
+    pub fn assert_status_unauthorized(&self) {
+        self.assert_status(StatusCode::UNAUTHORIZED)
+    }
+
     /// Assert the response status code is 200.
     #[track_caller]
     pub fn assert_status_ok(&self) {
