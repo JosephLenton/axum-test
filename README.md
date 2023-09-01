@@ -58,7 +58,7 @@ This behaviour can be changed in the `TestServerConfig`, by selecting a custom i
 
 Querying your application on the `TestServer` supports all of the common request building you would expect.
 
- - Serlializing and deserializing Json and Form content using Serde
+ - Serializing and deserializing Json and Form content using Serde
  - Cookie setting and reading
  - Access to setting and reading headers
  - Status code reading and assertions
