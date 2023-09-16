@@ -45,7 +45,7 @@ and then assert the responses returned:
           .get("/ping")
           .await;
 
-      assert_eq!(response.contents, "pong!");
+      assert_eq!(response.text(), "pong!");
   }
 ```
 
