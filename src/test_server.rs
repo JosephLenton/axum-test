@@ -104,6 +104,7 @@ impl TestServer {
     {
         let (reserved_port, socket_address) = new_socket_addr_from_defaults(config.ip, config.port)
             .context("Cannot create socket address for use")?;
+
         let listener = TcpListener::bind(socket_address)
             .with_context(|| "Failed to create TCPListener for TestServer")?;
         let server_builder = AxumServer::from_tcp(listener)
@@ -319,8 +320,8 @@ mod test_get {
 
     use ::axum::routing::get;
     use ::axum::Router;
-
-    use crate::util::new_random_socket_addr;
+    
+    use crate::util::ReservedSocketAddr;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -355,17 +356,20 @@ mod test_get {
             .route("/ping", get(get_ping))
             .into_make_service();
 
+        // Reserve an address
+        let reserved_address = ReservedSocketAddr::reserve_random_socket_addr().unwrap();
+        let ip = reserved_address.ip();
+        let port = reserved_address.port();
+
         // Run the server.
-        let address = new_random_socket_addr().unwrap();
-        let ip = address.ip();
-        let port = address.port();
         let test_config = TestServerConfig {
             ip: Some(ip),
             port: Some(port),
             ..TestServerConfig::default()
         };
         let server =
-            TestServer::new_with_config(app, test_config).expect("Should create test server");
+            TestServer::new_with_config(app, test_config)
+                .with_context(|| format!("Should create test server with address {}:{}", ip, port)).unwrap();
 
         // Get the request.
         let absolute_url = format!("http://{ip}:{port}/ping");
@@ -383,10 +387,12 @@ mod test_get {
             .route("/ping", get(get_ping))
             .into_make_service();
 
+        // Reserve an IP / Port
+        let reserved_address = ReservedSocketAddr::reserve_random_socket_addr().unwrap();
+        let ip = reserved_address.ip();
+        let port = reserved_address.port();
+
         // Run the server.
-        let address = new_random_socket_addr().unwrap();
-        let ip = address.ip();
-        let port = address.port();
         let test_config = TestServerConfig {
             ip: Some(ip),
             port: Some(port),
@@ -394,7 +400,8 @@ mod test_get {
             ..TestServerConfig::default()
         };
         let server =
-            TestServer::new_with_config(app, test_config).expect("Should create test server");
+            TestServer::new_with_config(app, test_config)
+                .with_context(|| format!("Should create test server with address {}:{}", ip, port)).unwrap();
 
         // Get the request.
         let absolute_url = format!("http://{ip}:{port}/ping");
@@ -418,18 +425,22 @@ mod test_server_address {
 
     #[tokio::test]
     async fn it_should_return_address_used_from_config() {
+        let reserved_port = ReservedPort::reserve_random_port().unwrap();
         let ip = local_ip().unwrap();
+        let port = reserved_port.port();
+
         let config = TestServerConfig {
             ip: Some(ip),
-            port: Some(3000),
+            port: Some(port),
             ..TestServerConfig::default()
         };
 
         // Build an application with a route.
         let app = Router::new().into_make_service();
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServer::new_with_config(app, config)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port)).unwrap();
 
-        let expected_ip_port = format!("http://{}:3000/", ip);
+        let expected_ip_port = format!("http://{}:{}/", ip, reserved_port.port());
         assert_eq!(server.server_address(), expected_ip_port);
     }
 

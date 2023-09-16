@@ -13,7 +13,7 @@ pub(crate) fn new_socket_addr_from_defaults(
     maybe_port: Option<u16>,
 ) -> Result<(ReservedPort, SocketAddr)> {
     let reserved_port = maybe_port
-        .map(ReservedPort::reserve_port)
+        .map(ReservedPort::add_port_reservation)
         .unwrap_or_else(ReservedPort::reserve_random_port)?;
 
     let ip = maybe_ip.unwrap_or(DEFAULT_IP_ADDRESS);
