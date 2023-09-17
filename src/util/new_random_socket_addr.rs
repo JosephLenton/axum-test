@@ -1,25 +1,33 @@
-use crate::util::ReservedPort;
 use ::anyhow::anyhow;
 use ::anyhow::Result;
-use ::portpicker::pick_unused_port;
 use ::std::net::IpAddr;
 use ::std::net::Ipv4Addr;
 use ::std::net::SocketAddr;
+use ::reserve_port::ReservedPort;
+use ::reserve_port::find_unused_port;
 
 pub(crate) const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
 pub(crate) fn new_socket_addr_from_defaults(
     maybe_ip: Option<IpAddr>,
     maybe_port: Option<u16>,
-) -> Result<(ReservedPort, SocketAddr)> {
-    let reserved_port = maybe_port
-        .map(ReservedPort::add_port_reservation)
-        .unwrap_or_else(ReservedPort::reserve_random_port)?;
-
+) -> Result<(Option<ReservedPort>, SocketAddr)> {
     let ip = maybe_ip.unwrap_or(DEFAULT_IP_ADDRESS);
-    let socket_addr = SocketAddr::new(ip, reserved_port.port());
+    let (maybe_reserved_port, port) = maybe_port
+        .map(|port| {
+            ReservedPort::reserve_port(port)?;
+            Ok((None, port))
+        })
+        .unwrap_or_else(|| {
+            ReservedPort::random()
+                .map(|reserved_port| {
+                    let port = reserved_port.port();
+                    (Some(reserved_port), port)
+                })
+        })?;
 
-    Ok((reserved_port, socket_addr))
+    let socket_addr = SocketAddr::new(ip, port);
+    Ok((maybe_reserved_port, socket_addr))
 }
 
 /// Generates a `SocketAddr` on the IP 127.0.0.1, using a random port.
@@ -33,7 +41,7 @@ pub fn new_random_socket_addr() -> Result<SocketAddr> {
 
 /// Returns a randomly selected port that is not in use.
 pub fn new_random_port() -> Result<u16> {
-    let port = pick_unused_port().ok_or_else(|| anyhow!("No free port was found"))?;
+    let port = find_unused_port().ok_or_else(|| anyhow!("No free port was found"))?;
 
     Ok(port)
 }
