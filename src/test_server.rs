@@ -12,10 +12,10 @@ use ::std::sync::Arc;
 use ::std::sync::Mutex;
 use ::tokio::task::JoinHandle;
 use ::url::Url;
+use ::reserve_port::ReservedPort;
 
 use crate::internals::ExpectedState;
 use crate::util::new_socket_addr_from_defaults;
-use crate::util::ReservedPort;
 use crate::IntoTestServerThread;
 use crate::TestRequest;
 use crate::TestRequestConfig;
@@ -76,7 +76,7 @@ pub struct TestServer {
     ///
     /// It's stored here until we `Drop` (as it's reserved).
     #[allow(dead_code)]
-    reserved_port: ReservedPort,
+    maybe_reserved_port: Option<ReservedPort>,
 }
 
 impl TestServer {
@@ -102,7 +102,7 @@ impl TestServer {
     where
         A: IntoTestServerThread,
     {
-        let (reserved_port, socket_address) = new_socket_addr_from_defaults(config.ip, config.port)
+        let (maybe_reserved_port, socket_address) = new_socket_addr_from_defaults(config.ip, config.port)
             .context("Cannot create socket address for use")?;
 
         let listener = TcpListener::bind(socket_address)
@@ -131,7 +131,7 @@ impl TestServer {
             expected_state,
             default_content_type: config.default_content_type,
             is_http_path_restricted: config.restrict_requests_with_http_schema,
-            reserved_port,
+            maybe_reserved_port,
         };
 
         Ok(this)
@@ -320,8 +320,7 @@ mod test_get {
 
     use ::axum::routing::get;
     use ::axum::Router;
-    
-    use crate::util::ReservedSocketAddr;
+    use ::reserve_port::ReservedSocketAddr;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -425,7 +424,7 @@ mod test_server_address {
 
     #[tokio::test]
     async fn it_should_return_address_used_from_config() {
-        let reserved_port = ReservedPort::reserve_random_port().unwrap();
+        let reserved_port = ReservedPort::random().unwrap();
         let ip = local_ip().unwrap();
         let port = reserved_port.port();
 
