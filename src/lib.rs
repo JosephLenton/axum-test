@@ -580,3 +580,38 @@ mod test_cookies {
         assert_eq!(response_text, "my-custom-cookie");
     }
 }
+
+#[cfg(test)]
+mod blog_post {
+    use ::axum::routing::get;
+    use ::axum::routing::IntoMakeService;
+    use ::axum::Router;
+
+    fn new_app() -> IntoMakeService<Router> {
+        async fn route_get_ping() -> &'static str {
+            "pong!"
+        }
+
+        Router::new()
+            .route("/ping", get(route_get_ping))
+            .into_make_service()
+    }
+
+    use crate::TestServer;
+
+    #[tokio::test]
+    async fn it_should_return_pong() {
+        // 1. Build an instance of your application
+        let app = new_app();
+
+        // 2. Build a TestServer to run your application
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // 3. Make queries against it
+        let response = server.get(&"/ping").await;
+
+        // 4. Assert what is returned
+        response.assert_status_ok();
+        response.assert_text(&"pong!");
+    }
+}

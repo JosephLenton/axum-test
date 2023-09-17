@@ -238,6 +238,114 @@ impl TestServer {
             .unwrap()
     }
 
+<<<<<<< Updated upstream
+=======
+    /// Returns the local web address for the test server.
+    ///
+    /// By default this will be something like `http://0.0.0.0:1234/`,
+    /// where `1234` is a randomly assigned port numbr.
+    pub fn server_address<'a>(&'a self) -> &'a str {
+        &self.server_url.as_str()
+    }
+
+    /// Adds a cookie to be included on *all* future requests.
+    ///
+    /// If a cookie with the same name already exists,
+    /// then it will be replaced.
+    pub fn add_cookie(&mut self, cookie: Cookie) {
+        ServerSharedState::add_cookie(&mut self.state, cookie)
+            .with_context(|| format!("Trying to call add_cookie"))
+            .unwrap()
+    }
+
+    /// Adds extra cookies to be used on *all* future requests.
+    ///
+    /// Any cookies which have the same name as the new cookies,
+    /// will get replaced.
+    pub fn add_cookies(&mut self, cookies: CookieJar) {
+        ServerSharedState::add_cookies(&mut self.state, cookies)
+            .with_context(|| format!("Trying to call add_cookies"))
+            .unwrap()
+    }
+
+    /// Clears all of the cookies stored internally.
+    pub fn clear_cookies(&mut self) {
+        ServerSharedState::clear_cookies(&mut self.state)
+            .with_context(|| format!("Trying to call clear_cookies"))
+            .unwrap()
+    }
+
+    /// Requests made using this `TestServer` will save their cookies for future requests to send.
+    ///
+    /// This behaviour is off by default.
+    pub fn do_save_cookies(&mut self) {
+        self.save_cookies = true;
+    }
+
+    /// Requests made using this `TestServer` will _not_ save their cookies for future requests to send up.
+    ///
+    /// This is the default behaviour.
+    pub fn do_not_save_cookies(&mut self) {
+        self.save_cookies = false;
+    }
+
+    /// Requests made using this `TestServer` will assert a HTTP status in the 2xx range will be returned, unless marked otherwise.
+    ///
+    /// By default this behaviour is off.
+    pub fn expect_success(&mut self) {
+        self.expected_state = ExpectedState::Success;
+    }
+
+    /// Requests made using this `TestServer` will assert a HTTP status is outside the 2xx range will be returned, unless marked otherwise.
+    ///
+    /// By default this behaviour is off.
+    pub fn expect_failure(&mut self) {
+        self.expected_state = ExpectedState::Failure;
+    }
+
+    /// Adds query parameters to be sent on *all* future requests.
+    pub fn add_query_param<V>(&mut self, key: &str, value: V)
+    where
+        V: Serialize,
+    {
+        ServerSharedState::add_query_param(&mut self.state, key, value)
+            .with_context(|| format!("Trying to call add_query_param"))
+            .unwrap()
+    }
+
+    /// Adds query parameters to be sent with this request.
+    pub fn add_query_params<V>(&mut self, query_params: V)
+    where
+        V: Serialize,
+    {
+        ServerSharedState::add_query_params(&mut self.state, query_params)
+            .with_context(|| format!("Trying to call add_query_params"))
+            .unwrap()
+    }
+
+    /// Clears all query params set.
+    pub fn clear_query_params(&mut self) {
+        ServerSharedState::clear_query_params(&mut self.state)
+            .with_context(|| format!("Trying to call clear_query_params"))
+            .unwrap()
+    }
+
+    /// Adds a header to be sent with all future requests built from this `TestServer`.
+    pub fn add_header<'c>(&mut self, name: HeaderName, value: HeaderValue) {
+        ServerSharedState::add_header(&mut self.state, name, value)
+            .with_context(|| format!("Trying to call add_header"))
+            .unwrap()
+    }
+
+    /// Clears all headers set so far.
+    pub fn clear_headers(&mut self) {
+        println!("> clear headers");
+        ServerSharedState::clear_headers(&mut self.state)
+            .with_context(|| format!("Trying to call clear_headers"))
+            .unwrap()
+    }
+
+>>>>>>> Stashed changes
     pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
         let full_request_path =
             build_request_path(&self.server_address, path, self.is_requests_http_restricted);

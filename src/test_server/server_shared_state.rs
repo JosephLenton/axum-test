@@ -104,4 +104,23 @@ impl ServerSharedState {
     pub(crate) fn clear_query_params(this: &mut Arc<Mutex<Self>>) -> Result<()> {
         with_this_mut(this, "clear_query_params", |this| this.query_params.clear())
     }
+<<<<<<< Updated upstream
+=======
+
+    pub(crate) fn clear_headers(this: &mut Arc<Mutex<Self>>) -> Result<()> {
+        println!("> inner header clear_headers");
+        with_this_mut(this, "clear_headers", |this| {
+            println!("> inner header ... inside ... clear_headers");
+            this.headers.clear()
+        })
+    }
+
+    pub(crate) fn add_header<'c>(
+        this: &mut Arc<Mutex<Self>>,
+        name: HeaderName,
+        value: HeaderValue,
+    ) -> Result<()> {
+        with_this_mut(this, "add_header", |this| this.headers.push((name, value)))
+    }
+>>>>>>> Stashed changes
 }

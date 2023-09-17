@@ -17,7 +17,6 @@ use ::axum::extract::State;
 use ::axum::routing::get;
 use ::axum::routing::post;
 use ::axum::routing::put;
-use ::axum::routing::IntoMakeService;
 use ::axum::Router;
 use ::axum::Server;
 use ::axum_extra::extract::cookie::Cookie;
@@ -45,7 +44,7 @@ const USER_ID_COOKIE_NAME: &'static str = &"example-todo-user-id";
 #[tokio::main]
 async fn main() {
     let result: Result<()> = {
-        let app = new_app();
+        let app = new_router().into_make_service();
 
         // Start!
         let ip_address = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
@@ -151,24 +150,22 @@ pub async fn route_get_user_todos(
         .map_err(|_| StatusCode::UNAUTHORIZED)
 }
 
-pub(crate) fn new_app() -> IntoMakeService<Router> {
+pub(crate) fn new_router() -> Router {
     let state = AppState {
         user_todos: HashMap::new(),
     };
     let shared_state = Arc::new(RwLock::new(state));
 
-    let router: Router = Router::new()
+    Router::new()
         .route(&"/login", post(route_post_user_login))
         .route(&"/todo", get(route_get_user_todos))
         .route(&"/todo", put(route_put_user_todos))
-        .with_state(shared_state);
-
-    router.into_make_service()
+        .with_state(shared_state)
 }
 
 #[cfg(test)]
 fn new_test_app() -> TestServer {
-    let app = new_app();
+    let app = new_router().into_make_service();
 
     TestServer::new_with_config(
         app,
@@ -227,6 +224,7 @@ mod test_route_put_user_todos {
     use super::*;
 
     use ::serde_json::json;
+    use std::borrow::BorrowMut;
 
     #[tokio::test]
     async fn it_should_not_store_todos_without_login() {
@@ -244,6 +242,23 @@ mod test_route_put_user_todos {
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
     }
 
+    #[cfg(test)]
+    fn new_test_app() -> TestServer {
+        let app = new_router().into_make_service();
+
+        TestServer::new_with_config(
+            app,
+            TestServerConfig {
+                // Preserve cookies across requests
+                // for the session cookie to work.
+                save_cookies: true,
+                expect_success_by_default: true,
+                ..TestServerConfig::default()
+            },
+        )
+        .unwrap()
+    }
+
     #[tokio::test]
     async fn it_should_return_number_of_todos_as_more_are_pushed() {
         let server = new_test_app();
@@ -255,24 +270,106 @@ mod test_route_put_user_todos {
             }))
             .await;
 
-        let num_todos = server
+        server
             .put(&"/todo")
             .json(&json!({
                 "name": "shopping",
                 "content": "buy eggs",
             }))
             .await
-            .json::<u32>();
-        assert_eq!(num_todos, 1);
+            .assert_json(&json!(1));
 
-        let num_todos = server
+        server
             .put(&"/todo")
             .json(&json!({
                 "name": "afternoon",
                 "content": "buy shoes",
             }))
             .await
-            .json::<u32>();
+            .assert_json(&json!(2));
+    }
+
+    use super::*;
+    use axum::body::Body;
+    use axum::extract::connect_info::MockConnectInfo;
+    use axum::http::{self, Request, StatusCode};
+    use tower::ServiceExt; // for `oneshot` and `ready`
+
+    #[tokio::test]
+    async fn it_should_return_number_of_todos_as_more_are_pushed_using_oneshot() {
+        let mut app = new_router();
+
+        let login_response = app
+            .borrow_mut()
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/login")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "user": "my-login@example.com",
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let cookie_login = login_response
+            .headers()
+            .get(http::header::SET_COOKIE)
+            .unwrap();
+
+        let response_1 = app
+            .borrow_mut()
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::PUT)
+                    .uri("/todo")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, cookie_login.clone())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "name": "shopping",
+                            "content": "buy eggs",
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response_1.status(), StatusCode::OK);
+        let body = hyper::body::to_bytes(response_1.into_body()).await.unwrap();
+        let num_todos: u32 = serde_json::from_slice(&body).unwrap();
+        assert_eq!(num_todos, 1);
+
+        let response_2 = app
+            .borrow_mut()
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::PUT)
+                    .uri("/todo")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .header(http::header::COOKIE, cookie_login.clone())
+                    .body(Body::from(
+                        serde_json::to_vec(&json!({
+                            "name": "afternoon",
+                            "content": "buy shoes",
+                        }))
+                        .unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response_2.status(), StatusCode::OK);
+        let body = hyper::body::to_bytes(response_2.into_body()).await.unwrap();
+        let num_todos: u32 = serde_json::from_slice(&body).unwrap();
         assert_eq!(num_todos, 2);
     }
 }
