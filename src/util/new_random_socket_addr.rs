@@ -1,10 +1,10 @@
-use ::anyhow::anyhow;
 use ::anyhow::Result;
 use ::std::net::IpAddr;
 use ::std::net::Ipv4Addr;
 use ::std::net::SocketAddr;
 use ::reserve_port::ReservedPort;
-use ::reserve_port::find_unused_port;
+
+use crate::util::new_random_port;
 
 pub(crate) const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
@@ -37,13 +37,6 @@ pub fn new_random_socket_addr() -> Result<SocketAddr> {
     let addr = SocketAddr::new(ip_address, port);
 
     Ok(addr)
-}
-
-/// Returns a randomly selected port that is not in use.
-pub fn new_random_port() -> Result<u16> {
-    let port = find_unused_port().ok_or_else(|| anyhow!("No free port was found"))?;
-
-    Ok(port)
 }
 
 #[cfg(test)]
