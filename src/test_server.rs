@@ -6,16 +6,15 @@ use ::cookie::CookieJar;
 use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Method;
+use ::reserve_port::ReservedPort;
 use ::serde::Serialize;
-use ::std::net::TcpListener;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 use ::tokio::task::JoinHandle;
 use ::url::Url;
-use ::reserve_port::ReservedPort;
 
 use crate::internals::ExpectedState;
-use crate::util::new_socket_addr_from_defaults;
+use crate::internals::StartingTcpSetup;
 use crate::IntoTestServerThread;
 use crate::TestRequest;
 use crate::TestRequestConfig;
@@ -102,12 +101,10 @@ impl TestServer {
     where
         A: IntoTestServerThread,
     {
-        let (maybe_reserved_port, socket_address) = new_socket_addr_from_defaults(config.ip, config.port)
+        let setup = StartingTcpSetup::new(config.ip, config.port)
             .context("Cannot create socket address for use")?;
 
-        let listener = TcpListener::bind(socket_address)
-            .with_context(|| "Failed to create TCPListener for TestServer")?;
-        let server_builder = AxumServer::from_tcp(listener)
+        let server_builder = AxumServer::from_tcp(setup.tcp_listener)
             .with_context(|| "Failed to create ::axum::Server for TestServer")?;
 
         let server_thread = app.into_server_thread(server_builder);
@@ -115,6 +112,7 @@ impl TestServer {
         let shared_state = ServerSharedState::new();
         let shared_state_mutex = Mutex::new(shared_state);
         let state = Arc::new(shared_state_mutex);
+        let socket_address = setup.socket_addr;
         let server_address = format!("http://{socket_address}");
         let server_url: Url = server_address.parse()?;
 
@@ -131,7 +129,7 @@ impl TestServer {
             expected_state,
             default_content_type: config.default_content_type,
             is_http_path_restricted: config.restrict_requests_with_http_schema,
-            maybe_reserved_port,
+            maybe_reserved_port: setup.maybe_reserved_port,
         };
 
         Ok(this)

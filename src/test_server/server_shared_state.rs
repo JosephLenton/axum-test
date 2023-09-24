@@ -9,7 +9,7 @@ use ::std::sync::Arc;
 use ::std::sync::Mutex;
 
 use crate::internals::QueryParamsStore;
-use crate::util::with_this_mut;
+use crate::internals::with_this_mut;
 
 #[derive(Debug)]
 pub(crate) struct ServerSharedState {
