@@ -1,4 +1,5 @@
 use ::anyhow::Context;
+use ::axum::http::{Response, self};
 use ::bytes::Bytes;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
@@ -9,6 +10,7 @@ use ::http::response::Parts;
 use ::http::HeaderMap;
 use ::http::HeaderValue;
 use ::http::StatusCode;
+use ::http_body::combinators::UnsyncBoxBody;
 use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
@@ -107,7 +109,7 @@ use url::Url;
 ///
 /// let response = server.get(&"/todo").await;
 ///
-/// // These assertions will panic if they are not fullfilled by the response.
+/// // These assertions will panic if they are not fulfilled by the response.
 /// response.assert_status_ok();
 /// response.assert_text("hello!");
 /// #
@@ -558,6 +560,117 @@ impl TestResponse {
 impl From<TestResponse> for Bytes {
     fn from(response: TestResponse) -> Self {
         response.into_bytes()
+    }
+}
+
+///
+/// The `TestClientResponse` is the result of a request created using a [`TestClient`](crate::TestClient).
+/// The `TestClient` builds a [`TestClient`](crate::TestClient), which when awaited, will produce
+/// this type.
+///
+#[derive(Clone, Debug)]
+pub struct TestClientResponse {
+	body: Bytes,
+    user_requested_path: String,
+	status: StatusCode,
+}
+
+impl TestClientResponse {
+	pub async fn new(response: Response<UnsyncBoxBody<axum::body::Bytes, axum::Error>>, user_requested_path: String) -> Self {
+		if response.status() == StatusCode::NOT_FOUND {
+			panic!("Route not found.");
+		}
+
+		Self {
+			status: response.status(),
+            user_requested_path,
+			body: hyper::body::to_bytes(response.into_body()).await.expect("Failed to parse body into Bytes."),
+		}
+	}
+
+    /// Deserializes the response, as JSON, into the type given.
+    ///
+    /// If deserialization fails then this will panic.
+    ///
+    /// # Example
+    #[must_use]
+    pub fn json<T>(&self) -> T
+    where
+        T: DeserializeOwned,
+    {
+        serde_json::from_slice::<T>(&self.as_bytes())
+            .with_context(|| {
+                format!(
+                    "Deserializing response from JSON for request {}",
+                    self.user_requested_path
+                )
+            })
+            .unwrap()
+    }
+
+    /// Returns the underlying response, extracted as a UTF-8 string.
+    ///
+    /// # Example
+    #[must_use]
+	pub fn text(self) -> String {
+        String::from_utf8_lossy(&self.body.to_vec()).to_string()
+	}
+
+    /// Returns the raw underlying response as `Bytes`.
+    #[must_use]
+    pub fn as_bytes<'a>(&'a self) -> &'a Bytes {
+        &self.body
+    }
+
+    /// Consumes this returning the underlying `Bytes`
+    /// in the response.
+    #[must_use]
+    pub fn into_bytes<'a>(self) -> Bytes {
+        self.body
+    }
+
+    /// Assert the response status code matches the one given.
+    #[track_caller]
+	pub fn assert_status(&self, status: http::StatusCode) {
+		assert_eq!(self.status, status);
+	}
+
+    /// Assert the response status code is 400.
+    #[track_caller]
+	pub fn assert_status_bad_request(&self) {
+		self.assert_status(StatusCode::BAD_REQUEST);
+	}
+
+	/// Assert the response status code is 404.
+    #[track_caller]
+	pub fn assert_status_not_found(&self) {
+		self.assert_status(StatusCode::NOT_FOUND);
+	}
+
+	/// Assert the response status code is 401.
+    #[track_caller]
+	pub fn assert_status_unauthorized(&self) {
+		self.assert_status(StatusCode::UNAUTHORIZED);
+	}
+
+	/// Assert the response status code is 200.
+    #[track_caller]
+	pub fn assert_status_ok(&self) {
+		self.assert_status(StatusCode::OK);
+	}
+
+    /// Deserializes the contents of the request as JSON,
+    /// and asserts it matches the value given.
+    ///
+    /// If `other` does not match, or the response is not JSON,
+    /// then this will panic.
+    #[track_caller]
+	pub fn assert_json<T>(&self, other: &T)
+    where
+        T: DeserializeOwned + PartialEq<T> + Debug,
+    {
+        let own_json: T = self.json();
+        assert_eq!(own_json, *other);
     }
 }
 

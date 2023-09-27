@@ -6,7 +6,7 @@
 //!  * receive back a [`TestResponse`],
 //!  * then assert the response is how you expect.
 //!
-//! It includes built in suppot for serializing and deserializing request and response bodies using Serde,
+//! It includes built in support for serializing and deserializing request and response bodies using Serde,
 //! support for cookies and headers, and other common bits you would expect.
 //!
 //! ## Getting Started
@@ -195,6 +195,9 @@ pub use self::test_server::*;
 
 mod test_server_config;
 pub use self::test_server_config::*;
+
+mod test_client;
+pub use self::test_client::*;
 
 mod test_request;
 pub use self::test_request::*;

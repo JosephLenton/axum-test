@@ -46,7 +46,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 ///
 /// See that for documentation.
 ///
-/// ## Customising
+/// ## Customizing
 ///
 /// The `TestRequest` allows the caller to fill in the rest of the request
 /// to be sent to the server. Including the headers, the body, cookies,
@@ -57,7 +57,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 ///
 /// ## Sending
 ///
-/// Once fully configured you send the rquest by awaiting the request object.
+/// Once fully configured you send the request by awaiting the request object.
 ///
 /// ```rust,ignore
 /// let request = server.get(&"/user");
@@ -1216,7 +1216,7 @@ mod test_clear_headers {
     }
 
     #[tokio::test]
-    async fn it_should_claer_headers_added_to_request() {
+    async fn it_should_clear_headers_added_to_request() {
         // Build an application with a route.
         let app = Router::new()
             .route("/header", get(ping_header))
@@ -1241,7 +1241,7 @@ mod test_clear_headers {
     }
 
     #[tokio::test]
-    async fn it_should_claer_headers_added_to_server() {
+    async fn it_should_clear_headers_added_to_server() {
         // Build an application with a route.
         let app = Router::new()
             .route("/header", get(ping_header))
