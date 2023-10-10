@@ -24,7 +24,7 @@ and then assert the responses returned:
   use ::axum::Router;
   use ::axum::routing::get;
 
-  use ::axum_test_server::TestServer;
+  use ::axum_test::TestServer;
 
   async fn get_ping() -> &'static str {
       "pong!"
