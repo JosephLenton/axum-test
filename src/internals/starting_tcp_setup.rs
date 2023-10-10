@@ -1,9 +1,9 @@
 use ::anyhow::Context;
 use ::anyhow::Result;
+use ::reserve_port::ReservedPort;
 use ::std::net::IpAddr;
 use ::std::net::Ipv4Addr;
 use ::std::net::SocketAddr;
-use ::reserve_port::ReservedPort;
 use ::std::net::TcpListener;
 
 pub const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
@@ -15,10 +15,7 @@ pub struct StartingTcpSetup {
 }
 
 impl StartingTcpSetup {
-    pub fn new(
-        maybe_ip: Option<IpAddr>,
-        maybe_port: Option<u16>,
-    ) -> Result<Self> {
+    pub fn new(maybe_ip: Option<IpAddr>, maybe_port: Option<u16>) -> Result<Self> {
         let ip = maybe_ip.unwrap_or(DEFAULT_IP_ADDRESS);
 
         maybe_port
@@ -26,10 +23,7 @@ impl StartingTcpSetup {
             .unwrap_or_else(|| Self::new_without_port(ip))
     }
 
-    fn new_with_port(
-        ip: IpAddr,
-        port: u16,
-    ) -> Result<Self> {
+    fn new_with_port(ip: IpAddr, port: u16) -> Result<Self> {
         ReservedPort::reserve_port(port)?;
         let socket_addr = SocketAddr::new(ip, port);
         let tcp_listener = TcpListener::bind(socket_addr)
@@ -42,9 +36,7 @@ impl StartingTcpSetup {
         })
     }
 
-    fn new_without_port(
-        ip: IpAddr,
-    ) -> Result<Self> {
+    fn new_without_port(ip: IpAddr) -> Result<Self> {
         let (reserved_port, tcp_listener) = ReservedPort::random_with_tcp(ip)?;
         let socket_addr = SocketAddr::new(ip, reserved_port.port());
 

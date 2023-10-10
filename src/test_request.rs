@@ -1,7 +1,7 @@
 use ::anyhow::anyhow;
 use ::anyhow::Context;
-use ::anyhow::Result;
 use ::anyhow::Error as AnyhowError;
+use ::anyhow::Result;
 use ::auto_future::AutoFuture;
 use ::bytes::Bytes;
 use ::cookie::Cookie;
@@ -433,10 +433,7 @@ impl TestRequest {
         Ok(response)
     }
 
-    fn build_url_query_params(
-        mut url: Url,
-        query_params: &QueryParamsStore,
-    ) -> Url {
+    fn build_url_query_params(mut url: Url, query_params: &QueryParamsStore) -> Url {
         // Add all the query params we have
         if query_params.has_content() {
             url.set_query(Some(&query_params.to_string()));
@@ -489,7 +486,10 @@ impl TryFrom<TestRequest> for Request<Body> {
     type Error = AnyhowError;
 
     fn try_from(test_request: TestRequest) -> Result<Request<Body>> {
-        let url = TestRequest::build_url_query_params(test_request.config.full_request_url, &test_request.query_params);
+        let url = TestRequest::build_url_query_params(
+            test_request.config.full_request_url,
+            &test_request.query_params,
+        );
         let body = test_request.body.unwrap_or(Body::empty());
 
         TestRequest::build_request(
