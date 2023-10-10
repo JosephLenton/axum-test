@@ -1,7 +1,7 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "12.5.0"
+version = "12.5.1"
 edition = "2021"
 license = "MIT"
 description = "For spinning up and testing Axum servers"
