@@ -364,9 +364,9 @@ mod test_get {
             port: Some(port),
             ..TestServerConfig::default()
         };
-        let server =
-            TestServer::new_with_config(app, test_config)
-                .with_context(|| format!("Should create test server with address {}:{}", ip, port)).unwrap();
+        let server = TestServer::new_with_config(app, test_config)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
 
         // Get the request.
         let absolute_url = format!("http://{ip}:{port}/ping");
@@ -396,9 +396,9 @@ mod test_get {
             restrict_requests_with_http_schema: true, // Key part of the test!
             ..TestServerConfig::default()
         };
-        let server =
-            TestServer::new_with_config(app, test_config)
-                .with_context(|| format!("Should create test server with address {}:{}", ip, port)).unwrap();
+        let server = TestServer::new_with_config(app, test_config)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
 
         // Get the request.
         let absolute_url = format!("http://{ip}:{port}/ping");
@@ -435,7 +435,8 @@ mod test_server_address {
         // Build an application with a route.
         let app = Router::new().into_make_service();
         let server = TestServer::new_with_config(app, config)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port)).unwrap();
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
 
         let expected_ip_port = format!("http://{}:{}/", ip, reserved_port.port());
         assert_eq!(server.server_address(), expected_ip_port);

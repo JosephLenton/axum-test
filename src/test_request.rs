@@ -1,5 +1,6 @@
 use ::anyhow::anyhow;
 use ::anyhow::Context;
+use ::anyhow::Error as AnyhowError;
 use ::anyhow::Result;
 use ::auto_future::AutoFuture;
 use ::bytes::Bytes;
@@ -9,6 +10,7 @@ use ::http::header;
 use ::http::header::SET_COOKIE;
 use ::http::HeaderName;
 use ::http::HeaderValue;
+use ::http::Method;
 use ::http::Request;
 use ::hyper::body::to_bytes;
 use ::hyper::body::Body;
@@ -22,6 +24,7 @@ use ::std::fmt::Display;
 use ::std::future::IntoFuture;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
+use ::url::Url;
 
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
@@ -389,44 +392,21 @@ impl TestRequest {
     }
 
     async fn send(mut self) -> Result<TestResponse> {
-        let mut url = self.config.full_request_url;
-        let method = self.config.method;
-        let path = self.config.path;
+        let expected_state = self.expected_state;
         let save_cookies = self.config.is_saving_cookies;
+        let path = self.config.path;
         let body = self.body.unwrap_or(Body::empty());
 
-        // Add all the query params we have
-        if self.query_params.has_content() {
-            url.set_query(Some(&self.query_params.to_string()));
-        }
-
-        let mut request_builder = Request::builder().uri(url.as_str()).method(method);
-
-        // Add all the headers we have.
-        let mut headers = self.headers;
-        if let Some(content_type) = self.config.content_type {
-            let header = build_content_type_header(content_type)?;
-            headers.push(header);
-        }
-
-        // Add all the cookies as headers
-        for cookie in self.cookies.iter() {
-            let cookie_raw = cookie.to_string();
-            let header_value = HeaderValue::from_str(&cookie_raw)?;
-            headers.push((header::COOKIE, header_value));
-        }
-
-        // Put headers into the request
-        for (header_name, header_value) in headers {
-            request_builder = request_builder.header(header_name, header_value);
-        }
-
-        let request = request_builder.body(body).with_context(|| {
-            format!(
-                "Expect valid hyper Request to be built on request to {}",
-                path
-            )
-        })?;
+        let url = Self::build_url_query_params(self.config.full_request_url, &self.query_params);
+        let request = Self::build_request(
+            self.config.method,
+            &url,
+            path.clone(),
+            body,
+            self.config.content_type,
+            self.cookies,
+            self.headers,
+        )?;
 
         let hyper_response = Client::new()
             .request(request)
@@ -444,13 +424,83 @@ impl TestRequest {
         let response = TestResponse::new(path, url, parts, response_bytes);
 
         // Assert if ok or not.
-        match self.expected_state {
+        match expected_state {
             ExpectedState::Success => response.assert_status_success(),
             ExpectedState::Failure => response.assert_status_failure(),
             ExpectedState::None => {}
         }
 
         Ok(response)
+    }
+
+    fn build_url_query_params(mut url: Url, query_params: &QueryParamsStore) -> Url {
+        // Add all the query params we have
+        if query_params.has_content() {
+            url.set_query(Some(&query_params.to_string()));
+        }
+
+        url
+    }
+
+    fn build_request(
+        method: Method,
+        url: &Url,
+        path: String,
+        body: Body,
+        content_type: Option<String>,
+        cookies: CookieJar,
+        headers: Vec<(HeaderName, HeaderValue)>,
+    ) -> Result<Request<Body>> {
+        let mut request_builder = Request::builder().uri(url.as_str()).method(method);
+
+        // Add all the headers we have.
+        if let Some(content_type) = content_type {
+            let (header_key, header_value) = build_content_type_header(content_type)?;
+            request_builder = request_builder.header(header_key, header_value);
+        }
+
+        // Add all the cookies as headers
+        for cookie in cookies.iter() {
+            let cookie_raw = cookie.to_string();
+            let header_value = HeaderValue::from_str(&cookie_raw)?;
+            request_builder = request_builder.header(header::COOKIE, header_value);
+        }
+
+        // Put headers into the request
+        for (header_name, header_value) in headers {
+            request_builder = request_builder.header(header_name, header_value);
+        }
+
+        let request = request_builder.body(body).with_context(|| {
+            format!(
+                "Expect valid hyper Request to be built on request to {}",
+                path
+            )
+        })?;
+
+        Ok(request)
+    }
+}
+
+impl TryFrom<TestRequest> for Request<Body> {
+    type Error = AnyhowError;
+
+    fn try_from(test_request: TestRequest) -> Result<Request<Body>> {
+        let url = TestRequest::build_url_query_params(
+            test_request.config.full_request_url,
+            &test_request.query_params,
+        );
+        let body = test_request.body.unwrap_or(Body::empty());
+
+        TestRequest::build_request(
+            test_request.config.method,
+            &url,
+            test_request.config.path,
+            body,
+            test_request.config.content_type,
+            test_request.cookies,
+            test_request.headers,
+        )
     }
 }
 
