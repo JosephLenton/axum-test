@@ -196,6 +196,9 @@ pub use self::test_server::*;
 mod test_server_config;
 pub use self::test_server_config::*;
 
+mod test_server_transport;
+pub use self::test_server_transport::*;
+
 mod test_request;
 pub use self::test_request::*;
 

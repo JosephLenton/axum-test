@@ -1,4 +1,4 @@
-use ::std::net::IpAddr;
+use crate::TestServerTransport;
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
 ///
@@ -38,15 +38,7 @@ use ::std::net::IpAddr;
 /// ```
 #[derive(Debug, Clone)]
 pub struct TestServerConfig {
-    /// Set the IP to use for the server.
-    ///
-    /// **Defaults** to `127.0.0.1`.
-    pub ip: Option<IpAddr>,
-
-    /// Set the port number to use for the server.
-    ///
-    /// **Defaults** to a _random_ port.
-    pub port: Option<u16>,
+    pub transport: TestServerTransport,
 
     /// Set for the server to save cookies that are returned,
     /// for use in future requests.
@@ -91,8 +83,7 @@ pub struct TestServerConfig {
 impl Default for TestServerConfig {
     fn default() -> Self {
         Self {
-            ip: None,
-            port: None,
+            transport: TestServerTransport::default(),
             save_cookies: false,
             expect_success_by_default: false,
             restrict_requests_with_http_schema: false,

@@ -1,24 +1,24 @@
 use ::anyhow::Context;
 use ::anyhow::Result;
-use ::axum::Server as AxumServer;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Method;
-use ::reserve_port::ReservedPort;
 use ::serde::Serialize;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
-use ::tokio::task::JoinHandle;
 use ::url::Url;
 
 use crate::internals::ExpectedState;
-use crate::internals::StartingTcpSetup;
 use crate::IntoTestServerThread;
 use crate::TestRequest;
 use crate::TestRequestConfig;
 use crate::TestServerConfig;
+use crate::TestServerTransport;
+
+mod inner_web_server;
+pub(crate) use self::inner_web_server::*;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
@@ -63,19 +63,11 @@ pub(crate) use self::server_shared_state::*;
 #[derive(Debug)]
 pub struct TestServer {
     state: Arc<Mutex<ServerSharedState>>,
-    server_thread: JoinHandle<()>,
-    server_url: Url,
     save_cookies: bool,
     expected_state: ExpectedState,
     default_content_type: Option<String>,
     is_http_path_restricted: bool,
-
-    /// If this has reserved a port for the test,
-    /// then it is stored here.
-    ///
-    /// It's stored here until we `Drop` (as it's reserved).
-    #[allow(dead_code)]
-    maybe_reserved_port: Option<ReservedPort>,
+    inner: InnerWebServer,
 }
 
 impl TestServer {
@@ -101,20 +93,16 @@ impl TestServer {
     where
         A: IntoTestServerThread,
     {
-        let setup = StartingTcpSetup::new(config.ip, config.port)
-            .context("Cannot create socket address for use")?;
-
-        let server_builder = AxumServer::from_tcp(setup.tcp_listener)
-            .with_context(|| "Failed to create ::axum::Server for TestServer")?;
-
-        let server_thread = app.into_server_thread(server_builder);
-
         let shared_state = ServerSharedState::new();
         let shared_state_mutex = Mutex::new(shared_state);
         let state = Arc::new(shared_state_mutex);
-        let socket_address = setup.socket_addr;
-        let server_address = format!("http://{socket_address}");
-        let server_url: Url = server_address.parse()?;
+
+        let inner = match config.transport {
+            TestServerTransport::RandomPort => InnerWebServer::random(app)?,
+            TestServerTransport::IpPort { ip, port } => {
+                InnerWebServer::from_ip_port(app, ip, port)?
+            }
+        };
 
         let expected_state = match config.expect_success_by_default {
             true => ExpectedState::Success,
@@ -123,13 +111,11 @@ impl TestServer {
 
         let this = Self {
             state,
-            server_thread,
-            server_url,
+            inner,
             save_cookies: config.save_cookies,
             expected_state,
             default_content_type: config.default_content_type,
             is_http_path_restricted: config.restrict_requests_with_http_schema,
-            maybe_reserved_port: setup.maybe_reserved_port,
         };
 
         Ok(this)
@@ -181,7 +167,7 @@ impl TestServer {
     /// By default this will be something like `http://0.0.0.0:1234/`,
     /// where `1234` is a randomly assigned port numbr.
     pub fn server_address<'a>(&'a self) -> &'a str {
-        &self.server_url.as_str()
+        &self.inner.server_address()
     }
 
     /// Adds a cookie to be included on *all* future requests.
@@ -285,31 +271,23 @@ impl TestServer {
             is_saving_cookies: self.save_cookies,
             expected_state: self.expected_state,
             content_type: self.default_content_type.clone(),
-            full_request_url: build_url(&self.server_url, path, self.is_http_path_restricted),
+            full_request_url: build_url(self.inner.url(), path, self.is_http_path_restricted),
             method,
             path: path.to_string(),
         }
     }
 }
 
-fn build_url(server_url: &Url, path: &str, is_http_restricted: bool) -> Url {
+fn build_url(mut url: Url, path: &str, is_http_restricted: bool) -> Url {
     if is_http_restricted {
-        let mut url = server_url.clone();
         url.set_path(path);
         return url;
     }
 
     path.parse().unwrap_or_else(|_| {
-        let mut url = server_url.clone();
         url.set_path(path);
         url
     })
-}
-
-impl Drop for TestServer {
-    fn drop(&mut self) {
-        self.server_thread.abort();
-    }
 }
 
 #[cfg(test)]
@@ -360,8 +338,10 @@ mod test_get {
 
         // Run the server.
         let test_config = TestServerConfig {
-            ip: Some(ip),
-            port: Some(port),
+            transport: TestServerTransport::IpPort {
+                ip: Some(ip),
+                port: Some(port),
+            },
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, test_config)
@@ -391,8 +371,10 @@ mod test_get {
 
         // Run the server.
         let test_config = TestServerConfig {
-            ip: Some(ip),
-            port: Some(port),
+            transport: TestServerTransport::IpPort {
+                ip: Some(ip),
+                port: Some(port),
+            },
             restrict_requests_with_http_schema: true, // Key part of the test!
             ..TestServerConfig::default()
         };
@@ -416,9 +398,11 @@ mod test_get {
 #[cfg(test)]
 mod test_server_address {
     use super::*;
+
     use ::axum::Router;
     use ::local_ip_address::local_ip;
     use ::regex::Regex;
+    use ::reserve_port::ReservedPort;
 
     #[tokio::test]
     async fn it_should_return_address_used_from_config() {
@@ -427,8 +411,10 @@ mod test_server_address {
         let port = reserved_port.port();
 
         let config = TestServerConfig {
-            ip: Some(ip),
-            port: Some(port),
+            transport: TestServerTransport::IpPort {
+                ip: Some(ip),
+                port: Some(port),
+            },
             ..TestServerConfig::default()
         };
 
