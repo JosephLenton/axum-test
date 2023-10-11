@@ -14,6 +14,7 @@ pub enum TestServerTransport {
         /// **Defaults** to a _random_ port.
         port: Option<u16>,
     },
+    Mock,
 }
 
 impl Default for TestServerTransport {

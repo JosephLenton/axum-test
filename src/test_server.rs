@@ -101,7 +101,10 @@ impl TestServer {
             TestServerTransport::RandomPort => InnerWebServer::random(app)?,
             TestServerTransport::IpPort { ip, port } => {
                 InnerWebServer::from_ip_port(app, ip, port)?
-            }
+            },
+            TestServerTransport::Mock => {
+                unimplemented!("todo, add the oneshot implementation")
+            },
         };
 
         let expected_state = match config.expect_success_by_default {
