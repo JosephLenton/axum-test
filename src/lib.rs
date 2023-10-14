@@ -6,7 +6,7 @@
 //!  * receive back a [`TestResponse`],
 //!  * then assert the response is how you expect.
 //!
-//! It includes built in suppot for serializing and deserializing request and response bodies using Serde,
+//! It includes built in support for serializing and deserializing request and response bodies using Serde,
 //! support for cookies and headers, and other common bits you would expect.
 //!
 //! ## Getting Started
@@ -187,8 +187,7 @@
 
 pub(crate) mod internals;
 
-mod into_test_server_thread;
-pub use self::into_test_server_thread::*;
+pub mod transport;
 
 mod test_server;
 pub use self::test_server::*;

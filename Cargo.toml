@@ -12,6 +12,7 @@ documentation = "https://docs.rs/axum-test/latest/axum-test"
 readme = "README.md"
 
 [dependencies]
+async-trait = "0.1.73"
 auto-future = "1.0.0"
 axum = "0.6.19"
 anyhow = "1.0.72"
@@ -25,6 +26,8 @@ serde_json = "1.0.104"
 serde_urlencoded = "0.7.1"
 smallvec = "1.11.0"
 tokio = { version = "1.29.1", features = ["rt", "time"] }
+tower = { version = "0.4.13", features = ["util"] }
+tower-http = { version = "0.4.4", features = ["map-response-body"] }
 url = "2.4.0"
 
 [dev-dependencies]

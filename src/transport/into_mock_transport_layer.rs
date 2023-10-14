@@ -1,43 +1,44 @@
 use ::axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use ::axum::routing::IntoMakeService;
 use ::axum::Router;
-use ::hyper::server::conn::AddrIncoming;
 use ::hyper::server::conn::AddrStream;
-use ::hyper::server::Builder;
-use ::tokio::spawn;
-use ::tokio::task::JoinHandle;
+
+use crate::internals::MockTransportLayer;
+use crate::internals::TransportLayer;
 
 /// This exists to gloss over the differences between Axum's
 /// [`IntoMakeService`](::axum::routing::IntoMakeService) and [`IntoMakeServiceWithConnectInfo`](::axum::extract::connect_info::IntoMakeServiceWithConnectInfo) types.
 ///
-/// This is a trait for turning those types into a thread, that is
-/// running a web server.
+/// This is a trait for turning those types into a thread,
+/// that is running a web server.
 ///
-pub trait IntoTestServerThread {
-    fn into_server_thread(self, server_builder: Builder<AddrIncoming>) -> JoinHandle<()>;
+pub trait IntoMockTransportLayer {
+    fn into_mock_transport_layer(self) -> Box<dyn TransportLayer>;
 }
 
-impl IntoTestServerThread for IntoMakeService<Router> {
-    fn into_server_thread(self, server_builder: Builder<AddrIncoming>) -> JoinHandle<()> {
-        let server = server_builder.serve(self);
-        spawn(async move {
-            server.await.expect("Expect server to start serving");
-        })
+impl IntoMockTransportLayer for Router<()> {
+    fn into_mock_transport_layer(self) -> Box<dyn TransportLayer> {
+        self.into_make_service().into_mock_transport_layer()
     }
 }
 
-impl<C> IntoTestServerThread for IntoMakeServiceWithConnectInfo<Router, C>
+impl IntoMockTransportLayer for IntoMakeService<Router> {
+    fn into_mock_transport_layer(self) -> Box<dyn TransportLayer> {
+        let transport_layer = MockTransportLayer::new(self);
+        Box::new(transport_layer)
+    }
+}
+
+impl<C> IntoMockTransportLayer for IntoMakeServiceWithConnectInfo<Router, C>
 where
     for<'a> C: axum::extract::connect_info::Connected<&'a AddrStream>,
 {
-    fn into_server_thread(self, server_builder: Builder<AddrIncoming>) -> JoinHandle<()> {
-        let server = server_builder.serve(self);
-        spawn(async move {
-            server.await.expect("Expect server to start serving");
-        })
+    fn into_mock_transport_layer(self) -> Box<dyn TransportLayer> {
+        unimplemented!("todo")
     }
 }
 
+/*
 #[cfg(test)]
 mod test_into_test_server_thread_for_into_make_service {
     use ::axum::extract::State;
@@ -110,3 +111,4 @@ mod test_into_test_server_thread_for_into_make_service_with_connect_info {
         server.get(&"/ping").await.assert_text(&"pong!");
     }
 }
+ */

@@ -11,17 +11,24 @@ use ::std::sync::Mutex;
 use ::url::Url;
 
 use crate::internals::ExpectedState;
-use crate::IntoTestServerThread;
 use crate::TestRequest;
 use crate::TestRequestConfig;
 use crate::TestServerConfig;
 use crate::TestServerTransport;
+
+mod inner_mock_server;
+pub(crate) use self::inner_mock_server::*;
+
+mod inner_server;
+pub(crate) use self::inner_server::*;
 
 mod inner_web_server;
 pub(crate) use self::inner_web_server::*;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
+use crate::transport::IntoHttpTransportLayer;
+use crate::transport::IntoMockTransportLayer;
 
 ///
 /// The `TestServer` runs your application,
@@ -67,7 +74,7 @@ pub struct TestServer {
     expected_state: ExpectedState,
     default_content_type: Option<String>,
     is_http_path_restricted: bool,
-    inner: InnerWebServer,
+    inner: Box<dyn InnerServer>,
 }
 
 impl TestServer {
@@ -79,7 +86,7 @@ impl TestServer {
     ///
     pub fn new<A>(app: A) -> Result<Self>
     where
-        A: IntoTestServerThread,
+        A: IntoHttpTransportLayer + IntoMockTransportLayer,
     {
         Self::new_with_config(app, TestServerConfig::default())
     }
@@ -91,20 +98,18 @@ impl TestServer {
     /// See the [`TestServerConfig`] for more information on each configuration setting.
     pub fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
     where
-        A: IntoTestServerThread,
+        A: IntoHttpTransportLayer + IntoMockTransportLayer,
     {
         let shared_state = ServerSharedState::new();
         let shared_state_mutex = Mutex::new(shared_state);
         let state = Arc::new(shared_state_mutex);
 
-        let inner = match config.transport {
-            TestServerTransport::RandomPort => InnerWebServer::random(app)?,
-            TestServerTransport::IpPort { ip, port } => {
-                InnerWebServer::from_ip_port(app, ip, port)?
-            },
-            TestServerTransport::Mock => {
-                unimplemented!("todo, add the oneshot implementation")
-            },
+        let inner: Box<dyn InnerServer> = match config.transport {
+            TestServerTransport::HttpRandomPort => Box::new(InnerWebServer::random(app)?),
+            TestServerTransport::HttpIpPort { ip, port } => {
+                Box::new(InnerWebServer::from_ip_port(app, ip, port)?)
+            }
+            TestServerTransport::Mock => Box::new(InnerMockServer::new(app)),
         };
 
         let expected_state = match config.expect_success_by_default {
@@ -153,7 +158,7 @@ impl TestServer {
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
         let debug_method = method.clone();
         let config = self.test_request_config(method, path);
-        let maybe_request = TestRequest::new(self.state.clone(), config);
+        let maybe_request = TestRequest::new(self.state.clone(), self.inner.transport(), config);
 
         maybe_request
             .with_context(|| {
@@ -341,7 +346,7 @@ mod test_get {
 
         // Run the server.
         let test_config = TestServerConfig {
-            transport: TestServerTransport::IpPort {
+            transport: TestServerTransport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
             },
@@ -374,7 +379,7 @@ mod test_get {
 
         // Run the server.
         let test_config = TestServerConfig {
-            transport: TestServerTransport::IpPort {
+            transport: TestServerTransport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
             },
@@ -414,7 +419,7 @@ mod test_server_address {
         let port = reserved_port.port();
 
         let config = TestServerConfig {
-            transport: TestServerTransport::IpPort {
+            transport: TestServerTransport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
             },
@@ -434,7 +439,11 @@ mod test_server_address {
     #[tokio::test]
     async fn it_should_return_default_address_without_ending_slash() {
         let app = Router::new().into_make_service();
-        let server = TestServer::new(app).expect("Should create test server");
+        let config = TestServerConfig {
+            transport: TestServerTransport::HttpRandomPort,
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         let address_regex = Regex::new("^http://127\\.0\\.0\\.1:[0-9]+/$").unwrap();
         let is_match = address_regex.is_match(&server.server_address());

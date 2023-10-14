@@ -107,7 +107,7 @@ use url::Url;
 ///
 /// let response = server.get(&"/todo").await;
 ///
-/// // These assertions will panic if they are not fullfilled by the response.
+/// // These assertions will panic if they are not fulfilled by the response.
 /// response.assert_status_ok();
 /// response.assert_text("hello!");
 /// #

@@ -12,9 +12,7 @@ use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Method;
 use ::http::Request;
-use ::hyper::body::to_bytes;
 use ::hyper::body::Body;
-use ::hyper::Client;
 use ::serde::Serialize;
 use ::serde_json::to_vec as json_to_vec;
 use ::serde_urlencoded::to_string;
@@ -28,6 +26,7 @@ use ::url::Url;
 
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
+use crate::internals::TransportLayer;
 use crate::ServerSharedState;
 use crate::TestResponse;
 
@@ -60,7 +59,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 ///
 /// ## Sending
 ///
-/// Once fully configured you send the rquest by awaiting the request object.
+/// Once fully configured you send the request by awaiting the request object.
 ///
 /// ```rust,ignore
 /// let request = server.get(&"/user");
@@ -97,6 +96,7 @@ pub struct TestRequest {
     config: TestRequestConfig,
 
     server_state: Arc<Mutex<ServerSharedState>>,
+    transport: Arc<Mutex<Box<dyn TransportLayer>>>,
 
     body: Option<Body>,
     headers: Vec<(HeaderName, HeaderValue)>,
@@ -109,15 +109,15 @@ pub struct TestRequest {
 impl TestRequest {
     pub(crate) fn new(
         server_state: Arc<Mutex<ServerSharedState>>,
+        transport: Arc<Mutex<Box<dyn TransportLayer>>>,
         config: TestRequestConfig,
     ) -> Result<Self> {
         let expected_state = config.expected_state;
         let server_locked = server_state.as_ref().lock().map_err(|err| {
             anyhow!(
-                "Failed to lock InternalTestServer for {} {}, received {:?}",
+                "Failed to lock InternalTestServer for {} {}, received {err:?}",
                 config.method,
                 config.path,
-                err
             )
         })?;
 
@@ -130,6 +130,7 @@ impl TestRequest {
         Ok(Self {
             config,
             server_state,
+            transport,
             body: None,
             headers,
             cookies,
@@ -396,10 +397,11 @@ impl TestRequest {
         let save_cookies = self.config.is_saving_cookies;
         let path = self.config.path;
         let body = self.body.unwrap_or(Body::empty());
+        let method = self.config.method;
 
         let url = Self::build_url_query_params(self.config.full_request_url, &self.query_params);
         let request = Self::build_request(
-            self.config.method,
+            method.clone(),
             &url,
             path.clone(),
             body,
@@ -408,13 +410,12 @@ impl TestRequest {
             self.headers,
         )?;
 
-        let hyper_response = Client::new()
-            .request(request)
-            .await
-            .with_context(|| format!("Expect Hyper Response to succeed on request to {}", path))?;
-
-        let (parts, response_body) = hyper_response.into_parts();
-        let response_bytes = to_bytes(response_body).await?;
+        let (parts, response_bytes) = {
+            let mut transport_locked = self.transport.as_ref().lock().map_err(|err| {
+                anyhow!("Expect Response to succeed on request {method} {path}, received {err:?}")
+            })?;
+            transport_locked.send(request).await?
+        };
 
         if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
