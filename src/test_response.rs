@@ -658,8 +658,7 @@ mod test_into_bytes {
 
     #[tokio::test]
     async fn it_should_deserialize_into_json() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json));
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -694,8 +693,7 @@ mod test_json {
 
     #[tokio::test]
     async fn it_should_deserialize_into_json() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json));
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -735,8 +733,7 @@ mod test_form {
 
     #[tokio::test]
     async fn it_should_deserialize_into_form() {
-        let app = Router::new()
-            .route(&"/form", get(route_get_form));
+        let app = Router::new().route(&"/form", get(route_get_form));
 
         let server = TestServer::new(app).unwrap();
 
@@ -785,8 +782,7 @@ mod test_assert_json {
 
     #[tokio::test]
     async fn it_should_match_json_returned() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json));
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -799,8 +795,7 @@ mod test_assert_json {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_different() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json));
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -813,8 +808,7 @@ mod test_assert_json {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_form() {
-        let app = Router::new()
-            .route(&"/form", get(route_get_form));
+        let app = Router::new().route(&"/form", get(route_get_form));
 
         let server = TestServer::new(app).unwrap();
 
@@ -858,8 +852,7 @@ mod test_assert_form {
 
     #[tokio::test]
     async fn it_should_match_form_returned() {
-        let app = Router::new()
-            .route(&"/form", get(route_get_form));
+        let app = Router::new().route(&"/form", get(route_get_form));
 
         let server = TestServer::new(app).unwrap();
 
@@ -872,8 +865,7 @@ mod test_assert_form {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_different() {
-        let app = Router::new()
-            .route(&"/form", get(route_get_form));
+        let app = Router::new().route(&"/form", get(route_get_form));
 
         let server = TestServer::new(app).unwrap();
 
@@ -886,8 +878,7 @@ mod test_assert_form {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_json() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json));
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -910,8 +901,7 @@ mod test_text {
             "hello!".to_string()
         }
 
-        let app = Router::new()
-            .route(&"/text", get(route_get_text));
+        let app = Router::new().route(&"/text", get(route_get_text));
 
         let server = TestServer::new(app).unwrap();
 
