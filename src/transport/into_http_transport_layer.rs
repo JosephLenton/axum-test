@@ -64,12 +64,14 @@ where
 }
 
 #[cfg(test)]
-mod test_into_test_server_thread_for_into_make_service {
+mod test_into_http_transport_layer_for_router {
     use ::axum::extract::State;
     use ::axum::routing::get;
     use ::axum::Router;
 
     use crate::TestServer;
+    use crate::TestServerConfig;
+    use crate::TestServerTransport;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -82,12 +84,14 @@ mod test_into_test_server_thread_for_into_make_service {
     #[tokio::test]
     async fn it_should_create_and_test_with_make_into_service() {
         // Build an application with a route.
-        let app = Router::new()
-            .route("/ping", get(get_ping))
-            .into_make_service();
+        let app: Router = Router::new().route("/ping", get(get_ping));
 
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let config = TestServerConfig {
+            transport: TestServerTransport::HttpRandomPort,
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -96,13 +100,16 @@ mod test_into_test_server_thread_for_into_make_service {
     #[tokio::test]
     async fn it_should_create_and_test_with_make_into_service_with_state() {
         // Build an application with a route.
-        let app = Router::new()
+        let app: Router = Router::new()
             .route("/count", get(get_state))
-            .with_state(123)
-            .into_make_service();
+            .with_state(123);
 
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let config = TestServerConfig {
+            transport: TestServerTransport::HttpRandomPort,
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");
@@ -110,12 +117,71 @@ mod test_into_test_server_thread_for_into_make_service {
 }
 
 #[cfg(test)]
-mod test_into_test_server_thread_for_into_make_service_with_connect_info {
+mod test_into_http_transport_layer_for_into_make_service {
+    use ::axum::extract::State;
+    use ::axum::routing::get;
+    use ::axum::routing::IntoMakeService;
+    use ::axum::Router;
+
+    use crate::TestServer;
+    use crate::TestServerConfig;
+    use crate::TestServerTransport;
+
+    async fn get_ping() -> &'static str {
+        "pong!"
+    }
+
+    async fn get_state(State(count): State<u32>) -> String {
+        format!("count is {}", count)
+    }
+
+    #[tokio::test]
+    async fn it_should_create_and_test_with_make_into_service() {
+        // Build an application with a route.
+        let app: IntoMakeService<Router> = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+
+        // Run the server.
+        let config = TestServerConfig {
+            transport: TestServerTransport::HttpRandomPort,
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/ping").await.assert_text(&"pong!");
+    }
+
+    #[tokio::test]
+    async fn it_should_create_and_test_with_make_into_service_with_state() {
+        // Build an application with a route.
+        let app: IntoMakeService<Router> = Router::new()
+            .route("/count", get(get_state))
+            .with_state(123)
+            .into_make_service();
+
+        // Run the server.
+        let config = TestServerConfig {
+            transport: TestServerTransport::HttpRandomPort,
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/count").await.assert_text(&"count is 123");
+    }
+}
+
+#[cfg(test)]
+mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
     use ::axum::routing::get;
     use ::axum::Router;
     use ::std::net::SocketAddr;
 
     use crate::TestServer;
+    use crate::TestServerConfig;
+    use crate::TestServerTransport;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -129,7 +195,11 @@ mod test_into_test_server_thread_for_into_make_service_with_connect_info {
             .into_make_service_with_connect_info::<SocketAddr>();
 
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let config = TestServerConfig {
+            transport: TestServerTransport::HttpRandomPort,
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");

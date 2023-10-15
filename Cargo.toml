@@ -26,8 +26,7 @@ serde_json = "1.0.104"
 serde_urlencoded = "0.7.1"
 smallvec = "1.11.0"
 tokio = { version = "1.29.1", features = ["rt", "time"] }
-tower = { version = "0.4.13", features = ["util"] }
-tower-http = { version = "0.4.4", features = ["map-response-body"] }
+tower = { version = "0.4.13", features = ["util", "make"] }
 url = "2.4.0"
 
 [dev-dependencies]
