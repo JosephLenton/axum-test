@@ -7,7 +7,7 @@ use ::hyper::server::Builder;
 use ::tokio::spawn;
 
 use crate::internals::HttpTransportLayer;
-use crate::internals::TransportLayer;
+use crate::transport_layer::TransportLayer;
 
 /// This exists to gloss over the differences between Axum's
 /// [`IntoMakeService`](::axum::routing::IntoMakeService) and [`IntoMakeServiceWithConnectInfo`](::axum::extract::connect_info::IntoMakeServiceWithConnectInfo) types.
@@ -71,7 +71,7 @@ mod test_into_http_transport_layer_for_router {
 
     use crate::TestServer;
     use crate::TestServerConfig;
-    use crate::TestServerTransport;
+    use crate::Transport;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -88,7 +88,7 @@ mod test_into_http_transport_layer_for_router {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::HttpRandomPort,
+            transport: Transport::HttpRandomPort,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
@@ -106,7 +106,7 @@ mod test_into_http_transport_layer_for_router {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::HttpRandomPort,
+            transport: Transport::HttpRandomPort,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
@@ -125,7 +125,7 @@ mod test_into_http_transport_layer_for_into_make_service {
 
     use crate::TestServer;
     use crate::TestServerConfig;
-    use crate::TestServerTransport;
+    use crate::Transport;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -144,7 +144,7 @@ mod test_into_http_transport_layer_for_into_make_service {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::HttpRandomPort,
+            transport: Transport::HttpRandomPort,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
@@ -163,7 +163,7 @@ mod test_into_http_transport_layer_for_into_make_service {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::HttpRandomPort,
+            transport: Transport::HttpRandomPort,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
@@ -181,7 +181,7 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
 
     use crate::TestServer;
     use crate::TestServerConfig;
-    use crate::TestServerTransport;
+    use crate::Transport;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -196,7 +196,7 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::HttpRandomPort,
+            transport: Transport::HttpRandomPort,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");

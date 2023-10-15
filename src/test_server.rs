@@ -14,7 +14,7 @@ use crate::internals::ExpectedState;
 use crate::TestRequest;
 use crate::TestRequestConfig;
 use crate::TestServerConfig;
-use crate::TestServerTransport;
+use crate::Transport;
 
 mod inner_mock_server;
 pub(crate) use self::inner_mock_server::*;
@@ -27,8 +27,8 @@ pub(crate) use self::inner_web_server::*;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-use crate::transport::IntoHttpTransportLayer;
-use crate::transport::IntoMockTransportLayer;
+use crate::transport_layer::IntoHttpTransportLayer;
+use crate::transport_layer::IntoMockTransportLayer;
 
 ///
 /// The `TestServer` runs your application,
@@ -78,7 +78,7 @@ pub struct TestServer {
 
 impl TestServer {
     /// This will run the given Axum app,
-    /// and run it on a random local address.
+    /// allowing you to make requests against it.
     ///
     /// This is the same as creating a new `TestServer` with a configuration,
     /// and passing `TestServerConfig::default()`.
@@ -104,11 +104,11 @@ impl TestServer {
         let state = Arc::new(shared_state_mutex);
 
         let inner: Box<dyn InnerServer> = match config.transport {
-            TestServerTransport::HttpRandomPort => Box::new(InnerWebServer::random(app)?),
-            TestServerTransport::HttpIpPort { ip, port } => {
+            Transport::HttpRandomPort => Box::new(InnerWebServer::random(app)?),
+            Transport::HttpIpPort { ip, port } => {
                 Box::new(InnerWebServer::from_ip_port(app, ip, port)?)
             }
-            TestServerTransport::MockHttp => Box::new(InnerMockServer::new(app)),
+            Transport::MockHttp => Box::new(InnerMockServer::new(app)),
         };
 
         let expected_state = match config.expect_success_by_default {
@@ -339,7 +339,7 @@ mod test_get {
 
         // Run the server.
         let test_config = TestServerConfig {
-            transport: TestServerTransport::HttpIpPort {
+            transport: Transport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
             },
@@ -370,7 +370,7 @@ mod test_get {
 
         // Run the server.
         let test_config = TestServerConfig {
-            transport: TestServerTransport::HttpIpPort {
+            transport: Transport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
             },
@@ -410,7 +410,7 @@ mod test_server_address {
         let port = reserved_port.port();
 
         let config = TestServerConfig {
-            transport: TestServerTransport::HttpIpPort {
+            transport: Transport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
             },
@@ -431,7 +431,7 @@ mod test_server_address {
     async fn it_should_return_default_address_without_ending_slash() {
         let app = Router::new();
         let config = TestServerConfig {
-            transport: TestServerTransport::HttpRandomPort,
+            transport: Transport::HttpRandomPort,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");

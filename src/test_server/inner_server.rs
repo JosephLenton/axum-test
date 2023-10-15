@@ -3,7 +3,7 @@ use ::std::sync::Arc;
 use ::std::sync::Mutex;
 use ::url::Url;
 
-use crate::internals::TransportLayer;
+use crate::transport_layer::TransportLayer;
 
 pub trait InnerServer: Debug {
     /// Returns the local web address for the test server.

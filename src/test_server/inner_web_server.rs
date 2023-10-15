@@ -10,8 +10,8 @@ use ::url::Url;
 use crate::internals::StartingTcpSetup;
 
 use super::InnerServer;
-use crate::internals::TransportLayer;
-use crate::transport::IntoHttpTransportLayer;
+use crate::transport_layer::IntoHttpTransportLayer;
+use crate::transport_layer::TransportLayer;
 
 #[derive(Debug)]
 pub struct InnerWebServer {
@@ -62,10 +62,6 @@ impl InnerWebServer {
 }
 
 impl InnerServer for InnerWebServer {
-    /// Returns the local web address for the test server.
-    ///
-    /// By default this will be something like `http://0.0.0.0:1234/`,
-    /// where `1234` is a randomly assigned port numbr.
     fn server_address<'a>(&'a self) -> &'a str {
         &self.server_url.as_str()
     }

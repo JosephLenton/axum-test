@@ -1,4 +1,4 @@
-use crate::TestServerTransport;
+use crate::Transport;
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
 ///
@@ -37,7 +37,9 @@ use crate::TestServerTransport;
 /// ```
 #[derive(Debug, Clone)]
 pub struct TestServerConfig {
-    pub transport: TestServerTransport,
+    /// Which transport mode to use to process requests. It can be set
+    /// to use a mocked http (the default), or to run on a real webserver.
+    pub transport: Transport,
 
     /// Set for the server to save cookies that are returned,
     /// for use in future requests.
@@ -82,7 +84,7 @@ pub struct TestServerConfig {
 impl Default for TestServerConfig {
     fn default() -> Self {
         Self {
-            transport: TestServerTransport::default(),
+            transport: Transport::default(),
             save_cookies: false,
             expect_success_by_default: false,
             restrict_requests_with_http_schema: false,

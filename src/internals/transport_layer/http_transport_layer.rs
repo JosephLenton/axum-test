@@ -1,15 +1,14 @@
 use ::anyhow::Result;
 use ::async_trait::async_trait;
+use ::bytes::Bytes;
+use ::http::response::Parts;
 use ::http::Request;
+use ::hyper::body::to_bytes;
 use ::hyper::Body;
+use ::hyper::Client;
+use ::tokio::task::JoinHandle;
 
-use hyper::Client;
-use tokio::task::JoinHandle;
-
-use super::TransportLayer;
-use bytes::Bytes;
-use http::response::Parts;
-use hyper::body::to_bytes;
+use crate::transport_layer::TransportLayer;
 
 #[derive(Debug)]
 pub struct HttpTransportLayer {

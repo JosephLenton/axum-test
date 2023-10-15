@@ -26,7 +26,7 @@ use ::url::Url;
 
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
-use crate::internals::TransportLayer;
+use crate::transport_layer::TransportLayer;
 use crate::ServerSharedState;
 use crate::TestResponse;
 

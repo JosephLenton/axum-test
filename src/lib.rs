@@ -36,9 +36,6 @@
 //! # }
 //! ```
 //!
-//! It will be running on a random address,
-//! allowing many to be run in parallel across tests.
-//!
 //! Then make requests against it:
 //!
 //! ```rust
@@ -182,7 +179,8 @@
 
 pub(crate) mod internals;
 
-pub mod transport;
+mod transport;
+pub use self::transport::*;
 
 mod test_server;
 pub use self::test_server::*;
@@ -190,15 +188,13 @@ pub use self::test_server::*;
 mod test_server_config;
 pub use self::test_server_config::*;
 
-mod test_server_transport;
-pub use self::test_server_transport::*;
-
 mod test_request;
 pub use self::test_request::*;
 
 mod test_response;
 pub use self::test_response::*;
 
+pub mod transport_layer;
 pub mod util;
 
 pub use ::http;
