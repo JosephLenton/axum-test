@@ -17,7 +17,6 @@ use ::axum::extract::State;
 use ::axum::routing::get;
 use ::axum::routing::post;
 use ::axum::routing::put;
-use ::axum::routing::IntoMakeService;
 use ::axum::Router;
 use ::axum::Server;
 use ::axum_extra::extract::cookie::Cookie;
@@ -50,7 +49,10 @@ async fn main() {
         // Start!
         let ip_address = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
         let address = SocketAddr::new(ip_address, PORT);
-        Server::bind(&address).serve(app).await.unwrap();
+        Server::bind(&address)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
 
         Ok(())
     };
@@ -151,23 +153,23 @@ pub async fn route_get_user_todos(
         .map_err(|_| StatusCode::UNAUTHORIZED)
 }
 
-pub(crate) fn new_app() -> IntoMakeService<Router> {
+pub(crate) fn new_app() -> Router {
     let state = AppState {
         user_todos: HashMap::new(),
     };
     let shared_state = Arc::new(RwLock::new(state));
 
-    let router: Router = Router::new()
+    Router::new()
         .route(&"/login", post(route_post_user_login))
         .route(&"/todo", get(route_get_user_todos))
         .route(&"/todo", put(route_put_user_todos))
-        .with_state(shared_state);
-
-    router.into_make_service()
+        .with_state(shared_state)
 }
 
 #[cfg(test)]
 fn new_test_app() -> TestServer {
+    use axum_test::TestServerTransport;
+
     let app = new_app();
 
     TestServer::new_with_config(
@@ -177,6 +179,7 @@ fn new_test_app() -> TestServer {
             // for the session cookie to work.
             save_cookies: true,
             expect_success_by_default: true,
+            transport: TestServerTransport::MockHttp,
             ..TestServerConfig::default()
         },
     )

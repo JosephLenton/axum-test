@@ -63,7 +63,7 @@ mod test_into_mock_transport_layer_for_router {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::Mock,
+            transport: TestServerTransport::MockHttp,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
@@ -81,7 +81,7 @@ mod test_into_mock_transport_layer_for_router {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::Mock,
+            transport: TestServerTransport::MockHttp,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
@@ -119,7 +119,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::Mock,
+            transport: TestServerTransport::MockHttp,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
@@ -138,7 +138,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
 
         // Run the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::Mock,
+            transport: TestServerTransport::MockHttp,
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
@@ -172,7 +172,7 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
 
         // Build the server.
         let config = TestServerConfig {
-            transport: TestServerTransport::Mock,
+            transport: TestServerTransport::MockHttp,
             ..TestServerConfig::default()
         };
         TestServer::new_with_config(app, config).expect("Should create test server");

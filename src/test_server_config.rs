@@ -22,8 +22,7 @@ use crate::TestServerTransport;
 /// use ::axum_test::TestServer;
 /// use ::axum_test::TestServerConfig;
 ///
-/// let my_app = Router::new()
-///     .into_make_service();
+/// let my_app = Router::new();
 ///
 /// let config = TestServerConfig {
 ///     save_cookies: true,

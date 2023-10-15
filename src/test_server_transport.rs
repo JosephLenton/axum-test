@@ -14,11 +14,11 @@ pub enum TestServerTransport {
         /// **Defaults** to a _random_ port.
         port: Option<u16>,
     },
-    Mock,
+    MockHttp,
 }
 
 impl Default for TestServerTransport {
     fn default() -> Self {
-        Self::Mock
+        Self::MockHttp
     }
 }

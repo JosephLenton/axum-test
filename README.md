@@ -34,8 +34,7 @@ and then assert the responses returned:
   async fn it_should_get() {
       // Build an application with a route.
       let app = Router::new()
-          .route("/ping", get(get_ping))
-          .into_make_service();
+          .route("/ping", get(get_ping));
 
       // Run the server on a random address.
       let server = TestServer::new(app).unwrap();
