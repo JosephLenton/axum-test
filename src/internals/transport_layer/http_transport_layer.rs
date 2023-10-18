@@ -6,18 +6,37 @@ use ::http::Request;
 use ::hyper::body::to_bytes;
 use ::hyper::Body;
 use ::hyper::Client;
+use ::reserve_port::ReservedPort;
 use ::tokio::task::JoinHandle;
 
 use crate::transport_layer::TransportLayer;
+use url::Url;
 
 #[derive(Debug)]
 pub struct HttpTransportLayer {
     server_handle: JoinHandle<()>,
+
+    /// If this has reserved a port for the test,
+    /// then it is stored here.
+    ///
+    /// It's stored here until we `Drop` (as it's reserved).
+    #[allow(dead_code)]
+    maybe_reserved_port: Option<ReservedPort>,
+
+    url: Url,
 }
 
 impl HttpTransportLayer {
-    pub(crate) fn new(server_handle: JoinHandle<()>) -> Self {
-        Self { server_handle }
+    pub(crate) fn new(
+        server_handle: JoinHandle<()>,
+        maybe_reserved_port: Option<ReservedPort>,
+        url: Url,
+    ) -> Self {
+        Self {
+            server_handle,
+            maybe_reserved_port,
+            url,
+        }
     }
 }
 
@@ -30,6 +49,10 @@ impl TransportLayer for HttpTransportLayer {
         let response_bytes = to_bytes(response_body).await?;
 
         Ok((parts, response_bytes))
+    }
+
+    fn url<'a>(&'a self) -> Option<&'a Url> {
+        Some(&self.url)
     }
 }
 

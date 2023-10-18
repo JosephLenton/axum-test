@@ -39,7 +39,7 @@ use crate::Transport;
 pub struct TestServerConfig {
     /// Which transport mode to use to process requests. It can be set
     /// to use a mocked http (the default), or to run on a real webserver.
-    pub transport: Transport,
+    pub transport: Option<Transport>,
 
     /// Set for the server to save cookies that are returned,
     /// for use in future requests.
@@ -84,7 +84,7 @@ pub struct TestServerConfig {
 impl Default for TestServerConfig {
     fn default() -> Self {
         Self {
-            transport: Transport::default(),
+            transport: None,
             save_cookies: false,
             expect_success_by_default: false,
             restrict_requests_with_http_schema: false,

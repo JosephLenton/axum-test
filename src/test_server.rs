@@ -11,24 +11,18 @@ use ::std::sync::Mutex;
 use ::url::Url;
 
 use crate::internals::ExpectedState;
+use crate::transport_layer::IntoTransportLayer;
+use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerBuilder;
 use crate::TestRequest;
 use crate::TestRequestConfig;
 use crate::TestServerConfig;
 use crate::Transport;
 
-mod inner_mock_server;
-pub(crate) use self::inner_mock_server::*;
-
-mod inner_server;
-pub(crate) use self::inner_server::*;
-
-mod inner_web_server;
-pub(crate) use self::inner_web_server::*;
-
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-use crate::transport_layer::IntoHttpTransportLayer;
-use crate::transport_layer::IntoMockTransportLayer;
+
+const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 
 ///
 /// The `TestServer` runs your application,
@@ -69,11 +63,11 @@ use crate::transport_layer::IntoMockTransportLayer;
 #[derive(Debug)]
 pub struct TestServer {
     state: Arc<Mutex<ServerSharedState>>,
+    transport: Arc<Mutex<Box<dyn TransportLayer>>>,
     save_cookies: bool,
     expected_state: ExpectedState,
     default_content_type: Option<String>,
     is_http_path_restricted: bool,
-    inner: Box<dyn InnerServer>,
 }
 
 impl TestServer {
@@ -85,7 +79,7 @@ impl TestServer {
     ///
     pub fn new<A>(app: A) -> Result<Self>
     where
-        A: IntoHttpTransportLayer + IntoMockTransportLayer,
+        A: IntoTransportLayer,
     {
         Self::new_with_config(app, TestServerConfig::default())
     }
@@ -97,18 +91,32 @@ impl TestServer {
     /// See the [`TestServerConfig`] for more information on each configuration setting.
     pub fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
     where
-        A: IntoHttpTransportLayer + IntoMockTransportLayer,
+        A: IntoTransportLayer,
     {
         let shared_state = ServerSharedState::new();
         let shared_state_mutex = Mutex::new(shared_state);
         let state = Arc::new(shared_state_mutex);
 
-        let inner: Box<dyn InnerServer> = match config.transport {
-            Transport::HttpRandomPort => Box::new(InnerWebServer::random(app)?),
-            Transport::HttpIpPort { ip, port } => {
-                Box::new(InnerWebServer::from_ip_port(app, ip, port)?)
+        let transport = match config.transport {
+            None => {
+                let builder = TransportLayerBuilder::new(None, None);
+                let transport = app.into_default_transport(builder)?;
+                Arc::new(Mutex::new(transport))
             }
-            Transport::MockHttp => Box::new(InnerMockServer::new(app)),
+            Some(Transport::HttpRandomPort) => {
+                let builder = TransportLayerBuilder::new(None, None);
+                let transport = app.into_http_transport_layer(builder)?;
+                Arc::new(Mutex::new(transport))
+            }
+            Some(Transport::HttpIpPort { ip, port }) => {
+                let builder = TransportLayerBuilder::new(ip, port);
+                let transport = app.into_http_transport_layer(builder)?;
+                Arc::new(Mutex::new(transport))
+            }
+            Some(Transport::MockHttp) => {
+                let transport = app.into_mock_transport_layer()?;
+                Arc::new(Mutex::new(transport))
+            }
         };
 
         let expected_state = match config.expect_success_by_default {
@@ -118,7 +126,7 @@ impl TestServer {
 
         let this = Self {
             state,
-            inner,
+            transport,
             save_cookies: config.save_cookies,
             expected_state,
             default_content_type: config.default_content_type,
@@ -157,7 +165,7 @@ impl TestServer {
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
         let debug_method = method.clone();
         let config = self.test_request_config(method, path);
-        let maybe_request = TestRequest::new(self.state.clone(), self.inner.transport(), config);
+        let maybe_request = TestRequest::new(self.state.clone(), self.transport.clone(), config);
 
         maybe_request
             .with_context(|| {
@@ -169,12 +177,16 @@ impl TestServer {
             .unwrap()
     }
 
-    /// Returns the local web address for the test server.
+    /// Returns the local web address for the test server,
+    /// if an address is available.
+    ///
+    /// The address is only available when running as a real web server,
+    /// and not when running with a mock transport.
     ///
     /// By default this will be something like `http://0.0.0.0:1234/`,
     /// where `1234` is a randomly assigned port numbr.
-    pub fn server_address<'a>(&'a self) -> &'a str {
-        &self.inner.server_address()
+    pub fn server_address(&self) -> Option<String> {
+        self.url().map(|url| url.to_string())
     }
 
     /// Adds a cookie to be included on *all* future requests.
@@ -273,12 +285,25 @@ impl TestServer {
             .unwrap()
     }
 
+    pub(crate) fn url(&self) -> Option<Url> {
+        let locked = self
+            .transport
+            .lock()
+            .expect("Failed to lock TransportLayer");
+
+        locked.url().map(|url| url.clone())
+    }
+
     pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
+        let url = self
+            .url()
+            .unwrap_or_else(|| DEFAULT_URL_ADDRESS.parse().unwrap());
+
         TestRequestConfig {
             is_saving_cookies: self.save_cookies,
             expected_state: self.expected_state,
             content_type: self.default_content_type.clone(),
-            full_request_url: build_url(self.inner.url(), path, self.is_http_path_restricted),
+            full_request_url: build_url(url, path, self.is_http_path_restricted),
             method,
             path: path.to_string(),
         }
@@ -295,6 +320,33 @@ fn build_url(mut url: Url, path: &str, is_http_restricted: bool) -> Url {
         url.set_path(path);
         url
     })
+}
+
+#[cfg(test)]
+mod test_new {
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::std::net::SocketAddr;
+
+    use crate::TestServer;
+
+    async fn get_ping() -> &'static str {
+        "pong!"
+    }
+
+    #[tokio::test]
+    async fn it_should_run_into_make_into_service_with_connect_info_by_default() {
+        // Build an application with a route.
+        let app = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service_with_connect_info::<SocketAddr>();
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/ping").await.assert_text(&"pong!");
+    }
 }
 
 #[cfg(test)]
@@ -339,10 +391,10 @@ mod test_get {
 
         // Run the server.
         let test_config = TestServerConfig {
-            transport: Transport::HttpIpPort {
+            transport: Some(Transport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
-            },
+            }),
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, test_config)
@@ -370,10 +422,10 @@ mod test_get {
 
         // Run the server.
         let test_config = TestServerConfig {
-            transport: Transport::HttpIpPort {
+            transport: Some(Transport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
-            },
+            }),
             restrict_requests_with_http_schema: true, // Key part of the test!
             ..TestServerConfig::default()
         };
@@ -410,10 +462,10 @@ mod test_server_address {
         let port = reserved_port.port();
 
         let config = TestServerConfig {
-            transport: Transport::HttpIpPort {
+            transport: Some(Transport::HttpIpPort {
                 ip: Some(ip),
                 port: Some(port),
-            },
+            }),
             ..TestServerConfig::default()
         };
 
@@ -424,20 +476,20 @@ mod test_server_address {
             .unwrap();
 
         let expected_ip_port = format!("http://{}:{}/", ip, reserved_port.port());
-        assert_eq!(server.server_address(), expected_ip_port);
+        assert_eq!(server.server_address().unwrap(), expected_ip_port);
     }
 
     #[tokio::test]
     async fn it_should_return_default_address_without_ending_slash() {
         let app = Router::new();
         let config = TestServerConfig {
-            transport: Transport::HttpRandomPort,
+            transport: Some(Transport::HttpRandomPort),
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         let address_regex = Regex::new("^http://127\\.0\\.0\\.1:[0-9]+/$").unwrap();
-        let is_match = address_regex.is_match(&server.server_address());
+        let is_match = address_regex.is_match(&server.server_address().unwrap());
         assert!(is_match);
     }
 }
