@@ -168,22 +168,16 @@ pub(crate) fn new_app() -> Router {
 
 #[cfg(test)]
 fn new_test_app() -> TestServer {
-    use axum_test::Transport;
-
     let app = new_app();
+    let config = TestServerConfig::builder()
+        // Preserve cookies across requests
+        // for the session cookie to work.
+        .save_cookies()
+        .expect_success_by_default()
+        .mock_transport()
+        .build();
 
-    TestServer::new_with_config(
-        app,
-        TestServerConfig {
-            // Preserve cookies across requests
-            // for the session cookie to work.
-            save_cookies: true,
-            expect_success_by_default: true,
-            transport: Transport::MockHttp,
-            ..TestServerConfig::default()
-        },
-    )
-    .unwrap()
+    TestServer::new_with_config(app, config).unwrap()
 }
 
 #[cfg(test)]

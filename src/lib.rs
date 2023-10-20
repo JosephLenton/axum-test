@@ -83,11 +83,9 @@
 //! use ::axum_test::TestServerConfig;
 //!
 //! let my_app = Router::new();
-//!
-//! let config = TestServerConfig {
-//!     save_cookies: true,
-//!     ..TestServerConfig::default()
-//! };
+//! let config = TestServerConfig::builder()
+//!     .save_cookies()
+//!     .build();
 //!
 //! let server = TestServer::new_with_config(my_app, config)?;
 //! #
@@ -117,11 +115,9 @@
 //! use ::axum_test::TestServerConfig;
 //!
 //! let my_app = Router::new();
-//!
-//! let config = TestServerConfig {
-//!     default_content_type: Some("application/json".to_string()),
-//!     ..TestServerConfig::default()
-//! };
+//! let config = TestServerConfig::builder()
+//!     .default_content_type("application/json")
+//!     .build();
 //!
 //! let server = TestServer::new_with_config(my_app, config)?;
 //! #
@@ -184,6 +180,9 @@ pub use self::transport::*;
 
 mod test_server;
 pub use self::test_server::*;
+
+mod test_server_config_builder;
+pub use self::test_server_config_builder::*;
 
 mod test_server_config;
 pub use self::test_server_config::*;

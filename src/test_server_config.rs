@@ -1,3 +1,4 @@
+use crate::TestServerConfigBuilder;
 use crate::Transport;
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
@@ -35,10 +36,14 @@ use crate::Transport;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TestServerConfig {
-    /// Which transport mode to use to process requests. It can be set
-    /// to use a mocked http (the default), or to run on a real webserver.
+    /// Which transport mode to use to process requests.
+    /// For setting if the server should use mocked http (which uses [`tower::util::Oneshot`](tower::util::Oneshot)),
+    /// or if it should run on a named or random IP address.
+    ///
+    /// The default is to use mocking, apart from services built using [`axum::extract::connect_info::IntoMakeServiceWithConnectInfo`](axum::extract::connect_info::IntoMakeServiceWithConnectInfo)
+    /// (this is because it needs a real TCP stream).
     pub transport: Option<Transport>,
 
     /// Set for the server to save cookies that are returned,
@@ -79,6 +84,23 @@ pub struct TestServerConfig {
     ///
     /// This overrides the default 'best efforts' approach of requests.
     pub default_content_type: Option<String>,
+}
+
+impl TestServerConfig {
+    /// Creates a builder for making it simpler to creating configs.
+    ///
+    /// ```rust
+    /// use ::axum_test::TestServerConfig;
+    ///
+    /// let config = TestServerConfig::builder()
+    ///     .save_cookies()
+    ///     .default_content_type(&"application/json")
+    ///     .build();
+    /// ```
+    ///
+    pub fn builder() -> TestServerConfigBuilder {
+        TestServerConfigBuilder::default()
+    }
 }
 
 impl Default for TestServerConfig {
