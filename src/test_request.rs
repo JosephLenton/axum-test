@@ -1227,7 +1227,7 @@ mod test_clear_headers {
     }
 
     #[tokio::test]
-    async fn it_should_claer_headers_added_to_request() {
+    async fn it_should_clear_headers_added_to_request() {
         // Build an application with a route.
         let app = Router::new().route("/header", get(ping_header));
 
@@ -1250,7 +1250,7 @@ mod test_clear_headers {
     }
 
     #[tokio::test]
-    async fn it_should_claer_headers_added_to_server() {
+    async fn it_should_clear_headers_added_to_server() {
         // Build an application with a route.
         let app = Router::new().route("/header", get(ping_header));
 
