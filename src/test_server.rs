@@ -184,9 +184,6 @@ impl TestServer {
     /// by setting the [`TestServerConfig`](crate::TestServerConfig) `transport` field to `Transport::HttpRandomPort` or `Transport::HttpRandomPort`.
     ///
     /// This will return `None` when there is mock HTTP transport (the default).
-    ///
-    /// By default this will be something like `http://0.0.0.0:1234/`,
-    /// where `1234` is a randomly assigned port numbr.
     pub fn server_address(&self) -> Option<Url> {
         self.url()
     }
