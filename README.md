@@ -8,7 +8,7 @@
   [![docs](https://docs.rs/axum-test/badge.svg)](https://docs.rs/axum-test)
 </div>
 
-Easy testing for applications built using Axum.
+Easy E2E testing for applications built on Axum.
 
 ## Examples
 
