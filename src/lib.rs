@@ -9,6 +9,9 @@
 //! It includes built in support for serializing and deserializing request and response bodies using Serde,
 //! support for cookies and headers, and other common bits you would expect.
 //!
+//! `TestServer` will pass http requests directly to the handler,
+//! or can be run on a random IP / Port address.
+//!
 //! ## Getting Started
 //!
 //! Create a [`TestServer`] running your Axum [`Router`](::axum::Router):

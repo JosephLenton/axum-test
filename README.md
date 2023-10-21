@@ -63,11 +63,9 @@ Querying your application on the `TestServer` supports all of the common request
  - Status code reading and assertions
  - Assertions for defining what you expect to have returned
 
-As well as also including:
+## Also
 
  - Saving cookies returned for use across future requests.
  - Setting headers and query parameters for use across all TestRequests.
  - Can optionally run requests using a real web server.
  - Automatic status assertions for checking requests always succeed or fail.
-
- and much more!

@@ -1,3 +1,4 @@
+use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
@@ -41,7 +42,7 @@ where
     }
 
     fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
-        unimplemented!("`IntoMakeServiceWithConnectInfo` cannot be mocked, as it's underlying implementation requires a real connection. Set the `TestServerConfig` to run with a transport of `HttpRandomPort`, or a `HttpIpPort`.")
+        Err(anyhow!("`IntoMakeServiceWithConnectInfo` cannot be mocked, as it's underlying implementation requires a real connection. Set the `TestServerConfig` to run with a transport of `HttpRandomPort`, or a `HttpIpPort`."))
     }
 
     fn into_default_transport(
@@ -100,7 +101,6 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_creating_test_using_mock() {
         // Build an application with a route.
         let app = Router::new()
@@ -112,6 +112,10 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
             transport: Some(Transport::MockHttp),
             ..TestServerConfig::default()
         };
-        TestServer::new_with_config(app, config).expect("Should create test server");
+        let result = TestServer::new_with_config(app, config);
+        let err = result.unwrap_err();
+        let err_msg = format!("{}", err);
+
+        assert_eq!(err_msg, "`IntoMakeServiceWithConnectInfo` cannot be mocked, as it's underlying implementation requires a real connection. Set the `TestServerConfig` to run with a transport of `HttpRandomPort`, or a `HttpIpPort`.");
     }
 }
