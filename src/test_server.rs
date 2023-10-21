@@ -25,13 +25,13 @@ pub(crate) use self::server_shared_state::*;
 const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 
 ///
-/// The `TestServer` runs your application,
-/// allowing you to make web requests against it.
+/// The `TestServer` runs your Axum application,
+/// allowing you to make HTTP requests against it.
 ///
-/// You can make a request against the `TestServer` by calling the
-/// [`TestServer::get()`](crate::TestServer::get()), [`TestServer::post()`](crate::TestServer::post()), [`TestServer::put()`](crate::TestServer::put()),
+/// You can make a request by calling [`TestServer::get()`](crate::TestServer::get()),
+/// [`TestServer::post()`](crate::TestServer::post()), [`TestServer::put()`](crate::TestServer::put()),
 /// [`TestServer::delete()`](crate::TestServer::delete()), and [`TestServer::patch()`](crate::TestServer::patch()) methods.
-/// They will return a [`TestRequest`](crate::TestRequest) you can use for request building.
+/// They will return a [`TestRequest`](crate::TestRequest) for building the request.
 ///
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -161,7 +161,7 @@ impl TestServer {
         self.method(Method::DELETE, path)
     }
 
-    /// Creates a HTTP request, to the path given, using the given method.
+    /// Creates a HTTP request, to the method and path provided.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
         let debug_method = method.clone();
         let config = self.test_request_config(method, path);
@@ -180,16 +180,18 @@ impl TestServer {
     /// Returns the local web address for the test server,
     /// if an address is available.
     ///
-    /// The address is only available when running as a real web server,
-    /// and not when running with a mock transport.
+    /// The address is available when running as a real web server,
+    /// by setting the [`TestServerConfig`](crate::TestServerConfig) `transport` field to `Transport::HttpRandomPort` or `Transport::HttpRandomPort`.
+    ///
+    /// This will return `None` when there is mock HTTP transport (the default).
     ///
     /// By default this will be something like `http://0.0.0.0:1234/`,
     /// where `1234` is a randomly assigned port numbr.
-    pub fn server_address(&self) -> Option<String> {
-        self.url().map(|url| url.to_string())
+    pub fn server_address(&self) -> Option<Url> {
+        self.url()
     }
 
-    /// Adds a cookie to be included on *all* future requests.
+    /// Adds a single cookie to be included on *all* future requests.
     ///
     /// If a cookie with the same name already exists,
     /// then it will be replaced.
@@ -476,7 +478,10 @@ mod test_server_address {
             .unwrap();
 
         let expected_ip_port = format!("http://{}:{}/", ip, reserved_port.port());
-        assert_eq!(server.server_address().unwrap(), expected_ip_port);
+        assert_eq!(
+            server.server_address().unwrap().to_string(),
+            expected_ip_port
+        );
     }
 
     #[tokio::test]
@@ -489,7 +494,7 @@ mod test_server_address {
         let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         let address_regex = Regex::new("^http://127\\.0\\.0\\.1:[0-9]+/$").unwrap();
-        let is_match = address_regex.is_match(&server.server_address().unwrap());
+        let is_match = address_regex.is_match(&server.server_address().unwrap().to_string());
         assert!(is_match);
     }
 }

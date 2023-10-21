@@ -17,8 +17,8 @@ use url::Url;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
-/// The `TestServer` builds a [`TestRequest`](crate::TestRequest), which when awaited, will produce
-/// this type.
+/// The `TestServer` builds a [`TestRequest`](crate::TestRequest), which when awaited,
+/// will produce the response.
 ///
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -45,7 +45,8 @@ use url::Url;
 ///
 /// # Extracting Response
 ///
-/// The functions [`TestResponse::json()`](crate::TestResponse::json()), [`TestResponse::text()`](crate::TestResponse::text()), and [`TestResponse::form()`](crate::TestResponse::form()),
+/// The functions [`TestResponse::json()`](crate::TestResponse::json()), [`TestResponse::text()`](crate::TestResponse::text()),
+/// and [`TestResponse::form()`](crate::TestResponse::form()),
 /// allow you to extract the underlying response content in different formats.
 ///
 /// ```rust
@@ -77,8 +78,8 @@ use url::Url;
 /// # }
 /// ```
 ///
-/// [`TestResponse::as_bytes()`](crate::TestResponse::as_bytes()) and [`TestResponse::into_bytes()`](crate::TestResponse::into_bytes()) offer the
-/// underlying raw bytes, to allow custom decoding.
+/// [`TestResponse::as_bytes()`](crate::TestResponse::as_bytes()) and [`TestResponse::into_bytes()`](crate::TestResponse::into_bytes()),
+/// offer the underlying raw bytes to allow custom decoding.
 ///
 /// Full code examples can be found within their documentation.
 ///

@@ -12,8 +12,15 @@ mod router;
 pub use self::router::*;
 use super::TransportLayerBuilder;
 
-/// This exists to gloss over the differences between Axum's
-/// [`IntoMakeService`](::axum::routing::IntoMakeService) and [`IntoMakeServiceWithConnectInfo`](::axum::extract::connect_info::IntoMakeServiceWithConnectInfo) types.
+///
+/// This exists to unify how to send mock or real messages to different services.
+/// This includes differences between [`Router`](::axum::routing::Router),
+/// [`IntoMakeService`](::axum::routing::IntoMakeService),
+/// and [`IntoMakeServiceWithConnectInfo`](::axum::extract::connect_info::IntoMakeServiceWithConnectInfo).
+///
+/// Implementing this will allow you to use the `TestServer` against other types.
+///
+/// **Warning**, this trait may change in a future release.
 ///
 pub trait IntoTransportLayer: Sized {
     fn into_http_transport_layer(

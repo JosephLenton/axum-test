@@ -43,10 +43,10 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// ## Building
 ///
 /// Requests are created by the [`TestServer`](crate::TestServer), using it's builder functions.
-/// They correspond to the appropriate HTTP method.
-/// Such as [`TestServer::get()`](crate::TestServer::get()), [`TestServer::post()`](crate::TestServer::post()), and so on.
+/// They correspond to the appropriate HTTP method: [`TestServer::get()`](crate::TestServer::get()),
+/// [`TestServer::post()`](crate::TestServer::post()), etc.
 ///
-/// See that for documentation.
+/// See there for documentation.
 ///
 /// ## Customising
 ///
@@ -66,7 +66,7 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// let response = request.await;
 /// ```
 ///
-/// You will receive back a `TestResponse`.
+/// You will receive a `TestResponse`.
 ///
 /// ## Cookie Saving
 ///
@@ -88,7 +88,8 @@ const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 /// This is useful when making multiple requests within a test.
 /// As it can find issues earlier than later.
 ///
-/// See the [`TestRequest::expect_failure()`](crate::TestRequest::expect_failure()) and [`TestRequest::expect_success()`](crate::TestRequest::expect_success()) functions.
+/// See the [`TestRequest::expect_failure()`](crate::TestRequest::expect_failure()),
+/// and [`TestRequest::expect_success()`](crate::TestRequest::expect_success()).
 ///
 #[derive(Debug)]
 #[must_use = "futures do nothing unless polled"]
