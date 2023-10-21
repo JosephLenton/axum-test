@@ -10,12 +10,6 @@
 
 Easy E2E testing for applications built on Axum.
 
-## Examples
-
-You can find a thorough example in the [/examples folder](/examples/example-todo/).
-
-## Features
-
 Using this library, you can host your application and query against it with requests.
 Then decode the responses, and assert what is returned:
 
@@ -53,6 +47,10 @@ In both cases allowing multiple servers to run in parallel, across your tests.
 
 This behaviour can be changed in the `TestServerConfig`, by selecting the `transport` to be used.
 
+### Example
+
+You can find a thorough example in the [/examples folder](/examples/example-todo/).
+
 ### Request building
 
 Querying your application on the `TestServer` supports all of the common request building you would expect.
@@ -63,7 +61,7 @@ Querying your application on the `TestServer` supports all of the common request
  - Status code reading and assertions
  - Assertions for defining what you expect to have returned
 
-## Also
+### It also includes
 
  - Saving cookies returned for use across future requests.
  - Setting headers and query parameters for use across all TestRequests.
