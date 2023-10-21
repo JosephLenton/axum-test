@@ -6,8 +6,11 @@
 //!  * receive back a [`TestResponse`],
 //!  * then assert the response is how you expect.
 //!
-//! It includes built in suppot for serializing and deserializing request and response bodies using Serde,
+//! It includes built in support for serializing and deserializing request and response bodies using Serde,
 //! support for cookies and headers, and other common bits you would expect.
+//!
+//! `TestServer` will pass http requests directly to the handler,
+//! or can be run on a random IP / Port address.
 //!
 //! ## Getting Started
 //!
@@ -28,17 +31,13 @@
 //! }
 //!
 //! let my_app = Router::new()
-//!     .route("/users", put(route_put_user))
-//!     .into_make_service();
+//!     .route("/users", put(route_put_user));
 //!
 //! let server = TestServer::new(my_app)?;
 //! #
 //! # Ok(())
 //! # }
 //! ```
-//!
-//! It will be running on a random address,
-//! allowing many to be run in parallel across tests.
 //!
 //! Then make requests against it:
 //!
@@ -55,8 +54,7 @@
 //! # async fn put_user(Json(user): Json<Value>) -> () {}
 //! #
 //! # let my_app = Router::new()
-//! #     .route("/users", put(put_user))
-//! #     .into_make_service();
+//! #     .route("/users", put(put_user));
 //! #
 //! # let server = TestServer::new(my_app)?;
 //! #
@@ -87,13 +85,10 @@
 //! use ::axum_test::TestServer;
 //! use ::axum_test::TestServerConfig;
 //!
-//! let my_app = Router::new()
-//!     .into_make_service();
-//!
-//! let config = TestServerConfig {
-//!     save_cookies: true,
-//!     ..TestServerConfig::default()
-//! };
+//! let my_app = Router::new();
+//! let config = TestServerConfig::builder()
+//!     .save_cookies()
+//!     .build();
 //!
 //! let server = TestServer::new_with_config(my_app, config)?;
 //! #
@@ -122,13 +117,10 @@
 //! use ::axum_test::TestServer;
 //! use ::axum_test::TestServerConfig;
 //!
-//! let my_app = Router::new()
-//!     .into_make_service();
-//!
-//! let config = TestServerConfig {
-//!     default_content_type: Some("application/json".to_string()),
-//!     ..TestServerConfig::default()
-//! };
+//! let my_app = Router::new();
+//! let config = TestServerConfig::builder()
+//!     .default_content_type("application/json")
+//!     .build();
 //!
 //! let server = TestServer::new_with_config(my_app, config)?;
 //! #
@@ -159,8 +151,7 @@
 //! }
 //!
 //! let my_app = Router::new()
-//!     .route("/users", put(put_user))
-//!     .into_make_service();
+//!     .route("/users", put(put_user));
 //!
 //! let server = TestServer::new(my_app)?;
 //!
@@ -187,11 +178,14 @@
 
 pub(crate) mod internals;
 
-mod into_test_server_thread;
-pub use self::into_test_server_thread::*;
+mod transport;
+pub use self::transport::*;
 
 mod test_server;
 pub use self::test_server::*;
+
+mod test_server_config_builder;
+pub use self::test_server_config_builder::*;
 
 mod test_server_config;
 pub use self::test_server_config::*;
@@ -202,6 +196,7 @@ pub use self::test_request::*;
 mod test_response;
 pub use self::test_response::*;
 
+pub mod transport_layer;
 pub mod util;
 
 pub use ::http;
@@ -249,8 +244,7 @@ mod integrated_test_cookie_saving {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie))
-            .into_make_service();
+            .route("/cookie", get(get_cookie));
 
         // Run the server.
         let server = TestServer::new(app).expect("Should create test server");
@@ -269,8 +263,7 @@ mod integrated_test_cookie_saving {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie))
-            .into_make_service();
+            .route("/cookie", get(get_cookie));
 
         // Run the server.
         let server = TestServer::new_with_config(
@@ -296,8 +289,7 @@ mod integrated_test_cookie_saving {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie))
-            .into_make_service();
+            .route("/cookie", get(get_cookie));
 
         // Run the server.
         let server = TestServer::new_with_config(
@@ -323,8 +315,7 @@ mod integrated_test_cookie_saving {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie))
-            .into_make_service();
+            .route("/cookie", get(get_cookie));
 
         // Run the server.
         let server = TestServer::new_with_config(
@@ -354,8 +345,7 @@ mod integrated_test_cookie_saving {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie))
-            .into_make_service();
+            .route("/cookie", get(get_cookie));
 
         // Run the server.
         let server = TestServer::new_with_config(
@@ -385,8 +375,7 @@ mod integrated_test_cookie_saving {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie))
-            .into_make_service();
+            .route("/cookie", get(get_cookie));
 
         // Run the server.
         let mut server = TestServer::new_with_config(
@@ -418,8 +407,7 @@ mod integrated_test_cookie_saving {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie))
-            .into_make_service();
+            .route("/cookie", get(get_cookie));
 
         // Run the server.
         let server = TestServer::new_with_config(
@@ -444,8 +432,7 @@ mod integrated_test_cookie_saving {
         // Build an application with a route.
         let app = Router::new()
             .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie))
-            .into_make_service();
+            .route("/cookie", get(get_cookie));
 
         // Run the server.
         let mut server = TestServer::new_with_config(

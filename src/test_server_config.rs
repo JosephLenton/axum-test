@@ -1,4 +1,5 @@
-use ::std::net::IpAddr;
+use crate::TestServerConfigBuilder;
+use crate::Transport;
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
 ///
@@ -22,8 +23,7 @@ use ::std::net::IpAddr;
 /// use ::axum_test::TestServer;
 /// use ::axum_test::TestServerConfig;
 ///
-/// let my_app = Router::new()
-///     .into_make_service();
+/// let my_app = Router::new();
 ///
 /// let config = TestServerConfig {
 ///     save_cookies: true,
@@ -36,17 +36,15 @@ use ::std::net::IpAddr;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TestServerConfig {
-    /// Set the IP to use for the server.
+    /// Which transport mode to use to process requests.
+    /// For setting if the server should use mocked http (which uses [`tower::util::Oneshot`](tower::util::Oneshot)),
+    /// or if it should run on a named or random IP address.
     ///
-    /// **Defaults** to `127.0.0.1`.
-    pub ip: Option<IpAddr>,
-
-    /// Set the port number to use for the server.
-    ///
-    /// **Defaults** to a _random_ port.
-    pub port: Option<u16>,
+    /// The default is to use mocking, apart from services built using [`axum::extract::connect_info::IntoMakeServiceWithConnectInfo`](axum::extract::connect_info::IntoMakeServiceWithConnectInfo)
+    /// (this is because it needs a real TCP stream).
+    pub transport: Option<Transport>,
 
     /// Set for the server to save cookies that are returned,
     /// for use in future requests.
@@ -88,11 +86,27 @@ pub struct TestServerConfig {
     pub default_content_type: Option<String>,
 }
 
+impl TestServerConfig {
+    /// Creates a builder for making it simpler to creating configs.
+    ///
+    /// ```rust
+    /// use ::axum_test::TestServerConfig;
+    ///
+    /// let config = TestServerConfig::builder()
+    ///     .save_cookies()
+    ///     .default_content_type(&"application/json")
+    ///     .build();
+    /// ```
+    ///
+    pub fn builder() -> TestServerConfigBuilder {
+        TestServerConfigBuilder::default()
+    }
+}
+
 impl Default for TestServerConfig {
     fn default() -> Self {
         Self {
-            ip: None,
-            port: None,
+            transport: None,
             save_cookies: false,
             expect_success_by_default: false,
             restrict_requests_with_http_schema: false,

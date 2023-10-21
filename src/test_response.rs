@@ -17,8 +17,8 @@ use url::Url;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
-/// The `TestServer` builds a [`TestRequest`](crate::TestRequest), which when awaited, will produce
-/// this type.
+/// The `TestServer` builds a [`TestRequest`](crate::TestRequest), which when awaited,
+/// will produce the response.
 ///
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -32,8 +32,7 @@ use url::Url;
 /// use ::axum_test::TestServer;
 ///
 /// let app = Router::new()
-///     .route(&"/test", get(|| async { "hello!" }))
-///     .into_make_service();
+///     .route(&"/test", get(|| async { "hello!" }));
 ///
 /// let server = TestServer::new(app)?;
 ///
@@ -46,7 +45,8 @@ use url::Url;
 ///
 /// # Extracting Response
 ///
-/// The functions [`TestResponse::json()`](crate::TestResponse::json()), [`TestResponse::text()`](crate::TestResponse::text()), and [`TestResponse::form()`](crate::TestResponse::form()),
+/// The functions [`TestResponse::json()`](crate::TestResponse::json()), [`TestResponse::text()`](crate::TestResponse::text()),
+/// and [`TestResponse::form()`](crate::TestResponse::form()),
 /// allow you to extract the underlying response content in different formats.
 ///
 /// ```rust
@@ -63,8 +63,7 @@ use url::Url;
 /// # struct Todo {}
 /// #
 /// # let app = Router::new()
-/// #     .route(&"/test", get(|| async { "hello!" }))
-/// #     .into_make_service();
+/// #     .route(&"/test", get(|| async { "hello!" }));
 /// #
 /// # let server = TestServer::new(app)?;
 /// let todo_response = server.get(&"/todo")
@@ -79,8 +78,8 @@ use url::Url;
 /// # }
 /// ```
 ///
-/// [`TestResponse::as_bytes()`](crate::TestResponse::as_bytes()) and [`TestResponse::into_bytes()`](crate::TestResponse::into_bytes()) offer the
-/// underlying raw bytes, to allow custom decoding.
+/// [`TestResponse::as_bytes()`](crate::TestResponse::as_bytes()) and [`TestResponse::into_bytes()`](crate::TestResponse::into_bytes()),
+/// offer the underlying raw bytes to allow custom decoding.
 ///
 /// Full code examples can be found within their documentation.
 ///
@@ -100,14 +99,13 @@ use url::Url;
 /// use ::axum_test::TestServer;
 ///
 /// let app = Router::new()
-///     .route(&"/test", get(|| async { "hello!" }))
-///     .into_make_service();
+///     .route(&"/test", get(|| async { "hello!" }));
 ///
 /// let server = TestServer::new(app)?;
 ///
 /// let response = server.get(&"/todo").await;
 ///
-/// // These assertions will panic if they are not fullfilled by the response.
+/// // These assertions will panic if they are not fulfilled by the response.
 /// response.assert_status_ok();
 /// response.assert_text("hello!");
 /// #
@@ -164,8 +162,7 @@ impl TestResponse {
     /// }
     ///
     /// let app = Router::new()
-    ///     .route(&"/todo", get(route_get_todo))
-    ///     .into_make_service();
+    ///     .route(&"/todo", get(route_get_todo));
     ///
     /// let server = TestServer::new(app)?;
     /// let response = server.get(&"/todo").await;
@@ -210,8 +207,7 @@ impl TestResponse {
     /// }
     ///
     /// let app = Router::new()
-    ///     .route(&"/todo", get(route_get_todo))
-    ///     .into_make_service();
+    ///     .route(&"/todo", get(route_get_todo));
     ///
     /// let server = TestServer::new(app)?;
     /// let response = server.get(&"/todo").await;
@@ -266,8 +262,7 @@ impl TestResponse {
     /// }
     ///
     /// let app = Router::new()
-    ///     .route(&"/todo", get(route_get_todo))
-    ///     .into_make_service();
+    ///     .route(&"/todo", get(route_get_todo));
     ///
     /// let server = TestServer::new(app)?;
     /// let response = server.get(&"/todo").await;
@@ -582,7 +577,7 @@ mod test_assert_success {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(router.into_make_service()).unwrap();
+        let server = TestServer::new(router).unwrap();
 
         let response = server.get(&"/pass").await;
 
@@ -596,7 +591,7 @@ mod test_assert_success {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(router.into_make_service()).unwrap();
+        let server = TestServer::new(router).unwrap();
 
         let response = server.get(&"/fail").expect_failure().await;
 
@@ -625,7 +620,7 @@ mod test_assert_failure {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(router.into_make_service()).unwrap();
+        let server = TestServer::new(router).unwrap();
 
         let response = server.get(&"/fail").expect_failure().await;
 
@@ -639,7 +634,7 @@ mod test_assert_failure {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(router.into_make_service()).unwrap();
+        let server = TestServer::new(router).unwrap();
 
         let response = server.get(&"/pass").await;
 
@@ -664,9 +659,7 @@ mod test_into_bytes {
 
     #[tokio::test]
     async fn it_should_deserialize_into_json() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json))
-            .into_make_service();
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -701,9 +694,7 @@ mod test_json {
 
     #[tokio::test]
     async fn it_should_deserialize_into_json() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json))
-            .into_make_service();
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -743,9 +734,7 @@ mod test_form {
 
     #[tokio::test]
     async fn it_should_deserialize_into_form() {
-        let app = Router::new()
-            .route(&"/form", get(route_get_form))
-            .into_make_service();
+        let app = Router::new().route(&"/form", get(route_get_form));
 
         let server = TestServer::new(app).unwrap();
 
@@ -794,9 +783,7 @@ mod test_assert_json {
 
     #[tokio::test]
     async fn it_should_match_json_returned() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json))
-            .into_make_service();
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -809,9 +796,7 @@ mod test_assert_json {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_different() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json))
-            .into_make_service();
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -824,9 +809,7 @@ mod test_assert_json {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_form() {
-        let app = Router::new()
-            .route(&"/form", get(route_get_form))
-            .into_make_service();
+        let app = Router::new().route(&"/form", get(route_get_form));
 
         let server = TestServer::new(app).unwrap();
 
@@ -870,9 +853,7 @@ mod test_assert_form {
 
     #[tokio::test]
     async fn it_should_match_form_returned() {
-        let app = Router::new()
-            .route(&"/form", get(route_get_form))
-            .into_make_service();
+        let app = Router::new().route(&"/form", get(route_get_form));
 
         let server = TestServer::new(app).unwrap();
 
@@ -885,9 +866,7 @@ mod test_assert_form {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_different() {
-        let app = Router::new()
-            .route(&"/form", get(route_get_form))
-            .into_make_service();
+        let app = Router::new().route(&"/form", get(route_get_form));
 
         let server = TestServer::new(app).unwrap();
 
@@ -900,9 +879,7 @@ mod test_assert_form {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_json() {
-        let app = Router::new()
-            .route(&"/json", get(route_get_json))
-            .into_make_service();
+        let app = Router::new().route(&"/json", get(route_get_json));
 
         let server = TestServer::new(app).unwrap();
 
@@ -925,9 +902,7 @@ mod test_text {
             "hello!".to_string()
         }
 
-        let app = Router::new()
-            .route(&"/text", get(route_get_text))
-            .into_make_service();
+        let app = Router::new().route(&"/text", get(route_get_text));
 
         let server = TestServer::new(app).unwrap();
 
