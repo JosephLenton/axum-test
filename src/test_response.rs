@@ -525,6 +525,12 @@ impl TestResponse {
         self.assert_status(StatusCode::UNAUTHORIZED)
     }
 
+    /// Assert the response status code is 403.
+    #[track_caller]
+    pub fn assert_status_forbidden(&self) {
+        self.assert_status(StatusCode::FORBIDDEN)
+    }
+
     /// Assert the response status code is 200.
     #[track_caller]
     pub fn assert_status_ok(&self) {
