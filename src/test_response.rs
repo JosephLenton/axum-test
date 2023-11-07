@@ -13,7 +13,10 @@ use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
-use url::Url;
+use ::url::Url;
+
+#[cfg(feature = "pretty-assertions")]
+use ::pretty_assertions::{assert_eq, assert_ne};
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
