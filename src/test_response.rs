@@ -13,7 +13,10 @@ use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
-use url::Url;
+use ::url::Url;
+
+#[cfg(feature = "pretty-assertions")]
+use ::pretty_assertions::{assert_eq, assert_ne};
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -452,7 +455,7 @@ impl TestResponse {
         C: AsRef<str>,
     {
         let other_contents = other.as_ref();
-        assert_eq!(&self.text(), other_contents);
+        assert_eq!(other_contents, &self.text());
     }
 
     /// Deserializes the contents of the request as JSON,
@@ -465,8 +468,7 @@ impl TestResponse {
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
-        let own_json: T = self.json();
-        assert_eq!(own_json, *other);
+        assert_eq!(*other, self.json::<T>());
     }
 
     /// Deserializes the contents of the request as an url encoded form,
@@ -479,8 +481,7 @@ impl TestResponse {
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
-        let own_json: T = self.form();
-        assert_eq!(own_json, *other);
+        assert_eq!(*other, self.form::<T>());
     }
 
     /// This will panic if the status code is **within** the 2xx range.
@@ -546,13 +547,13 @@ impl TestResponse {
     /// Assert the response status code matches the one given.
     #[track_caller]
     pub fn assert_status(&self, status_code: StatusCode) {
-        assert_eq!(self.status_code(), status_code);
+        assert_eq!(status_code, self.status_code());
     }
 
     /// Assert the response status code does **not** match the one given.
     #[track_caller]
     pub fn assert_not_status(&self, status_code: StatusCode) {
-        assert_ne!(self.status_code(), status_code);
+        assert_ne!(status_code, self.status_code());
     }
 }
 

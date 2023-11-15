@@ -1,17 +1,20 @@
 <div align="center">
   <h1>
-    Axum Test<br>
-    for testing Axum Servers
+    Axum Test
   </h1>
+
+  <h3>
+    Easy E2E testing for applications built on Axum
+  </h3>
 
   [![crate](https://img.shields.io/crates/v/axum-test.svg)](https://crates.io/crates/axum-test)
   [![docs](https://docs.rs/axum-test/badge.svg)](https://docs.rs/axum-test)
+
+  <br/>
 </div>
 
-Easy E2E testing for applications built on Axum.
-
 Using this library, you can host your application and query against it with requests.
-Then decode the responses, and assert what is returned:
+Then decode the responses, and assert what is returned.
 
 ```rust
   use ::axum::Router;
@@ -67,3 +70,10 @@ Querying your application on the `TestServer` supports all of the common request
  - Setting headers and query parameters for use across all TestRequests.
  - Can optionally run requests using a real web server.
  - Automatic status assertions for checking requests always succeed or fail.
+ - Prettifying the assertion output.
+
+## Crate Features
+
+Here are a list of all features so far that can be enabled:
+
+ * `pretty-assertions` **on by default**, uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) for the output to the `assert_*` functions.
