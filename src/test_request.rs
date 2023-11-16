@@ -422,7 +422,7 @@ impl TestRequest {
             ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
-        let response = TestResponse::new(path, url, parts, response_bytes);
+        let response = TestResponse::new(method, path, url, parts, response_bytes);
 
         // Assert if ok or not.
         match expected_state {
