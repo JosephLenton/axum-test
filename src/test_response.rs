@@ -8,6 +8,7 @@ use ::http::header::SET_COOKIE;
 use ::http::response::Parts;
 use ::http::HeaderMap;
 use ::http::HeaderValue;
+use ::http::Method;
 use ::http::StatusCode;
 use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
@@ -118,6 +119,7 @@ use ::pretty_assertions::{assert_eq, assert_ne};
 ///
 #[derive(Clone, Debug)]
 pub struct TestResponse {
+    method: Method,
     /// This is the path that the user requested.
     user_requested_path: String,
     /// This is the actual url that was used for the request.
@@ -129,12 +131,14 @@ pub struct TestResponse {
 
 impl TestResponse {
     pub(crate) fn new(
+        method: Method,
         user_requested_path: String,
         full_request_url: Url,
         parts: Parts,
         response_body: Bytes,
     ) -> Self {
         Self {
+            method,
             user_requested_path,
             full_request_url,
             headers: parts.headers,
@@ -229,8 +233,8 @@ impl TestResponse {
         serde_json::from_slice::<T>(&self.as_bytes())
             .with_context(|| {
                 format!(
-                    "Deserializing response from JSON for request {}",
-                    self.user_requested_path
+                    "Deserializing response from JSON, for request {} {}",
+                    self.method, self.user_requested_path,
                 )
             })
             .unwrap()
@@ -284,8 +288,8 @@ impl TestResponse {
         serde_urlencoded::from_bytes::<T>(&self.as_bytes())
             .with_context(|| {
                 format!(
-                    "Deserializing response from Form for request {}",
-                    self.user_requested_path
+                    "Deserializing response from Form, for request {} {}",
+                    self.method, self.user_requested_path,
                 )
             })
             .unwrap()
@@ -351,8 +355,8 @@ impl TestResponse {
             .map(|h| h.to_owned())
             .with_context(|| {
                 format!(
-                    "Cannot find header {} for response {}",
-                    debug_header, self.user_requested_path
+                    "Cannot find header {}, for request {} {}",
+                    debug_header, self.method, self.user_requested_path
                 )
             })
             .unwrap()
@@ -400,8 +404,8 @@ impl TestResponse {
         self.maybe_cookie(cookie_name)
             .with_context(|| {
                 format!(
-                    "Cannot find cookie {} for response {}",
-                    cookie_name, self.user_requested_path
+                    "Cannot find cookie {}, for request {} {}",
+                    cookie_name, self.method, self.user_requested_path
                 )
             })
             .unwrap()
@@ -430,8 +434,8 @@ impl TestResponse {
                 .to_str()
                 .with_context(|| {
                     format!(
-                        "Reading header 'Set-Cookie' as string for response {}",
-                        self.user_requested_path
+                        "Reading header 'Set-Cookie' as string, for request {} {}",
+                        self.method, self.user_requested_path
                     )
                 })
                 .unwrap();
@@ -439,8 +443,8 @@ impl TestResponse {
             Cookie::parse(header_str)
                 .with_context(|| {
                     format!(
-                        "Parsing 'Set-Cookie' header for response {}",
-                        self.user_requested_path
+                        "Parsing 'Set-Cookie' header, for request {} {}",
+                        self.method, self.user_requested_path
                     )
                 })
                 .unwrap()
@@ -491,8 +495,10 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         assert!(
             200 <= status_code && status_code <= 299,
-            "Expect status code _within_ 2xx range, got {}",
-            status_code
+            "Expect status code within 2xx range, got {}, for request {} {}",
+            status_code,
+            self.method,
+            self.user_requested_path
         );
     }
 
@@ -503,8 +509,10 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         assert!(
             status_code < 200 || 299 < status_code,
-            "Expect status code _outside_ 2xx range, got {}",
-            status_code
+            "Expect status code outside 2xx range, got {}, for request {} {}",
+            status_code,
+            self.method,
+            self.user_requested_path
         );
     }
 
@@ -547,13 +555,25 @@ impl TestResponse {
     /// Assert the response status code matches the one given.
     #[track_caller]
     pub fn assert_status(&self, status_code: StatusCode) {
-        assert_eq!(status_code, self.status_code());
+        let received_status_code = self.status_code();
+
+        assert_eq!(
+            status_code, received_status_code,
+            "Expected status code {status_code}, got {received_status_code}, for request {} {}",
+            self.method, self.user_requested_path
+        );
     }
 
     /// Assert the response status code does **not** match the one given.
     #[track_caller]
     pub fn assert_not_status(&self, status_code: StatusCode) {
-        assert_ne!(status_code, self.status_code());
+        assert_ne!(
+            status_code,
+            self.status_code(),
+            "Expected status code to not equal {status_code}, for request {} {}",
+            self.method,
+            self.user_requested_path
+        );
     }
 }
 
@@ -565,10 +585,11 @@ impl From<TestResponse> for Bytes {
 
 #[cfg(test)]
 mod test_assert_success {
-    use crate::TestServer;
     use ::axum::routing::get;
     use ::axum::routing::Router;
     use ::http::StatusCode;
+
+    use crate::TestServer;
 
     pub async fn route_get_pass() -> StatusCode {
         StatusCode::OK
@@ -580,7 +601,7 @@ mod test_assert_success {
 
     #[tokio::test]
     async fn it_should_pass_when_200() {
-        let router: Router = Router::new()
+        let router = Router::new()
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
@@ -594,7 +615,7 @@ mod test_assert_success {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_when_not_200() {
-        let router: Router = Router::new()
+        let router = Router::new()
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
@@ -608,10 +629,11 @@ mod test_assert_success {
 
 #[cfg(test)]
 mod test_assert_failure {
-    use crate::TestServer;
     use ::axum::routing::get;
     use ::axum::routing::Router;
     use ::http::StatusCode;
+
+    use crate::TestServer;
 
     pub async fn route_get_pass() -> StatusCode {
         StatusCode::OK
@@ -623,7 +645,7 @@ mod test_assert_failure {
 
     #[tokio::test]
     async fn it_should_pass_when_not_200() {
-        let router: Router = Router::new()
+        let router = Router::new()
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
@@ -637,7 +659,7 @@ mod test_assert_failure {
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_when_200() {
-        let router: Router = Router::new()
+        let router = Router::new()
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
@@ -646,6 +668,73 @@ mod test_assert_failure {
         let response = server.get(&"/pass").await;
 
         response.assert_status_failure()
+    }
+}
+
+#[cfg(test)]
+mod test_assert_status {
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::http::StatusCode;
+
+    use crate::TestServer;
+
+    pub async fn route_get_ok() -> StatusCode {
+        StatusCode::OK
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_if_given_right_status_code() {
+        let router = Router::new().route(&"/ok", get(route_get_ok));
+
+        let server = TestServer::new(router).unwrap();
+
+        server.get(&"/ok").await.assert_status(StatusCode::OK);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_status_code_does_not_match() {
+        let router = Router::new().route(&"/ok", get(route_get_ok));
+
+        let server = TestServer::new(router).unwrap();
+
+        server.get(&"/ok").await.assert_status(StatusCode::ACCEPTED);
+    }
+}
+
+#[cfg(test)]
+mod test_assert_not_status {
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::http::StatusCode;
+
+    use crate::TestServer;
+
+    pub async fn route_get_ok() -> StatusCode {
+        StatusCode::OK
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_if_status_code_does_not_match() {
+        let router = Router::new().route(&"/ok", get(route_get_ok));
+
+        let server = TestServer::new(router).unwrap();
+
+        server
+            .get(&"/ok")
+            .await
+            .assert_not_status(StatusCode::ACCEPTED);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_status_code_matches() {
+        let router = Router::new().route(&"/ok", get(route_get_ok));
+
+        let server = TestServer::new(router).unwrap();
+
+        server.get(&"/ok").await.assert_not_status(StatusCode::OK);
     }
 }
 
