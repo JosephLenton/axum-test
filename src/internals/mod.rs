@@ -4,6 +4,9 @@ pub use self::transport_layer::*;
 mod expected_state;
 pub use self::expected_state::*;
 
+mod status_code_formatter;
+pub use self::status_code_formatter::*;
+
 mod query_params_store;
 pub use self::query_params_store::*;
 

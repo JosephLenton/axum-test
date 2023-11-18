@@ -16,6 +16,7 @@ use ::std::fmt::Debug;
 use ::std::fmt::Display;
 use ::url::Url;
 
+use crate::internals::StatusCodeFormatter;
 #[cfg(feature = "pretty-assertions")]
 use ::pretty_assertions::{assert_eq, assert_ne};
 
@@ -232,9 +233,11 @@ impl TestResponse {
     {
         serde_json::from_slice::<T>(&self.as_bytes())
             .with_context(|| {
+                let method = &self.method;
+                let user_requested_path = &self.user_requested_path;
+
                 format!(
-                    "Deserializing response from JSON, for request {} {}",
-                    self.method, self.user_requested_path,
+                    "Deserializing response from JSON, for request {method} {user_requested_path}"
                 )
             })
             .unwrap()
@@ -287,9 +290,11 @@ impl TestResponse {
     {
         serde_urlencoded::from_bytes::<T>(&self.as_bytes())
             .with_context(|| {
+                let method = &self.method;
+                let user_requested_path = &self.user_requested_path;
+
                 format!(
-                    "Deserializing response from Form, for request {} {}",
-                    self.method, self.user_requested_path,
+                    "Deserializing response from Form, for request {method} {user_requested_path}"
                 )
             })
             .unwrap()
@@ -354,9 +359,11 @@ impl TestResponse {
             .get(header_name)
             .map(|h| h.to_owned())
             .with_context(|| {
+                let method = &self.method;
+                let user_requested_path = &self.user_requested_path;
+
                 format!(
-                    "Cannot find header {}, for request {} {}",
-                    debug_header, self.method, self.user_requested_path
+                    "Cannot find header {debug_header}, for request {method} {user_requested_path}",
                 )
             })
             .unwrap()
@@ -403,9 +410,11 @@ impl TestResponse {
     pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
         self.maybe_cookie(cookie_name)
             .with_context(|| {
+                let method = &self.method;
+                let user_requested_path = &self.user_requested_path;
+
                 format!(
-                    "Cannot find cookie {}, for request {} {}",
-                    cookie_name, self.method, self.user_requested_path
+                    "Cannot find cookie {cookie_name}, for request {method} {user_requested_path}"
                 )
             })
             .unwrap()
@@ -433,18 +442,22 @@ impl TestResponse {
             let header_str = header
                 .to_str()
                 .with_context(|| {
+                    let method = &self.method;
+                    let user_requested_path = &self.user_requested_path;
+
                     format!(
-                        "Reading header 'Set-Cookie' as string, for request {} {}",
-                        self.method, self.user_requested_path
+                        "Reading header 'Set-Cookie' as string, for request {method} {user_requested_path}",
                     )
                 })
                 .unwrap();
 
             Cookie::parse(header_str)
                 .with_context(|| {
+                    let method = &self.method;
+                    let user_requested_path = &self.user_requested_path;
+
                     format!(
-                        "Parsing 'Set-Cookie' header, for request {} {}",
-                        self.method, self.user_requested_path
+                        "Parsing 'Set-Cookie' header, for request {method} {user_requested_path}",
                     )
                 })
                 .unwrap()
@@ -493,12 +506,13 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status_success(&self) {
         let status_code = self.status_code.as_u16();
+        let received_debug = StatusCodeFormatter(self.status_code);
+        let method = &self.method;
+        let user_requested_path = &self.user_requested_path;
+
         assert!(
             200 <= status_code && status_code <= 299,
-            "Expect status code within 2xx range, got {}, for request {} {}",
-            status_code,
-            self.method,
-            self.user_requested_path
+            "Expect status code within 2xx range, got {received_debug}, for request {method} {user_requested_path}"
         );
     }
 
@@ -507,12 +521,13 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status_failure(&self) {
         let status_code = self.status_code.as_u16();
+        let received_debug = StatusCodeFormatter(self.status_code);
+        let method = &self.method;
+        let user_requested_path = &self.user_requested_path;
+
         assert!(
             status_code < 200 || 299 < status_code,
-            "Expect status code outside 2xx range, got {}, for request {} {}",
-            status_code,
-            self.method,
-            self.user_requested_path
+            "Expect status code outside 2xx range, got {received_debug}, for request {method} {user_requested_path}",
         );
     }
 
@@ -554,25 +569,30 @@ impl TestResponse {
 
     /// Assert the response status code matches the one given.
     #[track_caller]
-    pub fn assert_status(&self, status_code: StatusCode) {
-        let received_status_code = self.status_code();
+    pub fn assert_status(&self, expected_status_code: StatusCode) {
+        let status_code = self.status_code.as_u16();
+        let received_debug = StatusCodeFormatter(self.status_code);
+        let expected_debug = StatusCodeFormatter(expected_status_code);
+        let method = &self.method;
+        let user_requested_path = &self.user_requested_path;
 
         assert_eq!(
-            status_code, received_status_code,
-            "Expected status code {status_code}, got {received_status_code}, for request {} {}",
-            self.method, self.user_requested_path
+            expected_status_code, status_code,
+            "Expected status code {expected_debug}, got {received_debug}, for request {method} {user_requested_path}",
         );
     }
 
     /// Assert the response status code does **not** match the one given.
     #[track_caller]
-    pub fn assert_not_status(&self, status_code: StatusCode) {
+    pub fn assert_not_status(&self, expected_status_code: StatusCode) {
+        let expected_debug = StatusCodeFormatter(expected_status_code);
+        let method = &self.method;
+        let user_requested_path = &self.user_requested_path;
+
         assert_ne!(
-            status_code,
+            expected_status_code,
             self.status_code(),
-            "Expected status code to not equal {status_code}, for request {} {}",
-            self.method,
-            self.user_requested_path
+            "Expected status code to not be {expected_debug}, it is, for request {method} {user_requested_path}",
         );
     }
 }
