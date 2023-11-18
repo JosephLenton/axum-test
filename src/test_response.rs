@@ -16,7 +16,7 @@ use ::std::fmt::Debug;
 use ::std::fmt::Display;
 use ::url::Url;
 
-use crate::internals::FormatStatusCode;
+use crate::internals::StatusCodeFormatter;
 #[cfg(feature = "pretty-assertions")]
 use ::pretty_assertions::{assert_eq, assert_ne};
 
@@ -506,13 +506,13 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status_success(&self) {
         let status_code = self.status_code.as_u16();
-        let got_debug = FormatStatusCode(self.status_code);
+        let received_debug = StatusCodeFormatter(self.status_code);
         let method = &self.method;
         let user_requested_path = &self.user_requested_path;
 
         assert!(
             200 <= status_code && status_code <= 299,
-            "Expect status code within 2xx range, got {got_debug}, for request {method} {user_requested_path}"
+            "Expect status code within 2xx range, got {received_debug}, for request {method} {user_requested_path}"
         );
     }
 
@@ -521,13 +521,13 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status_failure(&self) {
         let status_code = self.status_code.as_u16();
-        let got_debug = FormatStatusCode(self.status_code);
+        let received_debug = StatusCodeFormatter(self.status_code);
         let method = &self.method;
         let user_requested_path = &self.user_requested_path;
 
         assert!(
             status_code < 200 || 299 < status_code,
-            "Expect status code outside 2xx range, got {got_debug}, for request {method} {user_requested_path}",
+            "Expect status code outside 2xx range, got {received_debug}, for request {method} {user_requested_path}",
         );
     }
 
@@ -571,28 +571,28 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status(&self, expected_status_code: StatusCode) {
         let status_code = self.status_code.as_u16();
-        let got_debug = FormatStatusCode(self.status_code);
-        let expected_debug = FormatStatusCode(expected_status_code);
+        let received_debug = StatusCodeFormatter(self.status_code);
+        let expected_debug = StatusCodeFormatter(expected_status_code);
         let method = &self.method;
         let user_requested_path = &self.user_requested_path;
 
         assert_eq!(
             expected_status_code, status_code,
-            "Expected status code {expected_debug}, got {got_debug}, for request {method} {user_requested_path}",
+            "Expected status code {expected_debug}, got {received_debug}, for request {method} {user_requested_path}",
         );
     }
 
     /// Assert the response status code does **not** match the one given.
     #[track_caller]
     pub fn assert_not_status(&self, expected_status_code: StatusCode) {
-        let expected_debug = FormatStatusCode(expected_status_code);
+        let expected_debug = StatusCodeFormatter(expected_status_code);
         let method = &self.method;
         let user_requested_path = &self.user_requested_path;
 
         assert_ne!(
             expected_status_code,
             self.status_code(),
-            "Expected status code to not be {expected_debug}, for request {method} {user_requested_path}",
+            "Expected status code to not be {expected_debug}, it is, for request {method} {user_requested_path}",
         );
     }
 }
