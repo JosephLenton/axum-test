@@ -21,6 +21,7 @@ use crate::Transport;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
+use crate::internals::RequestPathFormatter;
 
 const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 
@@ -163,16 +164,12 @@ impl TestServer {
 
     /// Creates a HTTP request, to the method and path provided.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
-        let debug_method = method.clone();
-        let config = self.test_request_config(method, path);
+        let config = self.test_request_config(method.clone(), path);
         let maybe_request = TestRequest::new(self.state.clone(), self.transport.clone(), config);
 
         maybe_request
             .with_context(|| {
-                format!(
-                    "Trying to create internal request for {} {}",
-                    debug_method, path
-                )
+                format!("Trying to create internal request, for request {method} {path}")
             })
             .unwrap()
     }
@@ -303,8 +300,7 @@ impl TestServer {
             expected_state: self.expected_state,
             content_type: self.default_content_type.clone(),
             full_request_url: build_url(url, path, self.is_http_path_restricted),
-            method,
-            path: path.to_string(),
+            request_format: RequestPathFormatter::new(method, path.to_string()),
         }
     }
 }
