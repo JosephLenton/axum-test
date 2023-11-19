@@ -19,8 +19,10 @@ impl IntoTransportLayer for IntoMakeService<Router> {
     ) -> Result<Box<dyn TransportLayer>> {
         let (socket_addr, tcp_listener, maybe_reserved_port) =
             builder.tcp_listener_with_reserved_port()?;
+
+        let maybe_local_address = tcp_listener.local_addr().ok();
         let server_builder = AxumServer::from_tcp(tcp_listener)
-            .with_context(|| "Failed to create ::axum::Server for TestServer")?;
+            .with_context(|| format!("Failed to create ::axum::Server for TestServer, with address '{maybe_local_address:?}'"))?;
 
         let server = server_builder.serve(self);
         let server_handle = spawn(async move {

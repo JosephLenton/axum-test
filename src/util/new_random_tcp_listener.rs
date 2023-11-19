@@ -5,7 +5,7 @@ use ::std::net::Ipv4Addr;
 use ::std::net::TcpListener;
 use std::net::SocketAddr;
 
-pub(crate) const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+pub(crate) const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
 /// Binds a `TcpListener` on the IP 127.0.0.1, using a random port.
 ///
