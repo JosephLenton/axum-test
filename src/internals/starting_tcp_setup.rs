@@ -6,7 +6,7 @@ use ::std::net::Ipv4Addr;
 use ::std::net::SocketAddr;
 use ::std::net::TcpListener;
 
-pub const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+pub const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
 pub struct StartingTcpSetup {
     pub maybe_reserved_port: Option<ReservedPort>,
