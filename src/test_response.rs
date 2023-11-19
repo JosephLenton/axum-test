@@ -501,7 +501,7 @@ impl TestResponse {
         assert_eq!(*other, self.form::<T>());
     }
 
-    /// This will panic if the status code is **within** the 2xx range.
+    /// Assert that the status code is **within** the 2xx range.
     /// i.e. The range from 200-299.
     #[track_caller]
     pub fn assert_status_success(&self) {
@@ -516,7 +516,7 @@ impl TestResponse {
         );
     }
 
-    /// This will panic if the status code is **outside** the 2xx range.
+    /// Assert that the status code is **outside** the 2xx range.
     /// i.e. A status code less than 200, or 300 or more.
     #[track_caller]
     pub fn assert_status_failure(&self) {
