@@ -55,11 +55,15 @@ pub struct TestServerConfig {
     /// **Defaults** to false (being turned off).
     pub save_cookies: bool,
 
-    /// Sets requests made by the server to always expect a status code returned in the 2xx range,
-    /// and to panic if that is missing.
+    /// Asserts that requests made to the test server,
+    /// will by default,
+    /// return a status code in the 2xx range.
+    ///
+    /// This can be overridden on a per request basis using
+    /// [`TestRequest::expect_failure()`](crate::TestRequest::expect_failure()).
     ///
     /// This is useful when making multiple requests at a start of test
-    /// which you presume should always work. It also helps to make tests more explicit.
+    /// which you presume should always work.
     ///
     /// **Defaults** to false (being turned off).
     pub expect_success_by_default: bool,

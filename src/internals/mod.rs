@@ -7,6 +7,9 @@ pub use self::expected_state::*;
 mod status_code_formatter;
 pub use self::status_code_formatter::*;
 
+mod request_path_formatter;
+pub use self::request_path_formatter::*;
+
 mod query_params_store;
 pub use self::query_params_store::*;
 

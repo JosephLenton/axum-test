@@ -10,7 +10,6 @@ use ::http::header;
 use ::http::header::SET_COOKIE;
 use ::http::HeaderName;
 use ::http::HeaderValue;
-use ::http::Method;
 use ::http::Request;
 use ::hyper::body::Body;
 use ::serde::Serialize;
@@ -26,12 +25,13 @@ use ::url::Url;
 
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
+use crate::internals::RequestPathFormatter;
 use crate::transport_layer::TransportLayer;
 use crate::ServerSharedState;
 use crate::TestResponse;
 
-mod test_request_config;
 pub(crate) use self::test_request_config::*;
+mod test_request_config;
 
 const JSON_CONTENT_TYPE: &'static str = &"application/json";
 const FORM_CONTENT_TYPE: &'static str = &"application/x-www-form-urlencoded";
@@ -115,10 +115,9 @@ impl TestRequest {
     ) -> Result<Self> {
         let expected_state = config.expected_state;
         let server_locked = server_state.as_ref().lock().map_err(|err| {
+            let request_format = &config.request_format;
             anyhow!(
-                "Failed to lock InternalTestServer for {} {}, received {err:?}",
-                config.method,
-                config.path,
+                "Failed to lock InternalTestServer, for request {request_format}, received {err:?}",
             )
         })?;
 
@@ -320,7 +319,12 @@ impl TestRequest {
     {
         self.query_params
             .add(query_params)
-            .expect("It should serialize query parameters");
+            .with_context(|| {
+                let request_format = &self.config.request_format;
+                format!("It should serialize query parameters, for request {request_format}")
+            })
+            .unwrap();
+
         self
     }
 
@@ -395,15 +399,13 @@ impl TestRequest {
     async fn send(mut self) -> Result<TestResponse> {
         let expected_state = self.expected_state;
         let save_cookies = self.config.is_saving_cookies;
-        let path = self.config.path;
         let body = self.body.unwrap_or(Body::empty());
-        let method = self.config.method;
+        let request_format = self.config.request_format;
 
         let url = Self::build_url_query_params(self.config.full_request_url, &self.query_params);
         let request = Self::build_request(
-            method.clone(),
+            &request_format,
             &url,
-            path.clone(),
             body,
             self.config.content_type,
             self.cookies,
@@ -412,7 +414,9 @@ impl TestRequest {
 
         let (parts, response_bytes) = {
             let mut transport_locked = self.transport.as_ref().lock().map_err(|err| {
-                anyhow!("Expect Response to succeed on request {method} {path}, received {err:?}")
+                anyhow!(
+                    "Expect Response to succeed, for request {request_format}, received {err:?}"
+                )
             })?;
             transport_locked.send(request).await?
         };
@@ -422,7 +426,7 @@ impl TestRequest {
             ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
-        let response = TestResponse::new(method, path, url, parts, response_bytes);
+        let response = TestResponse::new(request_format, url, parts, response_bytes);
 
         // Assert if ok or not.
         match expected_state {
@@ -444,19 +448,21 @@ impl TestRequest {
     }
 
     fn build_request(
-        method: Method,
+        request_format: &RequestPathFormatter,
         url: &Url,
-        path: String,
         body: Body,
         content_type: Option<String>,
         cookies: CookieJar,
         headers: Vec<(HeaderName, HeaderValue)>,
     ) -> Result<Request<Body>> {
-        let mut request_builder = Request::builder().uri(url.as_str()).method(method);
+        let mut request_builder = Request::builder()
+            .uri(url.as_str())
+            .method(request_format.method().clone());
 
         // Add all the headers we have.
         if let Some(content_type) = content_type {
-            let (header_key, header_value) = build_content_type_header(content_type)?;
+            let (header_key, header_value) =
+                build_content_type_header(&content_type, &request_format)?;
             request_builder = request_builder.header(header_key, header_value);
         }
 
@@ -473,10 +479,7 @@ impl TestRequest {
         }
 
         let request = request_builder.body(body).with_context(|| {
-            format!(
-                "Expect valid hyper Request to be built on request to {}",
-                path
-            )
+            format!("Expect valid hyper Request to be built, for request {request_format}")
         })?;
 
         Ok(request)
@@ -494,9 +497,8 @@ impl TryFrom<TestRequest> for Request<Body> {
         let body = test_request.body.unwrap_or(Body::empty());
 
         TestRequest::build_request(
-            test_request.config.method,
+            &test_request.config.request_format,
             &url,
-            test_request.config.path,
             body,
             test_request.config.content_type,
             test_request.cookies,
@@ -510,13 +512,24 @@ impl IntoFuture for TestRequest {
     type IntoFuture = AutoFuture<TestResponse>;
 
     fn into_future(self) -> Self::IntoFuture {
-        AutoFuture::new(async { self.send().await.expect("Sending request failed") })
+        AutoFuture::new(async {
+            self.send()
+                .await
+                .with_context(|| format!("Sending request failed"))
+                .unwrap()
+        })
     }
 }
 
-fn build_content_type_header(content_type: String) -> Result<(HeaderName, HeaderValue)> {
-    let header_value = HeaderValue::from_str(&content_type)
-        .with_context(|| format!("Failed to store header content type '{}'", content_type))?;
+fn build_content_type_header(
+    content_type: &str,
+    request_format: &RequestPathFormatter,
+) -> Result<(HeaderName, HeaderValue)> {
+    let header_value = HeaderValue::from_str(content_type).with_context(|| {
+        format!(
+            "Failed to store header content type '{content_type}', for request {request_format}"
+        )
+    })?;
 
     Ok((header::CONTENT_TYPE, header_value))
 }
