@@ -1,4 +1,4 @@
-use ::http::StatusCode;
+use ::http::Method;
 use ::std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -24,8 +24,8 @@ impl RequestPathFormatter {
 
 impl fmt::Display for RequestPathFormatter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let method = self.method;
-        let user_requested_path = self.user_requested_path;
+        let method = &self.method;
+        let user_requested_path = &self.user_requested_path;
 
         write!(f, "{method} {user_requested_path}")
     }
@@ -37,7 +37,7 @@ mod test_fmt {
 
     #[test]
     fn it_should_format_with_path_given() {
-        let debug = RequestPathFormatter(Method::GET, "/donkeys");
+        let debug = RequestPathFormatter::new(Method::GET, "/donkeys".to_string());
         let output = format!("{}", debug);
 
         assert_eq!(output, "GET /donkeys");

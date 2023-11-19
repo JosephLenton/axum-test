@@ -1,4 +1,3 @@
-use ::http::Method;
 use ::url::Url;
 
 use crate::internals::ExpectedState;

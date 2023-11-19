@@ -8,7 +8,6 @@ use ::http::header::SET_COOKIE;
 use ::http::response::Parts;
 use ::http::HeaderMap;
 use ::http::HeaderValue;
-use ::http::Method;
 use ::http::StatusCode;
 use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;

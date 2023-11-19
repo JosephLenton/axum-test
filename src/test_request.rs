@@ -10,7 +10,6 @@ use ::http::header;
 use ::http::header::SET_COOKIE;
 use ::http::HeaderName;
 use ::http::HeaderValue;
-use ::http::Method;
 use ::http::Request;
 use ::hyper::body::Body;
 use ::serde::Serialize;
@@ -116,7 +115,7 @@ impl TestRequest {
     ) -> Result<Self> {
         let expected_state = config.expected_state;
         let server_locked = server_state.as_ref().lock().map_err(|err| {
-            let request_format = config.request_format;
+            let request_format = &config.request_format;
             anyhow!(
                 "Failed to lock InternalTestServer, for request {request_format}, received {err:?}",
             )
@@ -318,10 +317,13 @@ impl TestRequest {
     where
         V: Serialize,
     {
-        self.query_params.add(query_params).with_context(|| {
-            let request_format = config.request_format;
-            format!("It should serialize query parameters, for request {request_format}")
-        });
+        self.query_params
+            .add(query_params)
+            .with_context(|| {
+                let request_format = &self.config.request_format;
+                format!("It should serialize query parameters, for request {request_format}")
+            })
+            .unwrap();
 
         self
     }
@@ -397,7 +399,6 @@ impl TestRequest {
     async fn send(mut self) -> Result<TestResponse> {
         let expected_state = self.expected_state;
         let save_cookies = self.config.is_saving_cookies;
-        let path = self.config.path;
         let body = self.body.unwrap_or(Body::empty());
         let request_format = self.config.request_format;
 
