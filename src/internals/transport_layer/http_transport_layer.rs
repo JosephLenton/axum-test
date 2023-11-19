@@ -8,9 +8,9 @@ use ::hyper::Body;
 use ::hyper::Client;
 use ::reserve_port::ReservedPort;
 use ::tokio::task::JoinHandle;
+use ::url::Url;
 
 use crate::transport_layer::TransportLayer;
-use url::Url;
 
 #[derive(Debug)]
 pub struct HttpTransportLayer {
