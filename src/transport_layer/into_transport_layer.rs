@@ -1,4 +1,5 @@
 use ::anyhow::Result;
+use ::async_trait::async_trait;
 
 use crate::transport_layer::TransportLayer;
 
@@ -22,18 +23,19 @@ use super::TransportLayerBuilder;
 ///
 /// **Warning**, this trait may change in a future release.
 ///
+#[async_trait]
 pub trait IntoTransportLayer: Sized {
-    fn into_http_transport_layer(
+    async fn into_http_transport_layer(
         self,
         builder: TransportLayerBuilder,
     ) -> Result<Box<dyn TransportLayer>>;
 
-    fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>>;
+    async fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>>;
 
-    fn into_default_transport(
+    async fn into_default_transport(
         self,
         _builder: TransportLayerBuilder,
     ) -> Result<Box<dyn TransportLayer>> {
-        self.into_mock_transport_layer()
+        self.into_mock_transport_layer().await
     }
 }

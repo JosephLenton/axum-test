@@ -1,8 +1,10 @@
 use ::anyhow::Context;
 use ::anyhow::Result;
+use ::async_trait::async_trait;
 use ::axum::routing::IntoMakeService;
+use ::axum::serve;
 use ::axum::Router;
-use ::axum::Server as AxumServer;
+use ::tokio::net::TcpListener as TokioTcpListener;
 use ::tokio::spawn;
 use ::url::Url;
 
@@ -12,8 +14,9 @@ use crate::internals::MockTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 
+#[async_trait]
 impl IntoTransportLayer for IntoMakeService<Router> {
-    fn into_http_transport_layer(
+    async fn into_http_transport_layer(
         self,
         builder: TransportLayerBuilder,
     ) -> Result<Box<dyn TransportLayer>> {
@@ -21,12 +24,14 @@ impl IntoTransportLayer for IntoMakeService<Router> {
             builder.tcp_listener_with_reserved_port()?;
 
         let maybe_local_address = tcp_listener.local_addr().ok();
-        let server_builder = AxumServer::from_tcp(tcp_listener)
-            .with_context(|| format!("Failed to create ::axum::Server for TestServer, with address '{maybe_local_address:?}'"))?;
+        tcp_listener.set_nonblocking(true)?;
+        let tokio_tcp_listener = TokioTcpListener::from_std(tcp_listener)?;
 
-        let server = server_builder.serve(self);
         let server_handle = spawn(async move {
-            server.await.expect("Expect server to start serving");
+            let server = serve(tokio_tcp_listener, self)
+            .await
+            .with_context(|| format!("Failed to create ::axum::Server for TestServer, with address '{maybe_local_address:?}'"))
+            .expect("Expect server to start serving");
         });
 
         let server_address = format!("http://{socket_addr}");
@@ -39,7 +44,7 @@ impl IntoTransportLayer for IntoMakeService<Router> {
         )))
     }
 
-    fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
+    async fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
         let transport_layer = MockTransportLayer::new(self);
         Ok(Box::new(transport_layer))
     }
@@ -76,7 +81,7 @@ mod test_into_http_transport_layer_for_into_make_service {
             transport: Some(Transport::HttpRandomPort),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -95,7 +100,7 @@ mod test_into_http_transport_layer_for_into_make_service {
             transport: Some(Transport::HttpRandomPort),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");
@@ -133,7 +138,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
             transport: Some(Transport::MockHttp),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -152,7 +157,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
             transport: Some(Transport::MockHttp),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");
