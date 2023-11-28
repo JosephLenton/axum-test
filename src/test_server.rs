@@ -78,11 +78,11 @@ impl TestServer {
     /// This is the same as creating a new `TestServer` with a configuration,
     /// and passing `TestServerConfig::default()`.
     ///
-    pub async fn new<A>(app: A) -> Result<Self>
+    pub fn new<A>(app: A) -> Result<Self>
     where
         A: IntoTransportLayer + Send,
     {
-        Self::new_with_config(app, TestServerConfig::default()).await
+        Self::new_with_config(app, TestServerConfig::default())
     }
 
     /// This very similar to [`TestServer::new()`],
@@ -90,7 +90,7 @@ impl TestServer {
     /// This includes which port to run on, or default settings.
     ///
     /// See the [`TestServerConfig`] for more information on each configuration setting.
-    pub async fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
+    pub fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
     where
         A: IntoTransportLayer + Send,
     {
@@ -101,21 +101,21 @@ impl TestServer {
         let transport = match config.transport {
             None => {
                 let builder = TransportLayerBuilder::new(None, None);
-                let transport = app.into_default_transport(builder).await?;
+                let transport = app.into_default_transport(builder)?;
                 Arc::new(Mutex::new(transport))
             }
             Some(Transport::HttpRandomPort) => {
                 let builder = TransportLayerBuilder::new(None, None);
-                let transport = app.into_http_transport_layer(builder).await?;
+                let transport = app.into_http_transport_layer(builder)?;
                 Arc::new(Mutex::new(transport))
             }
             Some(Transport::HttpIpPort { ip, port }) => {
                 let builder = TransportLayerBuilder::new(ip, port);
-                let transport = app.into_http_transport_layer(builder).await?;
+                let transport = app.into_http_transport_layer(builder)?;
                 Arc::new(Mutex::new(transport))
             }
             Some(Transport::MockHttp) => {
-                let transport = app.into_mock_transport_layer().await?;
+                let transport = app.into_mock_transport_layer()?;
                 Arc::new(Mutex::new(transport))
             }
         };
@@ -337,7 +337,7 @@ mod test_new {
             .into_make_service_with_connect_info::<SocketAddr>();
 
         // Run the server.
-        let server = TestServer::new(app).await.expect("Should create test server");
+        let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -359,7 +359,7 @@ mod test_get {
     #[tokio::test]
     async fn it_should_get_using_relative_path_with_slash() {
         let app = Router::new().route("/ping", get(get_ping));
-        let server = TestServer::new(app).await.expect("Should create test server");
+        let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request _with_ slash
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -368,7 +368,7 @@ mod test_get {
     #[tokio::test]
     async fn it_should_get_using_relative_path_without_slash() {
         let app = Router::new().route("/ping", get(get_ping));
-        let server = TestServer::new(app).await.expect("Should create test server");
+        let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request _without_ slash
         server.get(&"ping").await.assert_text(&"pong!");
@@ -393,7 +393,6 @@ mod test_get {
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, test_config)
-            .await
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -426,7 +425,6 @@ mod test_get {
             ..TestServerConfig::default()
         };
         let server = TestServer::new_with_config(app, test_config)
-            .await
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -469,7 +467,6 @@ mod test_server_address {
         // Build an application with a route.
         let app = Router::new();
         let server = TestServer::new_with_config(app, config)
-            .await
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -487,7 +484,7 @@ mod test_server_address {
             transport: Some(Transport::HttpRandomPort),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         let address_regex = Regex::new("^http://127\\.0\\.0\\.1:[0-9]+/$").unwrap();
         let is_match = address_regex.is_match(&server.server_address().unwrap().to_string());
@@ -518,7 +515,7 @@ mod test_add_cookie {
     #[tokio::test]
     async fn it_should_send_cookies_added_to_request() {
         let app = Router::new().route("/cookie", get(get_cookie));
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
 
         let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
         server.add_cookie(cookie);
@@ -551,7 +548,7 @@ mod test_add_cookies {
     #[tokio::test]
     async fn it_should_send_all_cookies_added_by_jar() {
         let app = Router::new().route("/cookies", get(route_get_cookies));
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
 
         // Build cookies to send up
         let cookie_1 = Cookie::new("first-cookie", "my-custom-cookie");
@@ -592,7 +589,7 @@ mod test_clear_cookies {
     #[tokio::test]
     async fn it_should_not_send_cookies_cleared() {
         let app = Router::new().route("/cookies", get(route_get_cookies));
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
 
         let cookie_1 = Cookie::new("first-cookie", "my-custom-cookie");
         let cookie_2 = Cookie::new("second-cookie", "other-cookie");
@@ -656,7 +653,7 @@ mod test_add_header {
         let app = Router::new().route("/header", get(ping_header));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_header(
             HeaderName::from_static(TEST_HEADER_NAME),
             HeaderValue::from_static(TEST_HEADER_CONTENT),
@@ -717,7 +714,7 @@ mod test_clear_headers {
         let app = Router::new().route("/header", get(ping_header));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_header(
             HeaderName::from_static(TEST_HEADER_NAME),
             HeaderValue::from_static(TEST_HEADER_CONTENT),
@@ -770,7 +767,7 @@ mod test_add_query_params {
         let app = Router::new().route("/query", get(get_query_param));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_params(QueryParam {
             message: "it works".to_string(),
         });
@@ -785,7 +782,7 @@ mod test_add_query_params {
         let app = Router::new().route("/query", get(get_query_param));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_params(&[("message", "it works")]);
 
         // Get the request.
@@ -798,7 +795,7 @@ mod test_add_query_params {
         let app = Router::new().route("/query-2", get(get_query_param_2));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_params(&[("message", "it works"), ("other", "yup")]);
 
         // Get the request.
@@ -811,7 +808,7 @@ mod test_add_query_params {
         let app = Router::new().route("/query-2", get(get_query_param_2));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_params(&[("message", "it works")]);
         server.add_query_params(&[("other", "yup")]);
 
@@ -825,7 +822,7 @@ mod test_add_query_params {
         let app = Router::new().route("/query-2", get(get_query_param_2));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_params(json!({
             "message": "it works",
             "other": "yup"
@@ -872,7 +869,7 @@ mod test_add_query_param {
         let app = Router::new().route("/query", get(get_query_param));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_param("message", "it works");
 
         // Get the request.
@@ -885,7 +882,7 @@ mod test_add_query_param {
         let app = Router::new().route("/query-2", get(get_query_param_2));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_param("message", "it works");
         server.add_query_param("other", "yup");
 
@@ -899,7 +896,7 @@ mod test_add_query_param {
         let app = Router::new().route("/query-2", get(get_query_param_2));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_param("message", "it works");
 
         // Get the request.
@@ -942,7 +939,7 @@ mod test_clear_query_params {
         let app = Router::new().route("/query", get(get_query_params));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_params(QueryParams {
             first: Some("first".to_string()),
             second: Some("second".to_string()),
@@ -962,7 +959,7 @@ mod test_clear_query_params {
         let app = Router::new().route("/query", get(get_query_params));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.add_query_params(QueryParams {
             first: Some("first".to_string()),
             second: Some("second".to_string()),
@@ -991,7 +988,7 @@ mod test_expect_success_by_default {
     #[tokio::test]
     async fn it_should_not_panic_by_default_if_accessing_404_route() {
         let app = Router::new();
-        let server = TestServer::new(app).await.expect("Should create test server");
+        let server = TestServer::new(app).expect("Should create test server");
 
         server.get(&"/some_unknown_route").await;
     }
@@ -999,7 +996,7 @@ mod test_expect_success_by_default {
     #[tokio::test]
     async fn it_should_not_panic_by_default_if_accessing_200_route() {
         let app = Router::new().route("/known_route", get(|| async { "🦊🦊🦊" }));
-        let server = TestServer::new(app).await.expect("Should create test server");
+        let server = TestServer::new(app).expect("Should create test server");
 
         server.get(&"/known_route").await;
     }
@@ -1015,7 +1012,6 @@ mod test_expect_success_by_default {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         server.get(&"/some_unknown_route").await;
@@ -1031,7 +1027,6 @@ mod test_expect_success_by_default {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         server.get(&"/known_route").await;
@@ -1064,7 +1059,7 @@ mod test_content_type {
             default_content_type: Some("text/plain".to_string()),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         // Get the request.
         let text = server.get(&"/content_type").await.text();
@@ -1090,7 +1085,7 @@ mod test_expect_success {
         let app = Router::new().route("/ping", get(get_ping));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.expect_success();
 
         // Get the request.
@@ -1107,7 +1102,7 @@ mod test_expect_success {
         let app = Router::new().route("/accepted", get(get_accepted));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.expect_success();
 
         // Get the request.
@@ -1121,7 +1116,7 @@ mod test_expect_success {
         let app = Router::new();
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.expect_success();
 
         // Get the request.
@@ -1142,7 +1137,7 @@ mod test_expect_failure {
         let app = Router::new();
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.expect_failure();
 
         // Get the request.
@@ -1160,7 +1155,7 @@ mod test_expect_failure {
         let app = Router::new().route("/ping", get(get_ping));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.expect_failure();
 
         // Get the request.
@@ -1178,7 +1173,7 @@ mod test_expect_failure {
         let app = Router::new().route("/accepted", get(get_accepted));
 
         // Run the server.
-        let mut server = TestServer::new(app).await.expect("Should create test server");
+        let mut server = TestServer::new(app).expect("Should create test server");
         server.expect_failure();
 
         // Get the request.

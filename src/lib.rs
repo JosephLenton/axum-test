@@ -205,13 +205,13 @@ pub use ::http;
 mod integrated_test_cookie_saving {
     use super::*;
 
+    use ::axum::extract::Request;
     use ::axum::routing::get;
     use ::axum::routing::put;
     use ::axum::Router;
     use ::axum_extra::extract::cookie::Cookie as AxumCookie;
     use ::axum_extra::extract::cookie::CookieJar;
     use ::cookie::Cookie;
-    use ::axum::extract::Request;
     use ::http_body_util::BodyExt;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
@@ -225,11 +225,9 @@ mod integrated_test_cookie_saving {
         (cookies, cookie_value)
     }
 
-    async fn put_cookie(
-        mut cookies: CookieJar,
-        request: Request,
-    ) -> (CookieJar, &'static str) {
-        let body_bytes = request.into_body()
+    async fn put_cookie(mut cookies: CookieJar, request: Request) -> (CookieJar, &'static str) {
+        let body_bytes = request
+            .into_body()
             .collect()
             .await
             .expect("Should extract the body")
@@ -249,7 +247,7 @@ mod integrated_test_cookie_saving {
             .route("/cookie", get(get_cookie));
 
         // Run the server.
-        let server = TestServer::new(app).await.expect("Should create test server");
+        let server = TestServer::new(app).expect("Should create test server");
 
         // Create a cookie.
         server.put(&"/cookie").text(&"new-cookie").await;
@@ -275,7 +273,6 @@ mod integrated_test_cookie_saving {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         // Create a cookie.
@@ -302,7 +299,6 @@ mod integrated_test_cookie_saving {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         // Create a cookie.
@@ -329,7 +325,6 @@ mod integrated_test_cookie_saving {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         // Create a cookie.
@@ -360,7 +355,6 @@ mod integrated_test_cookie_saving {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         // Create a cookie.
@@ -391,7 +385,6 @@ mod integrated_test_cookie_saving {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         // Create a cookie.
@@ -424,7 +417,6 @@ mod integrated_test_cookie_saving {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         // Check it comes back.
@@ -450,7 +442,6 @@ mod integrated_test_cookie_saving {
                 ..TestServerConfig::default()
             },
         )
-        .await
         .expect("Should create test server");
 
         // Check it comes back.

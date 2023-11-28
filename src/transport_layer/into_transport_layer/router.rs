@@ -1,22 +1,20 @@
 use ::anyhow::Result;
 use ::axum::Router;
-use ::async_trait::async_trait;
 
 use super::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 
-#[async_trait]
 impl IntoTransportLayer for Router<()> {
-    async fn into_http_transport_layer(
+    fn into_http_transport_layer(
         self,
         builder: TransportLayerBuilder,
     ) -> Result<Box<dyn TransportLayer>> {
-        self.into_make_service().into_http_transport_layer(builder).await
+        self.into_make_service().into_http_transport_layer(builder)
     }
 
-    async fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
-        self.into_make_service().into_mock_transport_layer().await
+    fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
+        self.into_make_service().into_mock_transport_layer()
     }
 }
 
@@ -48,7 +46,7 @@ mod test_into_http_transport_layer {
             transport: Some(Transport::HttpRandomPort),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -66,7 +64,7 @@ mod test_into_http_transport_layer {
             transport: Some(Transport::HttpRandomPort),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");
@@ -101,7 +99,7 @@ mod test_into_mock_transport_layer_for_router {
             transport: Some(Transport::MockHttp),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -119,7 +117,7 @@ mod test_into_mock_transport_layer_for_router {
             transport: Some(Transport::MockHttp),
             ..TestServerConfig::default()
         };
-        let server = TestServer::new_with_config(app, config).await.expect("Should create test server");
+        let server = TestServer::new_with_config(app, config).expect("Should create test server");
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");

@@ -17,11 +17,10 @@ use ::axum::extract::State;
 use ::axum::routing::get;
 use ::axum::routing::post;
 use ::axum::routing::put;
-use ::axum::Router;
 use ::axum::serve::serve;
+use ::axum::Router;
 use ::axum_extra::extract::cookie::Cookie;
 use ::axum_extra::extract::cookie::CookieJar;
-use ::tokio::net::TcpListener;
 use ::http::StatusCode;
 use ::serde::Deserialize;
 use ::serde::Serialize;
@@ -33,6 +32,7 @@ use ::std::net::SocketAddr;
 use ::std::result::Result as StdResult;
 use ::std::sync::Arc;
 use ::std::sync::RwLock;
+use ::tokio::net::TcpListener;
 
 #[cfg(test)]
 use ::axum_test::TestServer;
@@ -51,9 +51,7 @@ async fn main() {
         let ip_address = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
         let address = SocketAddr::new(ip_address, PORT);
         let listener = TcpListener::bind(address).await.unwrap();
-        serve(listener, app.into_make_service())
-            .await
-            .unwrap();
+        serve(listener, app.into_make_service()).await.unwrap();
 
         Ok(())
     };
@@ -168,7 +166,7 @@ pub(crate) fn new_app() -> Router {
 }
 
 #[cfg(test)]
-async fn new_test_app() -> TestServer {
+fn new_test_app() -> TestServer {
     let app = new_app();
     let config = TestServerConfig::builder()
         // Preserve cookies across requests
@@ -178,7 +176,7 @@ async fn new_test_app() -> TestServer {
         .mock_transport()
         .build();
 
-    TestServer::new_with_config(app, config).await.unwrap()
+    TestServer::new_with_config(app, config).unwrap()
 }
 
 #[cfg(test)]
@@ -189,7 +187,7 @@ mod test_post_login {
 
     #[tokio::test]
     async fn it_should_create_session_on_login() {
-        let server = new_test_app().await;
+        let server = new_test_app();
 
         let response = server
             .post(&"/login")
@@ -204,7 +202,7 @@ mod test_post_login {
 
     #[tokio::test]
     async fn it_should_not_login_using_non_email() {
-        let server = new_test_app().await;
+        let server = new_test_app();
 
         let response = server
             .post(&"/login")
@@ -228,7 +226,7 @@ mod test_route_put_user_todos {
 
     #[tokio::test]
     async fn it_should_not_store_todos_without_login() {
-        let server = new_test_app().await;
+        let server = new_test_app();
 
         let response = server
             .put(&"/todo")
@@ -244,7 +242,7 @@ mod test_route_put_user_todos {
 
     #[tokio::test]
     async fn it_should_return_number_of_todos_as_more_are_pushed() {
-        let server = new_test_app().await;
+        let server = new_test_app();
 
         server
             .post(&"/login")
@@ -283,7 +281,7 @@ mod test_route_get_user_todos {
 
     #[tokio::test]
     async fn it_should_not_return_todos_if_logged_out() {
-        let server = new_test_app().await;
+        let server = new_test_app();
 
         let response = server
             .put(&"/todo")
@@ -299,7 +297,7 @@ mod test_route_get_user_todos {
 
     #[tokio::test]
     async fn it_should_return_all_todos_when_logged_in() {
-        let server = new_test_app().await;
+        let server = new_test_app();
 
         server
             .post(&"/login")
