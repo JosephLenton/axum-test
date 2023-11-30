@@ -1,12 +1,12 @@
 use ::anyhow::Error as AnyhowError;
 use ::anyhow::Result;
 use ::async_trait::async_trait;
+use ::axum::body::Body;
 use ::axum::Router;
 use ::bytes::Bytes;
 use ::http::response::Parts;
 use ::http::Request;
-use ::hyper::body::to_bytes;
-use ::hyper::Body;
+use ::http_body_util::BodyExt;
 use ::std::fmt::Debug;
 use ::tower::util::ServiceExt;
 use ::tower::Service;
@@ -46,7 +46,7 @@ where
 
         let response = router.oneshot(request).await?;
         let (parts, response_body) = response.into_parts();
-        let response_bytes = to_bytes(response_body).await?;
+        let response_bytes = response_body.collect().await?.to_bytes();
 
         Ok((parts, response_bytes))
     }

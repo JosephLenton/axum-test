@@ -3,6 +3,7 @@ use ::anyhow::Context;
 use ::anyhow::Error as AnyhowError;
 use ::anyhow::Result;
 use ::auto_future::AutoFuture;
+use ::axum::body::Body;
 use ::bytes::Bytes;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
@@ -11,7 +12,6 @@ use ::http::header::SET_COOKIE;
 use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Request;
-use ::hyper::body::Body;
 use ::serde::Serialize;
 use ::serde_json::to_vec as json_to_vec;
 use ::serde_urlencoded::to_string;
@@ -766,18 +766,23 @@ mod test_form {
 mod test_text {
     use crate::TestServer;
 
-    use ::axum::extract::RawBody;
+    use ::axum::extract::Request;
     use ::axum::routing::post;
     use ::axum::Router;
     use ::http::header::CONTENT_TYPE;
     use ::http::HeaderMap;
-    use ::hyper::body::to_bytes;
+    use ::http_body_util::BodyExt;
 
     #[tokio::test]
     async fn it_should_pass_text_up_to_be_read() {
-        async fn get_text(RawBody(body): RawBody) -> String {
-            let bytes = to_bytes(body).await.expect("Should read body to bytes");
-            let body_text = String::from_utf8_lossy(&bytes);
+        async fn get_text(request: Request) -> String {
+            let body_bytes = request
+                .into_body()
+                .collect()
+                .await
+                .expect("Should read body to bytes")
+                .to_bytes();
+            let body_text = String::from_utf8_lossy(&body_bytes);
 
             format!("{}", body_text)
         }
@@ -1028,7 +1033,7 @@ mod test_add_cookies {
 mod test_clear_cookies {
     use crate::TestServer;
 
-    use ::axum::extract::RawBody;
+    use ::axum::extract::Request;
     use ::axum::routing::get;
     use ::axum::routing::put;
     use ::axum::Router;
@@ -1036,7 +1041,7 @@ mod test_clear_cookies {
     use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
     use ::cookie::Cookie;
     use ::cookie::CookieJar;
-    use ::hyper::body::to_bytes;
+    use ::http_body_util::BodyExt;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
 
@@ -1051,11 +1056,15 @@ mod test_clear_cookies {
 
     async fn put_cookie(
         mut cookies: AxumCookieJar,
-        RawBody(body): RawBody,
+        request: Request,
     ) -> (AxumCookieJar, &'static str) {
-        let body_bytes = to_bytes(body)
+        let body_bytes = request
+            .into_body()
+            .collect()
             .await
-            .expect("Should turn the body into bytes");
+            .expect("Should turn the body into bytes")
+            .to_bytes();
+
         let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
         let cookie = AxumCookie::new(TEST_COOKIE_NAME, body_text);
         cookies = cookies.add(cookie);

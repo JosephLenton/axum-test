@@ -2,11 +2,12 @@ use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
+use ::axum::serve;
 use ::axum::Router;
-use ::axum::Server as AxumServer;
-use ::hyper::server::conn::AddrStream;
+use ::tokio::net::TcpListener as TokioTcpListener;
 use ::tokio::spawn;
 use ::url::Url;
+use axum::serve::IncomingStream;
 
 use super::IntoTransportLayer;
 use crate::internals::HttpTransportLayer;
@@ -15,7 +16,7 @@ use crate::transport_layer::TransportLayerBuilder;
 
 impl<C> IntoTransportLayer for IntoMakeServiceWithConnectInfo<Router, C>
 where
-    for<'a> C: axum::extract::connect_info::Connected<&'a AddrStream>,
+    for<'a> C: axum::extract::connect_info::Connected<IncomingStream<'a>>,
 {
     fn into_http_transport_layer(
         self,
@@ -23,12 +24,14 @@ where
     ) -> Result<Box<dyn TransportLayer>> {
         let (socket_addr, tcp_listener, maybe_reserved_port) =
             builder.tcp_listener_with_reserved_port()?;
-        let server_builder = AxumServer::from_tcp(tcp_listener)
-            .with_context(|| "Failed to create ::axum::Server for TestServer")?;
+        tcp_listener.set_nonblocking(true)?;
+        let tokio_tcp_listener = TokioTcpListener::from_std(tcp_listener)?;
 
-        let server = server_builder.serve(self);
         let server_handle = spawn(async move {
-            server.await.expect("Expect server to start serving");
+            serve(tokio_tcp_listener, self)
+                .await
+                .with_context(|| "Failed to create ::axum::Server for TestServer")
+                .expect("Expect server to start serving");
         });
 
         let server_address = format!("http://{socket_addr}");

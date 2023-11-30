@@ -13,8 +13,7 @@
   <br/>
 </div>
 
-Using this library, you can host your application and query against it with requests.
-Then decode the responses, and assert what is returned.
+Using this library, you can host your application and query against it with requests. Then decode the responses, and assert what is returned.
 
 ```rust
   use ::axum::Router;
@@ -49,6 +48,15 @@ or the application can run on a random port (with real network reqeusts being ma
 In both cases allowing multiple servers to run in parallel, across your tests.
 
 This behaviour can be changed in the `TestServerConfig`, by selecting the `transport` to be used.
+
+### Axum Compatability
+
+Axum Test requires the latest version of Axum (0.7).
+
+| Axum Version | Axum Test Version |
+|--------------|-------------------|
+| 0.7 (latest) | 14+ (latest)      |
+| 0.6          | [13.4.1](https://crates.io/crates/axum-test/13.4.1)            |
 
 ### Example
 

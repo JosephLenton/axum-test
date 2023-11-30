@@ -646,7 +646,6 @@ mod test_assert_failure {
             .route(&"/fail", get(route_get_fail));
 
         let server = TestServer::new(router).unwrap();
-
         let response = server.get(&"/fail").expect_failure().await;
 
         response.assert_status_failure()
@@ -660,7 +659,6 @@ mod test_assert_failure {
             .route(&"/fail", get(route_get_fail));
 
         let server = TestServer::new(router).unwrap();
-
         let response = server.get(&"/pass").await;
 
         response.assert_status_failure()
@@ -682,7 +680,6 @@ mod test_assert_status {
     #[tokio::test]
     async fn it_should_pass_if_given_right_status_code() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
-
         let server = TestServer::new(router).unwrap();
 
         server.get(&"/ok").await.assert_status(StatusCode::OK);
@@ -692,7 +689,6 @@ mod test_assert_status {
     #[should_panic]
     async fn it_should_panic_when_status_code_does_not_match() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
-
         let server = TestServer::new(router).unwrap();
 
         server.get(&"/ok").await.assert_status(StatusCode::ACCEPTED);
@@ -714,7 +710,6 @@ mod test_assert_not_status {
     #[tokio::test]
     async fn it_should_pass_if_status_code_does_not_match() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
-
         let server = TestServer::new(router).unwrap();
 
         server
@@ -727,7 +722,6 @@ mod test_assert_not_status {
     #[should_panic]
     async fn it_should_panic_if_status_code_matches() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
-
         let server = TestServer::new(router).unwrap();
 
         server.get(&"/ok").await.assert_not_status(StatusCode::OK);

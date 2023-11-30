@@ -1,8 +1,9 @@
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::axum::routing::IntoMakeService;
+use ::axum::serve;
 use ::axum::Router;
-use ::axum::Server as AxumServer;
+use ::tokio::net::TcpListener as TokioTcpListener;
 use ::tokio::spawn;
 use ::url::Url;
 
@@ -21,12 +22,14 @@ impl IntoTransportLayer for IntoMakeService<Router> {
             builder.tcp_listener_with_reserved_port()?;
 
         let maybe_local_address = tcp_listener.local_addr().ok();
-        let server_builder = AxumServer::from_tcp(tcp_listener)
-            .with_context(|| format!("Failed to create ::axum::Server for TestServer, with address '{maybe_local_address:?}'"))?;
+        tcp_listener.set_nonblocking(true)?;
+        let tokio_tcp_listener = TokioTcpListener::from_std(tcp_listener)?;
 
-        let server = server_builder.serve(self);
         let server_handle = spawn(async move {
-            server.await.expect("Expect server to start serving");
+            serve(tokio_tcp_listener, self)
+            .await
+            .with_context(|| format!("Failed to create ::axum::Server for TestServer, with address '{maybe_local_address:?}'"))
+            .expect("Expect server to start serving");
         });
 
         let server_address = format!("http://{socket_addr}");

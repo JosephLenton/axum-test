@@ -1,11 +1,11 @@
 use ::anyhow::Result;
 use ::async_trait::async_trait;
+use ::axum::body::Body;
 use ::bytes::Bytes;
 use ::http::response::Parts;
 use ::http::Request;
-use ::hyper::body::to_bytes;
-use ::hyper::Body;
-use ::hyper::Client;
+use ::http_body_util::BodyExt;
+use ::hyper_util::client::legacy::Client;
 use ::reserve_port::ReservedPort;
 use ::tokio::task::JoinHandle;
 use ::url::Url;
@@ -43,10 +43,11 @@ impl HttpTransportLayer {
 #[async_trait]
 impl TransportLayer for HttpTransportLayer {
     async fn send(&mut self, request: Request<Body>) -> Result<(Parts, Bytes)> {
-        let hyper_response = Client::new().request(request).await?;
+        let client = Client::builder(hyper_util::rt::TokioExecutor::new()).build_http();
+        let hyper_response = client.request(request).await?;
 
         let (parts, response_body) = hyper_response.into_parts();
-        let response_bytes = to_bytes(response_body).await?;
+        let response_bytes = response_body.collect().await?.to_bytes();
 
         Ok((parts, response_bytes))
     }

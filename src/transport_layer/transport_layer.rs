@@ -1,9 +1,9 @@
 use ::anyhow::Result;
 use ::async_trait::async_trait;
+use ::axum::body::Body;
 use ::bytes::Bytes;
 use ::http::response::Parts;
 use ::http::Request;
-use ::hyper::Body;
 use ::std::fmt::Debug;
 use ::url::Url;
 

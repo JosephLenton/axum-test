@@ -205,14 +205,14 @@ pub use ::http;
 mod integrated_test_cookie_saving {
     use super::*;
 
-    use ::axum::extract::RawBody;
+    use ::axum::extract::Request;
     use ::axum::routing::get;
     use ::axum::routing::put;
     use ::axum::Router;
     use ::axum_extra::extract::cookie::Cookie as AxumCookie;
     use ::axum_extra::extract::cookie::CookieJar;
     use ::cookie::Cookie;
-    use ::hyper::body::to_bytes;
+    use ::http_body_util::BodyExt;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
 
@@ -225,13 +225,13 @@ mod integrated_test_cookie_saving {
         (cookies, cookie_value)
     }
 
-    async fn put_cookie(
-        mut cookies: CookieJar,
-        RawBody(body): RawBody,
-    ) -> (CookieJar, &'static str) {
-        let body_bytes = to_bytes(body)
+    async fn put_cookie(mut cookies: CookieJar, request: Request) -> (CookieJar, &'static str) {
+        let body_bytes = request
+            .into_body()
+            .collect()
             .await
-            .expect("Should turn the body into bytes");
+            .expect("Should extract the body")
+            .to_bytes();
         let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
         let cookie = AxumCookie::new(TEST_COOKIE_NAME, body_text);
         cookies = cookies.add(cookie);

@@ -17,8 +17,8 @@ use ::axum::extract::State;
 use ::axum::routing::get;
 use ::axum::routing::post;
 use ::axum::routing::put;
+use ::axum::serve::serve;
 use ::axum::Router;
-use ::axum::Server;
 use ::axum_extra::extract::cookie::Cookie;
 use ::axum_extra::extract::cookie::CookieJar;
 use ::http::StatusCode;
@@ -32,6 +32,7 @@ use ::std::net::SocketAddr;
 use ::std::result::Result as StdResult;
 use ::std::sync::Arc;
 use ::std::sync::RwLock;
+use ::tokio::net::TcpListener;
 
 #[cfg(test)]
 use ::axum_test::TestServer;
@@ -49,10 +50,8 @@ async fn main() {
         // Start!
         let ip_address = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
         let address = SocketAddr::new(ip_address, PORT);
-        Server::bind(&address)
-            .serve(app.into_make_service())
-            .await
-            .unwrap();
+        let listener = TcpListener::bind(address).await.unwrap();
+        serve(listener, app.into_make_service()).await.unwrap();
 
         Ok(())
     };
