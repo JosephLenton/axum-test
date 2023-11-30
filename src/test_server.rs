@@ -80,7 +80,7 @@ impl TestServer {
     ///
     pub fn new<A>(app: A) -> Result<Self>
     where
-        A: IntoTransportLayer + Send,
+        A: IntoTransportLayer,
     {
         Self::new_with_config(app, TestServerConfig::default())
     }
@@ -92,7 +92,7 @@ impl TestServer {
     /// See the [`TestServerConfig`] for more information on each configuration setting.
     pub fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
     where
-        A: IntoTransportLayer + Send,
+        A: IntoTransportLayer,
     {
         let shared_state = ServerSharedState::new();
         let shared_state_mutex = Mutex::new(shared_state);
