@@ -53,12 +53,10 @@ This behaviour can be changed in the `TestServerConfig`, by selecting the `trans
 
 Axum Test requires the latest version of Axum (0.7).
 
-|--------------|-------------------|
 | Axum Version | Axum Test Version |
 |--------------|-------------------|
 | 0.7 (latest) | 14+ (latest)      |
 | 0.6          | [13.4.1](https://crates.io/crates/axum-test/13.4.1)            |
-|--------------|-------------------|
 
 ### Example
 
