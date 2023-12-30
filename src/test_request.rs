@@ -26,16 +26,13 @@ use ::url::Url;
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
+use crate::multipart::MultipartForm;
 use crate::transport_layer::TransportLayer;
 use crate::ServerSharedState;
 use crate::TestResponse;
 
 pub(crate) use self::test_request_config::*;
 mod test_request_config;
-
-const JSON_CONTENT_TYPE: &'static str = &"application/json";
-const FORM_CONTENT_TYPE: &'static str = &"application/x-www-form-urlencoded";
-const TEXT_CONTENT_TYPE: &'static str = &"text/plain";
 
 ///
 /// A `TestRequest` is for building and executing a HTTP request to the [`TestServer`](crate::TestServer).
@@ -148,7 +145,7 @@ impl TestRequest {
         let body_bytes = json_to_vec(body).expect("It should serialize the content into JSON");
 
         self.bytes(body_bytes.into())
-            .content_type(JSON_CONTENT_TYPE)
+            .content_type(mime::APPLICATION_JSON.essence_str())
     }
 
     /// Sets the body of the request, with the content type
@@ -159,7 +156,19 @@ impl TestRequest {
     {
         let body_text = to_string(body).expect("It should serialize the content into a Form");
 
-        self.bytes(body_text.into()).content_type(FORM_CONTENT_TYPE)
+        self.bytes(body_text.into())
+            .content_type(mime::APPLICATION_WWW_FORM_URLENCODED.essence_str())
+    }
+
+    /// For sending multipart forms.
+    /// See [`MultipartForm`](crate::MultipartForm) on information on how to create them.
+    ///
+    /// This will be sent with the content type of 'multipart/form-data'.
+    pub fn multipart(mut self, multipart: MultipartForm) -> Self {
+        self.config.content_type = Some(multipart.content_type());
+        self.body = Some(multipart.into());
+
+        self
     }
 
     /// Set raw text as the body of the request,
@@ -170,7 +179,8 @@ impl TestRequest {
     {
         let body_text = format!("{}", raw_text);
 
-        self.bytes(body_text.into()).content_type(TEXT_CONTENT_TYPE)
+        self.bytes(body_text.into())
+            .content_type(mime::TEXT_PLAIN.essence_str())
     }
 
     /// Set raw bytes as the body of the request.
@@ -716,7 +726,7 @@ mod test_form {
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
-        let text = server
+        server
             .post(&"/form")
             .form(&TestForm {
                 name: "Joe".to_string(),
@@ -724,9 +734,7 @@ mod test_form {
                 pets: Some("foxes".to_string()),
             })
             .await
-            .text();
-
-        assert_eq!(text, "form: Joe, 20, foxes");
+            .assert_text("form: Joe, 20, foxes");
     }
 
     #[tokio::test]
@@ -750,15 +758,13 @@ mod test_form {
         }
 
         // Get the request.
-        let text = server
+        server
             .post(&"/content_type")
             .form(&MyForm {
                 message: "hello".to_string(),
             })
             .await
-            .text();
-
-        assert_eq!(text, "application/x-www-form-urlencoded");
+            .assert_text("application/x-www-form-urlencoded");
     }
 }
 
@@ -1541,5 +1547,122 @@ mod test_clear_query_params {
             })
             .await
             .assert_text(&"has first? true, has second? true");
+    }
+}
+
+#[cfg(test)]
+mod test_multipart {
+    use ::axum::extract::Multipart;
+    use ::axum::routing::post;
+    use ::axum::Json;
+    use ::axum::Router;
+
+    use crate::multipart::MultipartForm;
+    use crate::multipart::Part;
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    async fn route_post_multipart(mut multipart: Multipart) -> Json<Vec<String>> {
+        let mut fields = vec![];
+
+        while let Some(field) = multipart.next_field().await.unwrap() {
+            let name = field.name().unwrap().to_string();
+            let content_type = field.content_type().unwrap().to_owned();
+            let data = field.bytes().await.unwrap();
+
+            let field_stats = format!("{name} is {} bytes, {content_type}", data.len());
+            fields.push(field_stats);
+        }
+
+        Json(fields)
+    }
+
+    fn test_router() -> Router {
+        Router::new().route("/multipart", post(route_post_multipart))
+    }
+
+    #[tokio::test]
+    async fn it_should_get_multipart_stats_on_mock_transport() {
+        // Run the server.
+        let config = TestServerConfig::builder().mock_transport().build();
+        let server =
+            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+
+        let form = MultipartForm::new()
+            .add_text("penguins?", "lots")
+            .add_text("animals", "🦊🦊🦊")
+            .add_text("carrots", 123 as u32);
+
+        // Get the request.
+        server
+            .post(&"/multipart")
+            .multipart(form)
+            .await
+            .assert_json(&vec![
+                "penguins? is 4 bytes, text/plain".to_string(),
+                "animals is 12 bytes, text/plain".to_string(),
+                "carrots is 3 bytes, text/plain".to_string(),
+            ]);
+    }
+
+    #[tokio::test]
+    async fn it_should_get_multipart_stats_on_http_transport() {
+        // Run the server.
+        let config = TestServerConfig::builder().http_transport().build();
+        let server =
+            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+
+        let form = MultipartForm::new()
+            .add_text("penguins?", "lots")
+            .add_text("animals", "🦊🦊🦊")
+            .add_text("carrots", 123 as u32);
+
+        // Get the request.
+        server
+            .post(&"/multipart")
+            .multipart(form)
+            .await
+            .assert_json(&vec![
+                "penguins? is 4 bytes, text/plain".to_string(),
+                "animals is 12 bytes, text/plain".to_string(),
+                "carrots is 3 bytes, text/plain".to_string(),
+            ]);
+    }
+
+    #[tokio::test]
+    async fn it_should_send_text_parts_as_text() {
+        // Run the server.
+        let config = TestServerConfig::builder().mock_transport().build();
+        let server =
+            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+
+        let form = MultipartForm::new().add_part("animals", Part::text("🦊🦊🦊"));
+
+        // Get the request.
+        server
+            .post(&"/multipart")
+            .multipart(form)
+            .await
+            .assert_json(&vec!["animals is 12 bytes, text/plain".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn it_should_send_custom_mime_type() {
+        // Run the server.
+        let config = TestServerConfig::builder().mock_transport().build();
+        let server =
+            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+
+        let form = MultipartForm::new().add_part(
+            "animals",
+            Part::bytes("🦊,🦊,🦊".as_bytes()).mime_type(mime::TEXT_CSV),
+        );
+
+        // Get the request.
+        server
+            .post(&"/multipart")
+            .multipart(form)
+            .await
+            .assert_json(&vec!["animals is 14 bytes, text/csv".to_string()]);
     }
 }

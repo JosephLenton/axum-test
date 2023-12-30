@@ -124,32 +124,27 @@ pub async fn route_put_user_todos(
     mut cookies: CookieJar,
     Json(todo): Json<Todo>,
 ) -> StdResult<Json<u32>, StatusCode> {
-    get_user_id_from_cookie(&mut cookies)
-        .map(|user_id| {
-            let mut lock = state.write().unwrap();
-            let maybe_todos = lock.user_todos.get_mut(&user_id);
+    let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-            let todos = maybe_todos.unwrap();
-            todos.push(todo);
-            let num_todos = todos.len() as u32;
+    let mut lock = state.write().unwrap();
+    let todos = lock.user_todos.get_mut(&user_id).unwrap();
 
-            Json(num_todos)
-        })
-        .map_err(|_| StatusCode::UNAUTHORIZED)
+    todos.push(todo);
+    let num_todos = todos.len() as u32;
+
+    Ok(Json(num_todos))
 }
 
 pub async fn route_get_user_todos(
     State(ref state): State<SharedAppState>,
     mut cookies: CookieJar,
 ) -> StdResult<Json<Vec<Todo>>, StatusCode> {
-    get_user_id_from_cookie(&mut cookies)
-        .map(|user_id| {
-            let lock = state.read().unwrap();
-            let todos = lock.user_todos[&user_id].clone();
+    let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-            Json(todos)
-        })
-        .map_err(|_| StatusCode::UNAUTHORIZED)
+    let lock = state.read().unwrap();
+    let todos = lock.user_todos[&user_id].clone();
+
+    Ok(Json(todos))
 }
 
 pub(crate) fn new_app() -> Router {
