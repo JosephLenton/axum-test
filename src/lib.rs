@@ -178,6 +178,8 @@
 
 pub(crate) mod internals;
 
+pub mod multipart;
+
 mod transport;
 pub use self::transport::*;
 
