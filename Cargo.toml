@@ -1,14 +1,14 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "14.2.0"
+version = "14.2.1"
 edition = "2021"
 license = "MIT"
 description = "For spinning up and testing Axum servers"
 keywords = ["testing", "test", "axum"]
 categories = ["web-programming::http-server", "development-tools::testing"]
 repository = "https://github.com/JosephLenton/axum-test"
-documentation = "https://docs.rs/axum-test/latest/axum-test"
+documentation = "https://docs.rs/axum-test"
 readme = "README.md"
 
 [features]
