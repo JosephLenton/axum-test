@@ -29,7 +29,6 @@ hyper = { version = "1.1", features = ["http1"] }
 mime = "0.3.17"
 rust-multipart-rfc7578_2 = "0.6"
 pretty_assertions = { version = "1.4.0", optional = true}
-rand = { version = "0.8.5", features = ["std", "small_rng"] }
 reserve-port = "2.0"
 serde = { version = "1.0" }
 serde_json = "1.0"
