@@ -161,9 +161,61 @@ impl TestRequest {
     }
 
     /// For sending multipart forms.
-    /// See [`MultipartForm`](crate::MultipartForm) on information on how to create them.
+    /// The payload is built using [`MultipartForm`](crate::multipart::MultipartForm) and [`Part`](crate::multipart::Part).
     ///
     /// This will be sent with the content type of 'multipart/form-data'.
+    /// 
+    /// # Simple example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    /// use ::axum_test::multipart::MultipartForm;
+    ///
+    /// let app = Router::new();
+    /// let server = TestServer::new(app)?;
+    ///
+    /// let multipart_form = MultipartForm::new()
+    ///     .add_text("name", "Joe")
+    ///     .add_text("animals", "foxes");
+    /// 
+    /// let response = server.post(&"/my-form")
+    ///     .multipart(multipart_form)
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// # Sending byte parts
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    /// use ::axum_test::multipart::MultipartForm;
+    /// use ::axum_test::multipart::Part;
+    ///
+    /// let app = Router::new();
+    /// let server = TestServer::new(app)?;
+    ///
+    /// let image_bytes = include_bytes!("../README.md");
+    /// let image_part = Part::bytes(image_bytes.as_slice())
+    ///     .file_name(&"README.md")
+    ///     .mime_type(&"text/markdown");
+    /// 
+    /// let multipart_form = MultipartForm::new()
+    ///     .add_part("file", image_part);
+    /// 
+    /// let response = server.post(&"/my-form")
+    ///     .multipart(multipart_form)
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
     pub fn multipart(mut self, multipart: MultipartForm) -> Self {
         self.config.content_type = Some(multipart.content_type());
         self.body = Some(multipart.into());
@@ -1664,5 +1716,25 @@ mod test_multipart {
             .multipart(form)
             .await
             .assert_json(&vec!["animals is 14 bytes, text/csv".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn it_should_send_using_include_bytes() {
+        // Run the server.
+        let config = TestServerConfig::builder().mock_transport().build();
+        let server =
+            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+
+        let form = MultipartForm::new().add_part(
+            "file",
+            Part::bytes(include_bytes!("../rust-toolchain").as_slice()).mime_type(mime::TEXT_PLAIN),
+        );
+
+        // Get the request.
+        server
+            .post(&"/multipart")
+            .multipart(form)
+            .await
+            .assert_json(&vec!["file is 6 bytes, text/plain".to_string()]);
     }
 }

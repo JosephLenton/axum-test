@@ -17,7 +17,7 @@ impl MultipartForm {
         }
     }
 
-    /// Adds a new key / value pair to be sent.
+    /// Creates a text part, and adds it to be sent.
     pub fn add_text<N, T>(mut self, name: N, text: T) -> Self
     where
         N: Display,
@@ -27,18 +27,21 @@ impl MultipartForm {
         self
     }
 
-    /// Adds a new key / value pair to be sent.
+    /// Adds a new section to this multipart form to be sent.
+    /// 
+    /// See [`Part`](crate::multipart::Part).
     pub fn add_part<N>(mut self, name: N, part: Part) -> Self
     where
         N: Display,
     {
         let reader = Cursor::new(part.bytes);
         self.inner
-            .add_reader_2(name, reader, part.file_name, part.mime_type);
+            .add_reader_2(name, reader, part.file_name, Some(part.mime_type));
 
         self
     }
 
+    /// Returns the content type this form will use when it is sent.
     pub fn content_type(&self) -> String {
         self.inner.content_type()
     }
