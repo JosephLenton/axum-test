@@ -530,7 +530,7 @@ impl TestRequest {
 
         // Add all the cookies as headers
         for cookie in cookies.iter() {
-            let cookie_raw = cookie.to_string();
+            let cookie_raw = cookie.stripped().to_string();
             let header_value = HeaderValue::from_str(&cookie_raw)?;
             request_builder = request_builder.header(header::COOKIE, header_value);
         }
