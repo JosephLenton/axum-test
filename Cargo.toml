@@ -1,7 +1,7 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "14.2.2"
+version = "14.3.0"
 edition = "2021"
 license = "MIT"
 description = "For spinning up and testing Axum servers"
@@ -14,6 +14,7 @@ readme = "README.md"
 [features]
 default = ["pretty-assertions"]
 pretty-assertions = ["dep:pretty_assertions"]
+yaml = ["dep:serde_yaml"]
 
 [dependencies]
 async-trait = "0.1.75"
@@ -28,10 +29,11 @@ hyper-util = { version = "0.1.1", features = ["client", "http1", "client-legacy"
 hyper = { version = "1.1", features = ["http1"] }
 mime = "0.3.17"
 rust-multipart-rfc7578_2 = "0.6"
-pretty_assertions = { version = "1.4.0", optional = true}
+pretty_assertions = { version = "1.4.0", optional = true }
 reserve-port = "2.0"
 serde = { version = "1.0" }
 serde_json = "1.0"
+serde_yaml = { version = "0.8", optional = true }
 serde_urlencoded = "0.7.1"
 smallvec = "1.11.2"
 tokio = { version = "1.35", features = ["rt", "time"] }
@@ -41,6 +43,7 @@ url = "2.5.0"
 [dev-dependencies]
 axum = { version = "0.7", features = ["multipart", "tokio"] }
 axum-extra = { version = "0.9.0", features = ["cookie"] }
+axum-yaml = "0.4.0"
 local-ip-address = "0.5.4"
 regex = "1.10.2"
 serde-email = { version = "3.0", features = ["serde"] }

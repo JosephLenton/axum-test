@@ -184,7 +184,7 @@ impl TestResponse {
         String::from_utf8_lossy(&self.as_bytes()).to_string()
     }
 
-    /// Deserializes the response, as JSON, into the type given.
+    /// Deserializes the response, as Json, into the type given.
     ///
     /// If deserialization fails then this will panic.
     ///
@@ -233,7 +233,62 @@ impl TestResponse {
             .with_context(|| {
                 let request_format = &self.request_format;
 
-                format!("Deserializing response from JSON, for request {request_format}")
+                format!("Deserializing response from Json, for request {request_format}")
+            })
+            .unwrap()
+    }
+
+    /// Deserializes the response, as Yaml, into the type given.
+    ///
+    /// If deserialization fails then this will panic.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::axum_yaml::Yaml;
+    /// use ::serde::Deserialize;
+    /// use ::serde::Serialize;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// #[derive(Serialize, Deserialize, Debug)]
+    /// struct Todo {
+    ///     description: String,
+    /// }
+    ///
+    /// async fn route_get_todo() -> Yaml<Todo> {
+    ///     Yaml(Todo {
+    ///         description: "buy milk".to_string(),
+    ///     })
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/todo", get(route_get_todo));
+    ///
+    /// let server = TestServer::new(app)?;
+    /// let response = server.get(&"/todo").await;
+    ///
+    /// // Extract the response as a `Todo` item.
+    /// let todo = response.yaml::<Todo>();
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(feature = "yaml")]
+    #[must_use]
+    pub fn yaml<T>(&self) -> T
+    where
+        T: DeserializeOwned,
+    {
+        serde_yaml::from_slice::<T>(&self.as_bytes())
+            .with_context(|| {
+                let request_format = &self.request_format;
+
+                format!("Deserializing response from YAML, for request {request_format}")
             })
             .unwrap()
     }
@@ -455,10 +510,10 @@ impl TestResponse {
         assert_eq!(other_contents, &self.text());
     }
 
-    /// Deserializes the contents of the request as JSON,
+    /// Deserializes the contents of the request as Json,
     /// and asserts it matches the value given.
     ///
-    /// If `other` does not match, or the response is not JSON,
+    /// If `other` does not match, or the response is not Json,
     /// then this will panic.
     #[track_caller]
     pub fn assert_json<T>(&self, other: &T)
@@ -466,6 +521,20 @@ impl TestResponse {
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*other, self.json::<T>());
+    }
+
+    /// Deserializes the contents of the request as Yaml,
+    /// and asserts it matches the value given.
+    ///
+    /// If `other` does not match, or the response is not Yaml,
+    /// then this will panic.
+    #[cfg(feature = "yaml")]
+    #[track_caller]
+    pub fn assert_yaml<T>(&self, other: &T)
+    where
+        T: DeserializeOwned + PartialEq<T> + Debug,
+    {
+        assert_eq!(*other, self.yaml::<T>());
     }
 
     /// Deserializes the contents of the request as an url encoded form,
@@ -796,6 +865,47 @@ mod test_json {
     }
 }
 
+#[cfg(feature = "yaml")]
+#[cfg(test)]
+mod test_yaml {
+    use crate::TestServer;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::axum_yaml::Yaml;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_yaml() -> Yaml<ExampleResponse> {
+        Yaml(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    #[tokio::test]
+    async fn it_should_deserialize_into_yaml() {
+        let app = Router::new().route(&"/yaml", get(route_get_yaml));
+
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/yaml").await.yaml::<ExampleResponse>();
+
+        assert_eq!(
+            response,
+            ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            }
+        );
+    }
+}
+
 #[cfg(test)]
 mod test_form {
     use crate::TestServer;
@@ -900,6 +1010,77 @@ mod test_assert_json {
         let server = TestServer::new(app).unwrap();
 
         server.get(&"/form").await.assert_json(&ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        });
+    }
+}
+
+#[cfg(feature = "yaml")]
+#[cfg(test)]
+mod test_assert_yaml {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::axum::Form;
+    use ::axum_yaml::Yaml;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_form() -> Form<ExampleResponse> {
+        Form(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    async fn route_get_yaml() -> Yaml<ExampleResponse> {
+        Yaml(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    #[tokio::test]
+    async fn it_should_match_yaml_returned() {
+        let app = Router::new().route(&"/yaml", get(route_get_yaml));
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/yaml").await.assert_yaml(&ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        });
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_different() {
+        let app = Router::new().route(&"/yaml", get(route_get_yaml));
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/yaml").await.assert_yaml(&ExampleResponse {
+            name: "Julia".to_string(),
+            age: 25,
+        });
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_form() {
+        let app = Router::new().route(&"/form", get(route_get_form));
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/form").await.assert_yaml(&ExampleResponse {
             name: "Joe".to_string(),
             age: 20,
         });

@@ -13,7 +13,6 @@ use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Request;
 use ::serde::Serialize;
-use ::serde_json::to_vec as json_to_vec;
 use ::serde_urlencoded::to_string;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
@@ -136,16 +135,31 @@ impl TestRequest {
         })
     }
 
-    /// Set the body of the request to send up as Json,
+    /// Set the body of the request to send up data as Json,
     /// and changes the content type to `application/json`.
     pub fn json<J>(self, body: &J) -> Self
     where
         J: ?Sized + Serialize,
     {
-        let body_bytes = json_to_vec(body).expect("It should serialize the content into JSON");
+        let body_bytes =
+            ::serde_json::to_vec(body).expect("It should serialize the content into Json");
 
         self.bytes(body_bytes.into())
             .content_type(mime::APPLICATION_JSON.essence_str())
+    }
+
+    /// Set the body of the request to send up data as Yaml,
+    /// and changes the content type to `application/yaml`.
+    #[cfg(feature = "yaml")]
+    pub fn yaml<J>(self, body: &J) -> Self
+    where
+        J: ?Sized + Serialize,
+    {
+        let body_bytes =
+            ::serde_yaml::to_vec(body).expect("It should serialize the content into Yaml");
+
+        self.bytes(body_bytes.into())
+            .content_type("application/yaml")
     }
 
     /// Sets the body of the request, with the content type
@@ -164,7 +178,7 @@ impl TestRequest {
     /// The payload is built using [`MultipartForm`](crate::multipart::MultipartForm) and [`Part`](crate::multipart::Part).
     ///
     /// This will be sent with the content type of 'multipart/form-data'.
-    /// 
+    ///
     /// # Simple example
     ///
     /// ```rust
@@ -180,7 +194,7 @@ impl TestRequest {
     /// let multipart_form = MultipartForm::new()
     ///     .add_text("name", "Joe")
     ///     .add_text("animals", "foxes");
-    /// 
+    ///
     /// let response = server.post(&"/my-form")
     ///     .multipart(multipart_form)
     ///     .await;
@@ -205,10 +219,10 @@ impl TestRequest {
     /// let image_part = Part::bytes(image_bytes.as_slice())
     ///     .file_name(&"README.md")
     ///     .mime_type(&"text/markdown");
-    /// 
+    ///
     /// let multipart_form = MultipartForm::new()
     ///     .add_part("file", image_part);
-    /// 
+    ///
     /// let response = server.post(&"/my-form")
     ///     .multipart(multipart_form)
     ///     .await;
@@ -738,6 +752,80 @@ mod test_json {
         let text = server.post(&"/content_type").json(&json!({})).await.text();
 
         assert_eq!(text, "application/json");
+    }
+}
+
+#[cfg(feature = "yaml")]
+#[cfg(test)]
+mod test_yaml {
+    use crate::TestServer;
+
+    use ::axum::routing::post;
+    use ::axum::Router;
+    use ::axum_yaml::Yaml;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+    use ::serde_json::json;
+
+    #[tokio::test]
+    async fn it_should_pass_yaml_up_to_be_read() {
+        #[derive(Deserialize, Serialize)]
+        struct TestYaml {
+            name: String,
+            age: u32,
+            pets: Option<String>,
+        }
+
+        async fn get_yaml(Yaml(yaml): Yaml<TestYaml>) -> String {
+            format!(
+                "yaml: {}, {}, {}",
+                yaml.name,
+                yaml.age,
+                yaml.pets.unwrap_or_else(|| "pandas".to_string())
+            )
+        }
+
+        // Build an application with a route.
+        let app = Router::new().route("/yaml", post(get_yaml));
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/yaml")
+            .yaml(&TestYaml {
+                name: "Joe".to_string(),
+                age: 20,
+                pets: Some("foxes".to_string()),
+            })
+            .await
+            .text();
+
+        assert_eq!(text, "yaml: Joe, 20, foxes");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_yaml_content_type_for_yaml() {
+        async fn get_content_type(headers: HeaderMap) -> String {
+            headers
+                .get(CONTENT_TYPE)
+                .map(|h| h.to_str().unwrap().to_string())
+                .unwrap_or_else(|| "".to_string())
+        }
+
+        // Build an application with a route.
+        let app = Router::new().route("/content_type", post(get_content_type));
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server.post(&"/content_type").yaml(&json!({})).await.text();
+
+        assert_eq!(text, "application/yaml");
     }
 }
 
