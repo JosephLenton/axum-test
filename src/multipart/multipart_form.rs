@@ -28,7 +28,7 @@ impl MultipartForm {
     }
 
     /// Adds a new section to this multipart form to be sent.
-    /// 
+    ///
     /// See [`Part`](crate::multipart::Part).
     pub fn add_part<N>(mut self, name: N, part: Part) -> Self
     where

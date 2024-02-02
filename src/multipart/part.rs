@@ -3,12 +3,12 @@ use ::bytes::Bytes;
 use ::mime::Mime;
 use ::std::fmt::Display;
 
-/// 
+///
 /// For creating a section of a MultipartForm.
-/// 
+///
 /// Use [`Part::text()`](crate::multipart::Part::text()) and [`Part::bytes()`](crate::multipart::Part::bytes()) for creating new instances.
 /// Then attach them to a `MultipartForm` using [`MultipartForm::add_part()`](crate::multipart::MultipartForm::add_part()).
-/// 
+///
 pub struct Part {
     pub(crate) bytes: Bytes,
     pub(crate) file_name: Option<String>,
@@ -17,7 +17,7 @@ pub struct Part {
 
 impl Part {
     /// Creates a new part of a multipart form, that will send text.
-    /// 
+    ///
     /// The default mime type for this part will be `text/plain`,
     pub fn text<T>(text: T) -> Self
     where
@@ -31,7 +31,7 @@ impl Part {
     }
 
     /// Creates a new part of a multipart form, that will upload bytes.
-    /// 
+    ///
     /// The default mime type for this part will be `application/octet-stream`,
     pub fn bytes<B>(bytes: B) -> Self
     where
@@ -45,7 +45,7 @@ impl Part {
     }
 
     /// Sets the file name for this part of a multipart form.
-    /// 
+    ///
     /// By default there is no filename. This will set one.
     pub fn file_name<T>(mut self, file_name: T) -> Self
     where
@@ -56,7 +56,7 @@ impl Part {
     }
 
     /// Sets the mime type for this part of a multipart form.
-    /// 
+    ///
     /// The default mime type is `text/plain` or `application/octet-stream`,
     /// depending on how this instance was created.
     /// This function will replace that.

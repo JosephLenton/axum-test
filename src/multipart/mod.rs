@@ -1,9 +1,9 @@
-//! 
+//!
 //! This supplies the building blocks for sending multipart forms using
 //! [`TestRequest::multipart()`](crate::TestRequest::multipart()).
-//! 
+//!
 //! The request body can be built using [`MultipartForm`](crate::multipart::MultipartForm) and [`Part`](crate::multipart::Part).
-//! 
+//!
 //! # Simple example
 //!
 //! ```rust
@@ -19,7 +19,7 @@
 //! let multipart_form = MultipartForm::new()
 //!     .add_text("name", "Joe")
 //!     .add_text("animals", "foxes");
-//! 
+//!
 //! let response = server.post(&"/my-form")
 //!     .multipart(multipart_form)
 //!     .await;
@@ -44,10 +44,10 @@
 //! let image_part = Part::bytes(image_bytes.as_slice())
 //!     .file_name(&"README.md")
 //!     .mime_type(&"text/markdown");
-//! 
+//!
 //! let multipart_form = MultipartForm::new()
 //!     .add_part("file", image_part);
-//! 
+//!
 //! let response = server.post(&"/my-form")
 //!     .multipart(multipart_form)
 //!     .await;
