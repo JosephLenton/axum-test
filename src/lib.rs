@@ -170,7 +170,7 @@
 //!
 //! This library includes a mode to have requests panic if they are outside of the 2xx range,
 //! unless marked by calling [`TestRequest::expect_failure()`](crate::TestRequest::expect_failure()).
-//! This is intentional to aid with writing tests. To help catch errors quickly when making code changes.
+//! This is intentional to aid with writing tests, and to help catch errors quickly when making code changes.
 //!
 //! This behaviour is off by default, and can be enabled by setting [`TestServerConfig::expect_success_by_default`](crate::TestServerConfig::expect_success_by_default) to true
 //! when creating a new `TestServer`.
