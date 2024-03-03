@@ -149,6 +149,20 @@ impl TestRequest {
     }
 
     /// Set the body of the request to send up data as Yaml,
+    /// and changes the content type to `application/msgpack`.
+    #[cfg(feature = "msgpack")]
+    pub fn msgpack<J>(self, body: &J) -> Self
+    where
+        J: ?Sized + Serialize,
+    {
+        let body_bytes =
+            ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
+
+        self.bytes(body_bytes.into())
+            .content_type("application/msgpack")
+    }
+
+    /// Set the body of the request to send up data as msgpack,
     /// and changes the content type to `application/yaml`.
     #[cfg(feature = "yaml")]
     pub fn yaml<J>(self, body: &J) -> Self
@@ -826,6 +840,84 @@ mod test_yaml {
         let text = server.post(&"/content_type").yaml(&json!({})).await.text();
 
         assert_eq!(text, "application/yaml");
+    }
+}
+
+#[cfg(feature = "msgpack")]
+#[cfg(test)]
+mod test_msgpack {
+    use crate::TestServer;
+
+    use ::axum::routing::post;
+    use ::axum::Router;
+    use ::axum_msgpack::MsgPack;
+    use ::http::header::CONTENT_TYPE;
+    use ::http::HeaderMap;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+    use ::serde_json::json;
+
+    #[tokio::test]
+    async fn it_should_pass_msgpack_up_to_be_read() {
+        #[derive(Deserialize, Serialize)]
+        struct TestMsgPack {
+            name: String,
+            age: u32,
+            pets: Option<String>,
+        }
+
+        async fn get_msgpack(MsgPack(msgpack): MsgPack<TestMsgPack>) -> String {
+            format!(
+                "yaml: {}, {}, {}",
+                msgpack.name,
+                msgpack.age,
+                msgpack.pets.unwrap_or_else(|| "pandas".to_string())
+            )
+        }
+
+        // Build an application with a route.
+        let app = Router::new().route("/msgpack", post(get_msgpack));
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/msgpack")
+            .msgpack(&TestMsgPack {
+                name: "Joe".to_string(),
+                age: 20,
+                pets: Some("foxes".to_string()),
+            })
+            .await
+            .text();
+
+        assert_eq!(text, "yaml: Joe, 20, foxes");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_msgpck_content_type_for_msgpack() {
+        async fn get_content_type(headers: HeaderMap) -> String {
+            headers
+                .get(CONTENT_TYPE)
+                .map(|h| h.to_str().unwrap().to_string())
+                .unwrap_or_else(|| "".to_string())
+        }
+
+        // Build an application with a route.
+        let app = Router::new().route("/content_type", post(get_content_type));
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .msgpack(&json!({}))
+            .await
+            .text();
+
+        assert_eq!(text, "application/msgpack");
     }
 }
 

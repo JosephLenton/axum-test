@@ -13,6 +13,7 @@ readme = "README.md"
 
 [features]
 default = ["pretty-assertions"]
+msgpack = ["dep:rmp-serde"]
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 
@@ -31,6 +32,7 @@ mime = "0.3.17"
 rust-multipart-rfc7578_2 = "0.6"
 pretty_assertions = { version = "1.4.0", optional = true }
 reserve-port = "2.0"
+rmp-serde = { version = "1.1.2", optional = true }
 serde = { version = "1.0" }
 serde_json = "1.0"
 serde_yaml = { version = "0.8", optional = true }
@@ -43,6 +45,7 @@ url = "2.5.0"
 [dev-dependencies]
 axum = { version = "0.7", features = ["multipart", "tokio"] }
 axum-extra = { version = "0.9.0", features = ["cookie"] }
+axum-msgpack = "0.4.0"
 axum-yaml = "0.4.0"
 local-ip-address = "0.5.4"
 regex = "1.10.2"

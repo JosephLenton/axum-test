@@ -86,3 +86,4 @@ Here are a list of all features so far that can be enabled:
 
  * `pretty-assertions` **on by default**, uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) for the output to the `assert_*` functions.
  * `yaml` _off by default_, adds support for sending, receiving, and asserting, yaml content.
+ * `msgpack` _off by default_, adds support for sending, receiving, and asserting, msgpack content.
