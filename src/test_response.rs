@@ -293,6 +293,61 @@ impl TestResponse {
             .unwrap()
     }
 
+    /// Deserializes the response, as MsgPack, into the type given.
+    ///
+    /// If deserialization fails then this will panic.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::axum_msgpack::MsgPack;
+    /// use ::serde::Deserialize;
+    /// use ::serde::Serialize;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// #[derive(Serialize, Deserialize, Debug)]
+    /// struct Todo {
+    ///     description: String,
+    /// }
+    ///
+    /// async fn route_get_todo() -> MsgPack<Todo> {
+    ///     MsgPack(Todo {
+    ///         description: "buy milk".to_string(),
+    ///     })
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/todo", get(route_get_todo));
+    ///
+    /// let server = TestServer::new(app)?;
+    /// let response = server.get(&"/todo").await;
+    ///
+    /// // Extract the response as a `Todo` item.
+    /// let todo = response.msgpack::<Todo>();
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[cfg(feature = "msgpack")]
+    #[must_use]
+    pub fn msgpack<T>(&self) -> T
+    where
+        T: DeserializeOwned,
+    {
+        rmp_serde::from_slice::<T>(&self.as_bytes())
+            .with_context(|| {
+                let request_format = &self.request_format;
+
+                format!("Deserializing response from MsgPack, for request {request_format}")
+            })
+            .unwrap()
+    }
+
     /// Deserializes the response, as an urlencoded Form, into the type given.
     ///
     /// If deserialization fails then this will panic.
@@ -535,6 +590,20 @@ impl TestResponse {
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*other, self.yaml::<T>());
+    }
+
+    /// Deserializes the contents of the request as MsgPack,
+    /// and asserts it matches the value given.
+    ///
+    /// If `other` does not match, or the response is not MsgPack,
+    /// then this will panic.
+    #[cfg(feature = "msgpack")]
+    #[track_caller]
+    pub fn assert_msgpack<T>(&self, other: &T)
+    where
+        T: DeserializeOwned + PartialEq<T> + Debug,
+    {
+        assert_eq!(*other, self.msgpack::<T>());
     }
 
     /// Deserializes the contents of the request as an url encoded form,
@@ -895,6 +964,47 @@ mod test_yaml {
         let server = TestServer::new(app).unwrap();
 
         let response = server.get(&"/yaml").await.yaml::<ExampleResponse>();
+
+        assert_eq!(
+            response,
+            ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            }
+        );
+    }
+}
+
+#[cfg(feature = "msgpack")]
+#[cfg(test)]
+mod test_msgpack {
+    use crate::TestServer;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+    use ::axum_msgpack::MsgPack;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_msgpack() -> MsgPack<ExampleResponse> {
+        MsgPack(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    #[tokio::test]
+    async fn it_should_deserialize_into_msgpack() {
+        let app = Router::new().route(&"/msgpack", get(route_get_msgpack));
+
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/msgpack").await.msgpack::<ExampleResponse>();
 
         assert_eq!(
             response,
