@@ -85,5 +85,5 @@ Querying your application on the `TestServer` supports all of the common request
 Here are a list of all features so far that can be enabled:
 
  * `pretty-assertions` **on by default**, uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) for the output to the `assert_*` functions.
- * `yaml` _off by default_, adds support for sending, receiving, and asserting, yaml content.
- * `msgpack` _off by default_, adds support for sending, receiving, and asserting, msgpack content.
+ * `yaml` _off by default_, adds support for sending, receiving, and asserting, [yaml content](https://yaml.org/).
+ * `msgpack` _off by default_, adds support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).
