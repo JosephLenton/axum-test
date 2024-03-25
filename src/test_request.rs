@@ -148,7 +148,7 @@ impl TestRequest {
             .content_type(mime::APPLICATION_JSON.essence_str())
     }
 
-    /// Set the body of the request to send up data as Yaml,
+    /// Set the body of the request to send up data as MsgPack,
     /// and changes the content type to `application/msgpack`.
     #[cfg(feature = "msgpack")]
     pub fn msgpack<J>(self, body: &J) -> Self
@@ -162,17 +162,16 @@ impl TestRequest {
             .content_type("application/msgpack")
     }
 
-    /// Set the body of the request to send up data as msgpack,
+    /// Set the body of the request to send up data as Yaml,
     /// and changes the content type to `application/yaml`.
     #[cfg(feature = "yaml")]
     pub fn yaml<J>(self, body: &J) -> Self
     where
         J: ?Sized + Serialize,
     {
-        let body_bytes =
-            ::serde_yaml::to_vec(body).expect("It should serialize the content into Yaml");
+        let body = ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
 
-        self.bytes(body_bytes.into())
+        self.bytes(body.into_bytes().into())
             .content_type("application/yaml")
     }
 
