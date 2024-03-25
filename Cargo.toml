@@ -11,6 +11,10 @@ repository = "https://github.com/JosephLenton/axum-test"
 documentation = "https://docs.rs/axum-test"
 readme = "README.md"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = ["pretty-assertions"]
 msgpack = ["dep:rmp-serde"]

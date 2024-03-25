@@ -2,7 +2,7 @@
 //! This supplies the building blocks for sending multipart forms using
 //! [`TestRequest::multipart()`](crate::TestRequest::multipart()).
 //!
-//! The request body can be built using [`MultipartForm`](crate::multipart::MultipartForm) and [`Part`](crate::multipart::Part).
+//! The request body can be built using [`MultipartForm`] and [`Part`].
 //!
 //! # Simple example
 //!
