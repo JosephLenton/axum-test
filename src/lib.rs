@@ -176,6 +176,9 @@
 //! when creating a new `TestServer`.
 //!
 
+#![forbid(unsafe_code)]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+
 pub(crate) mod internals;
 
 pub mod multipart;
