@@ -1,6 +1,5 @@
 use ::anyhow::Result;
 use ::serde::Serialize;
-use ::serde_urlencoded::to_string;
 use ::smallvec::SmallVec;
 use ::std::fmt::Display;
 use ::std::fmt::Formatter;
@@ -22,10 +21,14 @@ impl QueryParamsStore {
     where
         V: Serialize,
     {
-        let value_raw = to_string(query_params)?;
-        self.query_params.push(value_raw);
+        let value_raw = ::serde_urlencoded::to_string(query_params)?;
+        self.add_raw(value_raw);
 
         Ok(())
+    }
+
+    pub fn add_raw(&mut self, value_raw: String) {
+        self.query_params.push(value_raw);
     }
 
     pub fn clear(&mut self) {

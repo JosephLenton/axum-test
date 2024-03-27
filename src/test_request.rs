@@ -13,7 +13,6 @@ use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Request;
 use ::serde::Serialize;
-use ::serde_urlencoded::to_string;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
@@ -169,7 +168,8 @@ impl TestRequest {
     where
         J: ?Sized + Serialize,
     {
-        let body = ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
+        let body =
+            ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
 
         self.bytes(body.into_bytes().into())
             .content_type("application/yaml")
@@ -181,7 +181,8 @@ impl TestRequest {
     where
         F: ?Sized + Serialize,
     {
-        let body_text = to_string(body).expect("It should serialize the content into a Form");
+        let body_text =
+            serde_urlencoded::to_string(body).expect("It should serialize the content into a Form");
 
         self.bytes(body_text.into())
             .content_type(mime::APPLICATION_WWW_FORM_URLENCODED.essence_str())
@@ -413,6 +414,36 @@ impl TestRequest {
                 format!("It should serialize query parameters, for request {request_format}")
             })
             .unwrap();
+
+        self
+    }
+
+    /// Adds a query param onto the end of the request,
+    /// with no urlencoding of any kind.
+    ///
+    /// This exists to allow custom query parameters,
+    /// such as for the many versions of query param arrays.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let server = TestServer::new(app)?;
+    ///
+    /// let response = server.get(&"/my-end-point")
+    ///     .add_raw_query_param(&"my-flag")
+    ///     .add_raw_query_param(&"array[]=123")
+    ///     .add_raw_query_param(&"filter[value]=some-value")
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    pub fn add_raw_query_param(mut self, query_param: &str) -> Self {
+        self.query_params.add_raw(query_param.to_string());
 
         self
     }
@@ -1531,7 +1562,7 @@ mod test_clear_headers {
 
 #[cfg(test)]
 mod test_add_query_params {
-    use ::axum::extract::Query;
+    use ::axum::extract::Query as AxumStdQuery;
     use ::axum::routing::get;
     use ::axum::Router;
 
@@ -1546,7 +1577,7 @@ mod test_add_query_params {
         message: String,
     }
 
-    async fn get_query_param(Query(params): Query<QueryParam>) -> String {
+    async fn get_query_param(AxumStdQuery(params): AxumStdQuery<QueryParam>) -> String {
         params.message
     }
 
@@ -1556,17 +1587,20 @@ mod test_add_query_params {
         other: String,
     }
 
-    async fn get_query_param_2(Query(params): Query<QueryParam2>) -> String {
+    async fn get_query_param_2(AxumStdQuery(params): AxumStdQuery<QueryParam2>) -> String {
         format!("{}-{}", params.message, params.other)
+    }
+
+    fn build_app() -> Router {
+        Router::new()
+            .route("/query", get(get_query_param))
+            .route("/query-2", get(get_query_param_2))
     }
 
     #[tokio::test]
     async fn it_should_pass_up_query_params_from_serialization() {
-        // Build an application with a route.
-        let app = Router::new().route("/query", get(get_query_param));
-
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let server = TestServer::new(build_app()).expect("Should create test server");
 
         // Get the request.
         server
@@ -1580,11 +1614,8 @@ mod test_add_query_params {
 
     #[tokio::test]
     async fn it_should_pass_up_query_params_from_pairs() {
-        // Build an application with a route.
-        let app = Router::new().route("/query", get(get_query_param));
-
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let server = TestServer::new(build_app()).expect("Should create test server");
 
         // Get the request.
         server
@@ -1596,11 +1627,8 @@ mod test_add_query_params {
 
     #[tokio::test]
     async fn it_should_pass_up_multiple_query_params_from_multiple_params() {
-        // Build an application with a route.
-        let app = Router::new().route("/query-2", get(get_query_param_2));
-
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let server = TestServer::new(build_app()).expect("Should create test server");
 
         // Get the request.
         server
@@ -1612,11 +1640,8 @@ mod test_add_query_params {
 
     #[tokio::test]
     async fn it_should_pass_up_multiple_query_params_from_multiple_calls() {
-        // Build an application with a route.
-        let app = Router::new().route("/query-2", get(get_query_param_2));
-
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let server = TestServer::new(build_app()).expect("Should create test server");
 
         // Get the request.
         server
@@ -1629,11 +1654,8 @@ mod test_add_query_params {
 
     #[tokio::test]
     async fn it_should_pass_up_multiple_query_params_from_json() {
-        // Build an application with a route.
-        let app = Router::new().route("/query-2", get(get_query_param_2));
-
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let server = TestServer::new(build_app()).expect("Should create test server");
 
         // Get the request.
         server
@@ -1644,6 +1666,100 @@ mod test_add_query_params {
             }))
             .await
             .assert_text(&"it works-yup");
+    }
+}
+
+#[cfg(test)]
+mod test_add_raw_query_param {
+    use ::axum::extract::Query as AxumStdQuery;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::axum_extra::extract::Query as AxumExtraQuery;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+    use ::std::fmt::Write;
+
+    use crate::TestServer;
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct QueryParam {
+        message: String,
+    }
+
+    async fn get_query_param(AxumStdQuery(params): AxumStdQuery<QueryParam>) -> String {
+        params.message
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct QueryParamExtra {
+        #[serde(default)]
+        items: Vec<String>,
+
+        #[serde(default, rename = "arrs[]")]
+        arrs: Vec<String>,
+    }
+
+    async fn get_query_param_extra(
+        AxumExtraQuery(params): AxumExtraQuery<QueryParamExtra>,
+    ) -> String {
+        let mut output = String::new();
+
+        if params.items.len() > 0 {
+            write!(output, "{}", params.items.join(", ")).unwrap();
+        }
+
+        if params.arrs.len() > 0 {
+            write!(output, "{}", params.arrs.join(", ")).unwrap();
+        }
+
+        output
+    }
+
+    fn build_app() -> Router {
+        Router::new()
+            .route("/query", get(get_query_param))
+            .route("/query-extra", get(get_query_param_extra))
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_up_query_param_as_is() {
+        // Run the server.
+        let server = TestServer::new(build_app()).expect("Should create test server");
+
+        // Get the request.
+        server
+            .get(&"/query")
+            .add_raw_query_param(&"message=it-works")
+            .await
+            .assert_text(&"it-works");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_up_array_query_params_as_one_string() {
+        // Run the server.
+        let server = TestServer::new(build_app()).expect("Should create test server");
+
+        // Get the request.
+        server
+            .get(&"/query-extra")
+            .add_raw_query_param(&"items=one&items=two&items=three")
+            .await
+            .assert_text(&"one, two, three");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_up_array_query_params_as_multiple_params() {
+        // Run the server.
+        let server = TestServer::new(build_app()).expect("Should create test server");
+
+        // Get the request.
+        server
+            .get(&"/query-extra")
+            .add_raw_query_param(&"arrs[]=one")
+            .add_raw_query_param(&"arrs[]=two")
+            .add_raw_query_param(&"arrs[]=three")
+            .await
+            .assert_text(&"one, two, three");
     }
 }
 
