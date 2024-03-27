@@ -108,6 +108,12 @@ impl ServerSharedState {
         })?
     }
 
+    pub(crate) fn add_raw_query_param(this: &mut Arc<Mutex<Self>>, raw_value: &str) -> Result<()> {
+        with_this_mut(this, "add_raw_query_param", |this| {
+            this.query_params.add_raw(raw_value.to_string())
+        })
+    }
+
     pub(crate) fn clear_query_params(this: &mut Arc<Mutex<Self>>) -> Result<()> {
         with_this_mut(this, "clear_query_params", |this| this.query_params.clear())
     }

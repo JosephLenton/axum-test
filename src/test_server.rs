@@ -240,7 +240,7 @@ impl TestServer {
         self.expected_state = ExpectedState::Failure;
     }
 
-    /// Adds query parameters to be sent on *all* future requests.
+    /// Adds a query parameter to be sent on *all* future requests.
     pub fn add_query_param<V>(&mut self, key: &str, value: V)
     where
         V: Serialize,
@@ -250,13 +250,21 @@ impl TestServer {
             .unwrap()
     }
 
-    /// Adds query parameters to be sent with this request.
+    /// Adds query parameters to be sent on *all* future requests.
     pub fn add_query_params<V>(&mut self, query_params: V)
     where
         V: Serialize,
     {
         ServerSharedState::add_query_params(&mut self.state, query_params)
             .with_context(|| format!("Trying to call add_query_params"))
+            .unwrap()
+    }
+
+    /// Adds a raw query param, with no urlencoding of any kind,
+    /// to be send on *all* future requests.
+    pub fn add_raw_query_param(&mut self, raw_query_param: &str) {
+        ServerSharedState::add_raw_query_param(&mut self.state, raw_query_param)
+            .with_context(|| format!("Trying to call add_raw_query_param"))
             .unwrap()
     }
 
@@ -905,6 +913,97 @@ mod test_add_query_param {
             .add_query_param("other", "yup")
             .await
             .assert_text(&"it works-yup");
+    }
+}
+
+#[cfg(test)]
+mod test_add_raw_query_param {
+    use ::axum::extract::Query as AxumStdQuery;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::axum_extra::extract::Query as AxumExtraQuery;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+    use ::std::fmt::Write;
+
+    use crate::TestServer;
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct QueryParam {
+        message: String,
+    }
+
+    async fn get_query_param(AxumStdQuery(params): AxumStdQuery<QueryParam>) -> String {
+        params.message
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct QueryParamExtra {
+        #[serde(default)]
+        items: Vec<String>,
+
+        #[serde(default, rename = "arrs[]")]
+        arrs: Vec<String>,
+    }
+
+    async fn get_query_param_extra(
+        AxumExtraQuery(params): AxumExtraQuery<QueryParamExtra>,
+    ) -> String {
+        let mut output = String::new();
+
+        if params.items.len() > 0 {
+            write!(output, "{}", params.items.join(", ")).unwrap();
+        }
+
+        if params.arrs.len() > 0 {
+            write!(output, "{}", params.arrs.join(", ")).unwrap();
+        }
+
+        output
+    }
+
+    fn build_app() -> Router {
+        Router::new()
+            .route("/query", get(get_query_param))
+            .route("/query-extra", get(get_query_param_extra))
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_up_query_param_as_is() {
+        // Run the server.
+        let mut server = TestServer::new(build_app()).expect("Should create test server");
+        server.add_raw_query_param(&"message=it-works");
+
+        // Get the request.
+        server.get(&"/query").await.assert_text(&"it-works");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_up_array_query_params_as_one_string() {
+        // Run the server.
+        let mut server = TestServer::new(build_app()).expect("Should create test server");
+        server.add_raw_query_param(&"items=one&items=two&items=three");
+
+        // Get the request.
+        server
+            .get(&"/query-extra")
+            .await
+            .assert_text(&"one, two, three");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_up_array_query_params_as_multiple_params() {
+        // Run the server.
+        let mut server = TestServer::new(build_app()).expect("Should create test server");
+        server.add_raw_query_param(&"arrs[]=one");
+        server.add_raw_query_param(&"arrs[]=two");
+        server.add_raw_query_param(&"arrs[]=three");
+
+        // Get the request.
+        server
+            .get(&"/query-extra")
+            .await
+            .assert_text(&"one, two, three");
     }
 }
 
