@@ -88,6 +88,11 @@ pub struct TestServerConfig {
     ///
     /// This overrides the default 'best efforts' approach of requests.
     pub default_content_type: Option<String>,
+
+    /// Set the default scheme to use for all requests created by the `TestServer`.
+    ///
+    /// This overrides the default 'http'.
+    pub default_scheme: Option<String>,
 }
 
 impl TestServerConfig {
@@ -115,6 +120,34 @@ impl Default for TestServerConfig {
             expect_success_by_default: false,
             restrict_requests_with_http_schema: false,
             default_content_type: None,
+            default_scheme: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod test_scheme {
+    use axum::extract::Request;
+    use axum::routing::get;
+    use axum::Router;
+
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    async fn route_get_scheme(request: Request) -> String {
+        request.uri().scheme_str().unwrap().to_string()
+    }
+
+    #[tokio::test]
+    async fn it_should_set_scheme_when_present_in_config() {
+        let router = Router::new().route("/scheme", get(route_get_scheme));
+
+        let config = TestServerConfig {
+            default_scheme: Some("https".to_string()),
+            ..Default::default()
+        };
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        server.get("/scheme").await.assert_text("https");
     }
 }

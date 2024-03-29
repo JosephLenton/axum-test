@@ -75,6 +75,11 @@ impl TestServerConfigBuilder {
         self
     }
 
+    pub fn default_scheme(mut self, scheme: &str) -> Self {
+        self.config.default_scheme = Some(scheme.to_string());
+        self
+    }
+
     pub fn expect_success_by_default(mut self) -> Self {
         self.config.expect_success_by_default = true;
         self
@@ -161,6 +166,15 @@ mod test_build {
             .build();
 
         assert_eq!(config.default_content_type, Some("text/csv".to_string()));
+    }
+
+    #[test]
+    fn it_should_set_default_scheme_when_set() {
+        let config = TestServerConfig::builder()
+            .default_scheme("ftps")
+            .build();
+
+        assert_eq!(config.default_scheme, Some("ftps".to_string()));
     }
 
     #[test]

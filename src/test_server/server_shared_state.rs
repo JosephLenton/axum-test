@@ -139,4 +139,8 @@ impl ServerSharedState {
     pub(crate) fn set_scheme(this: &mut Arc<Mutex<Self>>, scheme: String) -> Result<()> {
         with_this_mut(this, "set_scheme", |this| this.scheme = Some(scheme))
     }
+
+    pub(crate) fn set_scheme_unlocked(&mut self, scheme: String) {
+        self.scheme = Some(scheme);
+    }
 }
