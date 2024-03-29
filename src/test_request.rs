@@ -106,7 +106,7 @@ impl TestRequest {
     pub(crate) fn new(
         server_state: Arc<Mutex<ServerSharedState>>,
         transport: Arc<Mutex<Box<dyn TransportLayer>>>,
-        config: TestRequestConfig,
+        mut config: TestRequestConfig,
     ) -> Result<Self> {
         let expected_state = config.expected_state;
         let server_locked = server_state.as_ref().lock().map_err(|err| {
@@ -115,6 +115,12 @@ impl TestRequest {
                 "Failed to lock InternalTestServer, for request {request_format}, received {err:?}",
             )
         })?;
+
+        if let Some(scheme) = server_locked.scheme() {
+            config.full_request_url.set_scheme(scheme).map_err(|_| {
+                anyhow!("Scheme '{scheme}' from TestServer cannot be set to request")
+            })?;
+        }
 
         let cookies = server_locked.cookies().clone();
         let query_params = server_locked.query_params().clone();
@@ -464,6 +470,35 @@ impl TestRequest {
     /// Clears all headers set.
     pub fn clear_headers(mut self) -> Self {
         self.headers = vec![];
+        self
+    }
+
+    /// Sets the scheme to use when making the request. i.e. http or https.
+    /// The default scheme is 'http'.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let server = TestServer::new(app)?;
+    ///
+    /// let response = server
+    ///     .get(&"/my-end-point")
+    ///     .scheme(&"https")
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    pub fn scheme(mut self, scheme: &str) -> Self {
+        self.config
+            .full_request_url
+            .set_scheme(scheme)
+            .map_err(|_| anyhow!("Scheme '{scheme}' cannot be set to request"))
+            .unwrap();
         self
     }
 
@@ -1894,6 +1929,73 @@ mod test_clear_query_params {
             })
             .await
             .assert_text(&"has first? true, has second? true");
+    }
+}
+
+#[cfg(test)]
+mod test_scheme {
+    use axum::extract::Request;
+    use axum::routing::get;
+    use axum::Router;
+
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    async fn route_get_scheme(request: Request) -> String {
+        request.uri().scheme_str().unwrap().to_string()
+    }
+
+    #[tokio::test]
+    async fn it_should_return_http_by_default() {
+        let router = Router::new().route("/scheme", get(route_get_scheme));
+
+        let config = TestServerConfig::builder().build();
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        server.get("/scheme").await.assert_text("http");
+    }
+
+    #[tokio::test]
+    async fn it_should_return_http_when_set() {
+        let router = Router::new().route("/scheme", get(route_get_scheme));
+
+        let config = TestServerConfig::builder().build();
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        server
+            .get("/scheme")
+            .scheme(&"http")
+            .await
+            .assert_text("http");
+    }
+
+    #[tokio::test]
+    async fn it_should_return_https_when_set() {
+        let router = Router::new().route("/scheme", get(route_get_scheme));
+
+        let config = TestServerConfig::builder().build();
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        server
+            .get("/scheme")
+            .scheme(&"https")
+            .await
+            .assert_text("https");
+    }
+
+    #[tokio::test]
+    async fn it_should_override_test_server_when_set() {
+        let router = Router::new().route("/scheme", get(route_get_scheme));
+
+        let config = TestServerConfig::builder().build();
+        let mut server = TestServer::new_with_config(router, config).unwrap();
+        server.scheme(&"https");
+
+        server
+            .get("/scheme")
+            .scheme(&"http") // set it back to http
+            .await
+            .assert_text("http");
     }
 }
 

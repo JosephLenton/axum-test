@@ -13,6 +13,7 @@ use crate::internals::QueryParamsStore;
 
 #[derive(Debug)]
 pub(crate) struct ServerSharedState {
+    scheme: Option<String>,
     cookies: CookieJar,
     query_params: QueryParamsStore,
     headers: Vec<(HeaderName, HeaderValue)>,
@@ -21,10 +22,15 @@ pub(crate) struct ServerSharedState {
 impl ServerSharedState {
     pub(crate) fn new() -> Self {
         Self {
+            scheme: None,
             cookies: CookieJar::new(),
             query_params: QueryParamsStore::new(),
             headers: Vec::new(),
         }
+    }
+
+    pub(crate) fn scheme<'a>(&'a self) -> Option<&'a str> {
+        self.scheme.as_deref()
     }
 
     pub(crate) fn cookies<'a>(&'a self) -> &'a CookieJar {
@@ -128,5 +134,9 @@ impl ServerSharedState {
         value: HeaderValue,
     ) -> Result<()> {
         with_this_mut(this, "add_header", |this| this.headers.push((name, value)))
+    }
+
+    pub(crate) fn set_scheme(this: &mut Arc<Mutex<Self>>, scheme: String) -> Result<()> {
+        with_this_mut(this, "set_scheme", |this| this.scheme = Some(scheme))
     }
 }

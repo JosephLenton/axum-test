@@ -289,6 +289,35 @@ impl TestServer {
             .unwrap()
     }
 
+    /// Sets the scheme to use when making _all_ requests from the `TestServer`.
+    /// i.e. http or https.
+    ///
+    /// The default scheme is 'http'.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let mut server = TestServer::new(app)?;
+    /// server
+    ///     .scheme(&"https");
+    ///
+    /// let response = server
+    ///     .get(&"/my-end-point")
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    pub fn scheme(&mut self, scheme: &str) {
+        ServerSharedState::set_scheme(&mut self.state, scheme.to_string())
+            .with_context(|| format!("Trying to call set_scheme"))
+            .unwrap()
+    }
+
     pub(crate) fn url(&self) -> Option<Url> {
         let locked = self
             .transport
@@ -1277,5 +1306,42 @@ mod test_expect_failure {
 
         // Get the request.
         server.get(&"/accepted").await;
+    }
+}
+
+#[cfg(test)]
+mod test_scheme {
+    use axum::extract::Request;
+    use axum::routing::get;
+    use axum::Router;
+
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    async fn route_get_scheme(request: Request) -> String {
+        request.uri().scheme_str().unwrap().to_string()
+    }
+
+    #[tokio::test]
+    async fn it_should_return_http_by_default() {
+        let router = Router::new().route("/scheme", get(route_get_scheme));
+
+        let config = TestServerConfig::builder().build();
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        server.get("/scheme").await.assert_text("http");
+    }
+
+    #[tokio::test]
+    async fn it_should_return_https_across_multiple_requests_when_set() {
+        let router = Router::new().route("/scheme", get(route_get_scheme));
+
+        let config = TestServerConfig::builder().build();
+        let mut server = TestServer::new_with_config(router, config).unwrap();
+        server.scheme(&"https");
+
+        server.get("/scheme").await.assert_text("https");
+
+        server.get("/scheme").await.assert_text("https");
     }
 }
