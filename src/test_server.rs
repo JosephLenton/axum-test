@@ -98,7 +98,7 @@ impl TestServer {
         if let Some(scheme) = config.default_scheme {
             shared_state.set_scheme_unlocked(scheme);
         }
-        
+
         let shared_state_mutex = Mutex::new(shared_state);
         let state = Arc::new(shared_state_mutex);
 

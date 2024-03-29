@@ -170,9 +170,7 @@ mod test_build {
 
     #[test]
     fn it_should_set_default_scheme_when_set() {
-        let config = TestServerConfig::builder()
-            .default_scheme("ftps")
-            .build();
+        let config = TestServerConfig::builder().default_scheme("ftps").build();
 
         assert_eq!(config.default_scheme, Some("ftps".to_string()));
     }
