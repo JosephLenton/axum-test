@@ -1276,6 +1276,7 @@ mod test_add_cookie {
     use ::axum::routing::get;
     use ::axum::Router;
     use ::axum_extra::extract::cookie::CookieJar;
+    use ::cookie::time::Duration;
     use ::cookie::time::OffsetDateTime;
     use ::cookie::Cookie;
 
@@ -1296,6 +1297,21 @@ mod test_add_cookie {
         let server = TestServer::new(app).expect("Should create test server");
 
         let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        let response_text = server.get(&"/cookie").add_cookie(cookie).await.text();
+        assert_eq!(response_text, "my-custom-cookie");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_non_expired_cookies_added_to_request() {
+        let app = Router::new().route("/cookie", get(get_cookie));
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let mut cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        cookie.set_expires(
+            OffsetDateTime::now_utc()
+                .checked_add(Duration::minutes(10))
+                .unwrap(),
+        );
         let response_text = server.get(&"/cookie").add_cookie(cookie).await.text();
         assert_eq!(response_text, "my-custom-cookie");
     }
