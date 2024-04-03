@@ -5,6 +5,7 @@ use ::anyhow::Result;
 use ::auto_future::AutoFuture;
 use ::axum::body::Body;
 use ::bytes::Bytes;
+use ::cookie::time::OffsetDateTime;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
 use ::http::header;
@@ -621,11 +622,18 @@ impl TestRequest {
             request_builder = request_builder.header(header_key, header_value);
         }
 
-        // Add all the cookies as headers
+        let now = OffsetDateTime::now_utc();
+        // Add all the non-expired cookies as headers
         for cookie in cookies.iter() {
-            let cookie_raw = cookie.to_string();
-            let header_value = HeaderValue::from_str(&cookie_raw)?;
-            request_builder = request_builder.header(header::COOKIE, header_value);
+            let expired = cookie
+                .expires_datetime()
+                .map(|expires| expires <= now)
+                .unwrap_or(false);
+            if !expired {
+                let cookie_raw = cookie.to_string();
+                let header_value = HeaderValue::from_str(&cookie_raw)?;
+                request_builder = request_builder.header(header::COOKIE, header_value);
+            }
         }
 
         // Put headers into the request
@@ -1268,6 +1276,8 @@ mod test_add_cookie {
     use ::axum::routing::get;
     use ::axum::Router;
     use ::axum_extra::extract::cookie::CookieJar;
+    use ::cookie::time::Duration;
+    use ::cookie::time::OffsetDateTime;
     use ::cookie::Cookie;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
@@ -1289,6 +1299,32 @@ mod test_add_cookie {
         let cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
         let response_text = server.get(&"/cookie").add_cookie(cookie).await.text();
         assert_eq!(response_text, "my-custom-cookie");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_non_expired_cookies_added_to_request() {
+        let app = Router::new().route("/cookie", get(get_cookie));
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let mut cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        cookie.set_expires(
+            OffsetDateTime::now_utc()
+                .checked_add(Duration::minutes(10))
+                .unwrap(),
+        );
+        let response_text = server.get(&"/cookie").add_cookie(cookie).await.text();
+        assert_eq!(response_text, "my-custom-cookie");
+    }
+
+    #[tokio::test]
+    async fn it_should_not_send_expired_cookies_added_to_request() {
+        let app = Router::new().route("/cookie", get(get_cookie));
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let mut cookie = Cookie::new(TEST_COOKIE_NAME, "my-custom-cookie");
+        cookie.set_expires(OffsetDateTime::now_utc());
+        let response_text = server.get(&"/cookie").add_cookie(cookie).await.text();
+        assert_eq!(response_text, "cookie-not-found");
     }
 }
 
