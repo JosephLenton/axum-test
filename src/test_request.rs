@@ -622,13 +622,14 @@ impl TestRequest {
             request_builder = request_builder.header(header_key, header_value);
         }
 
-        let now = OffsetDateTime::now_utc();
         // Add all the non-expired cookies as headers
+        let now = OffsetDateTime::now_utc();
         for cookie in cookies.iter() {
             let expired = cookie
                 .expires_datetime()
                 .map(|expires| expires <= now)
                 .unwrap_or(false);
+
             if !expired {
                 let cookie_raw = cookie.to_string();
                 let header_value = HeaderValue::from_str(&cookie_raw)?;
