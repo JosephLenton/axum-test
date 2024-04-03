@@ -212,12 +212,15 @@ mod integrated_test_cookie_saving {
 
     use ::axum::extract::Request;
     use ::axum::routing::get;
+    use ::axum::routing::post;
     use ::axum::routing::put;
     use ::axum::Router;
     use ::axum_extra::extract::cookie::Cookie as AxumCookie;
     use ::axum_extra::extract::cookie::CookieJar;
+    use ::cookie::time::OffsetDateTime;
     use ::cookie::Cookie;
     use ::http_body_util::BodyExt;
+    use ::std::time::Duration;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
 
@@ -244,15 +247,26 @@ mod integrated_test_cookie_saving {
         (cookies, &"done")
     }
 
+    async fn post_expire_cookie(mut cookies: CookieJar) -> (CookieJar, &'static str) {
+        let mut cookie = AxumCookie::new(TEST_COOKIE_NAME, "expired".to_string());
+        let expired_time = OffsetDateTime::now_utc() - Duration::from_secs(1);
+        cookie.set_expires(expired_time);
+        cookies = cookies.add(cookie);
+
+        (cookies, &"done")
+    }
+
+    fn new_test_router() -> Router {
+        Router::new()
+            .route("/cookie", put(put_cookie))
+            .route("/cookie", get(get_cookie))
+            .route("/expire", post(post_expire_cookie))
+    }
+
     #[tokio::test]
     async fn it_should_not_pass_cookies_created_back_up_to_server_by_default() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie));
-
         // Run the server.
-        let server = TestServer::new(app).expect("Should create test server");
+        let server = TestServer::new(new_test_router()).expect("Should create test server");
 
         // Create a cookie.
         server.put(&"/cookie").text(&"new-cookie").await;
@@ -265,14 +279,9 @@ mod integrated_test_cookie_saving {
 
     #[tokio::test]
     async fn it_should_not_pass_cookies_created_back_up_to_server_when_turned_off() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie));
-
         // Run the server.
         let server = TestServer::new_with_config(
-            app,
+            new_test_router(),
             TestServerConfig {
                 save_cookies: false,
                 ..TestServerConfig::default()
@@ -291,14 +300,9 @@ mod integrated_test_cookie_saving {
 
     #[tokio::test]
     async fn it_should_pass_cookies_created_back_up_to_server_automatically() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie));
-
         // Run the server.
         let server = TestServer::new_with_config(
-            app,
+            new_test_router(),
             TestServerConfig {
                 save_cookies: true,
                 ..TestServerConfig::default()
@@ -317,14 +321,9 @@ mod integrated_test_cookie_saving {
 
     #[tokio::test]
     async fn it_should_pass_cookies_created_back_up_to_server_when_turned_on_for_request() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie));
-
         // Run the server.
         let server = TestServer::new_with_config(
-            app,
+            new_test_router(),
             TestServerConfig {
                 save_cookies: false, // it's off by default!
                 ..TestServerConfig::default()
@@ -347,14 +346,9 @@ mod integrated_test_cookie_saving {
 
     #[tokio::test]
     async fn it_should_wipe_cookies_cleared_by_request() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie));
-
         // Run the server.
         let server = TestServer::new_with_config(
-            app,
+            new_test_router(),
             TestServerConfig {
                 save_cookies: false, // it's off by default!
                 ..TestServerConfig::default()
@@ -377,14 +371,9 @@ mod integrated_test_cookie_saving {
 
     #[tokio::test]
     async fn it_should_wipe_cookies_cleared_by_test_server() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie));
-
         // Run the server.
         let mut server = TestServer::new_with_config(
-            app,
+            new_test_router(),
             TestServerConfig {
                 save_cookies: false, // it's off by default!
                 ..TestServerConfig::default()
@@ -409,14 +398,9 @@ mod integrated_test_cookie_saving {
 
     #[tokio::test]
     async fn it_should_send_cookies_added_to_request() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie));
-
         // Run the server.
         let server = TestServer::new_with_config(
-            app,
+            new_test_router(),
             TestServerConfig {
                 save_cookies: false, // it's off by default!
                 ..TestServerConfig::default()
@@ -434,14 +418,9 @@ mod integrated_test_cookie_saving {
 
     #[tokio::test]
     async fn it_should_send_cookies_added_to_test_server() {
-        // Build an application with a route.
-        let app = Router::new()
-            .route("/cookie", put(put_cookie))
-            .route("/cookie", get(get_cookie));
-
         // Run the server.
         let mut server = TestServer::new_with_config(
-            app,
+            new_test_router(),
             TestServerConfig {
                 save_cookies: false, // it's off by default!
                 ..TestServerConfig::default()
@@ -456,5 +435,29 @@ mod integrated_test_cookie_saving {
         let response_text = server.get(&"/cookie").await.text();
 
         assert_eq!(response_text, "my-custom-cookie");
+    }
+
+    #[tokio::test]
+    async fn it_should_remove_expired_cookies_from_later_requests() {
+        // Run the server.
+        let mut server = TestServer::new(new_test_router()).expect("Should create test server");
+        server.do_save_cookies();
+
+        // Create a cookie.
+        server.put(&"/cookie").text(&"cookie-found!").await;
+
+        // Check it comes back.
+        let response_text = server.get(&"/cookie").await.text();
+        assert_eq!(response_text, "cookie-found!");
+
+        server.post(&"/expire").await;
+
+        // Then expire the cookie.
+        let found_cookie = server.post(&"/expire").await.maybe_cookie(TEST_COOKIE_NAME);
+        assert!(found_cookie.is_some());
+
+        // It's no longer found
+        let response_text = server.get(&"/cookie").await.text();
+        assert_eq!(response_text, "cookie-not-found");
     }
 }
