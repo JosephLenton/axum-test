@@ -87,3 +87,13 @@ Here are a list of all features so far that can be enabled:
  * `pretty-assertions` **on by default**, uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) for the output to the `assert_*` functions.
  * `yaml` _off by default_, adds support for sending, receiving, and asserting, [yaml content](https://yaml.org/).
  * `msgpack` _off by default_, adds support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).
+
+## Contributions
+
+A big thanks to all of these who have helped!
+
+<a href="https://github.com/josephlenton/axum-test/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=josephlenton/axum-test" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
