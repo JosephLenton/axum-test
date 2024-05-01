@@ -182,7 +182,7 @@ impl TestServer {
     /// if an address is available.
     ///
     /// The address is available when running as a real web server,
-    /// by setting the [`TestServerConfig`](crate::TestServerConfig) `transport` field to `Transport::HttpRandomPort` or `Transport::HttpRandomPort`.
+    /// by setting the [`TestServerConfig`](crate::TestServerConfig) `transport` field to `Transport::HttpRandomPort` or `Transport::HttpIpPort`.
     ///
     /// This will return `None` when there is mock HTTP transport (the default).
     pub fn server_address(&self) -> Option<Url> {
