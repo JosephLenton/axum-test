@@ -3,7 +3,7 @@ use ::anyhow::Result;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 
-pub fn with_this_mut<T, F, R>(this: &mut Arc<Mutex<T>>, name: &str, some_action: F) -> Result<R>
+pub fn with_this_mut<T, F, R>(this: &Arc<Mutex<T>>, name: &str, some_action: F) -> Result<R>
 where
     F: FnOnce(&mut T) -> R,
 {

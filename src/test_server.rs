@@ -194,7 +194,7 @@ impl TestServer {
     /// If a cookie with the same name already exists,
     /// then it will be replaced.
     pub fn add_cookie(&mut self, cookie: Cookie) {
-        ServerSharedState::add_cookie(&mut self.state, cookie)
+        ServerSharedState::add_cookie(&self.state, cookie)
             .with_context(|| format!("Trying to call add_cookie"))
             .unwrap()
     }
@@ -204,14 +204,14 @@ impl TestServer {
     /// Any cookies which have the same name as the new cookies,
     /// will get replaced.
     pub fn add_cookies(&mut self, cookies: CookieJar) {
-        ServerSharedState::add_cookies(&mut self.state, cookies)
+        ServerSharedState::add_cookies(&self.state, cookies)
             .with_context(|| format!("Trying to call add_cookies"))
             .unwrap()
     }
 
     /// Clears all of the cookies stored internally.
     pub fn clear_cookies(&mut self) {
-        ServerSharedState::clear_cookies(&mut self.state)
+        ServerSharedState::clear_cookies(&self.state)
             .with_context(|| format!("Trying to call clear_cookies"))
             .unwrap()
     }
@@ -249,7 +249,7 @@ impl TestServer {
     where
         V: Serialize,
     {
-        ServerSharedState::add_query_param(&mut self.state, key, value)
+        ServerSharedState::add_query_param(&self.state, key, value)
             .with_context(|| format!("Trying to call add_query_param"))
             .unwrap()
     }
@@ -259,7 +259,7 @@ impl TestServer {
     where
         V: Serialize,
     {
-        ServerSharedState::add_query_params(&mut self.state, query_params)
+        ServerSharedState::add_query_params(&self.state, query_params)
             .with_context(|| format!("Trying to call add_query_params"))
             .unwrap()
     }
@@ -267,28 +267,28 @@ impl TestServer {
     /// Adds a raw query param, with no urlencoding of any kind,
     /// to be send on *all* future requests.
     pub fn add_raw_query_param(&mut self, raw_query_param: &str) {
-        ServerSharedState::add_raw_query_param(&mut self.state, raw_query_param)
+        ServerSharedState::add_raw_query_param(&self.state, raw_query_param)
             .with_context(|| format!("Trying to call add_raw_query_param"))
             .unwrap()
     }
 
     /// Clears all query params set.
     pub fn clear_query_params(&mut self) {
-        ServerSharedState::clear_query_params(&mut self.state)
+        ServerSharedState::clear_query_params(&self.state)
             .with_context(|| format!("Trying to call clear_query_params"))
             .unwrap()
     }
 
     /// Adds a header to be sent with all future requests built from this `TestServer`.
     pub fn add_header<'c>(&mut self, name: HeaderName, value: HeaderValue) {
-        ServerSharedState::add_header(&mut self.state, name, value)
+        ServerSharedState::add_header(&self.state, name, value)
             .with_context(|| format!("Trying to call add_header"))
             .unwrap()
     }
 
     /// Clears all headers set so far.
     pub fn clear_headers(&mut self) {
-        ServerSharedState::clear_headers(&mut self.state)
+        ServerSharedState::clear_headers(&self.state)
             .with_context(|| format!("Trying to call clear_headers"))
             .unwrap()
     }
@@ -305,7 +305,7 @@ impl TestServer {
     /// use ::axum_test::TestServer;
     ///
     /// let app = Router::new();
-    /// let mut server = TestServer::new(app)?;
+    /// let server = TestServer::new(app)?;
     /// server
     ///     .scheme(&"https");
     ///
@@ -317,7 +317,7 @@ impl TestServer {
     /// ```
     ///
     pub fn scheme(&mut self, scheme: &str) {
-        ServerSharedState::set_scheme(&mut self.state, scheme.to_string())
+        ServerSharedState::set_scheme(&self.state, scheme.to_string())
             .with_context(|| format!("Trying to call set_scheme"))
             .unwrap()
     }
