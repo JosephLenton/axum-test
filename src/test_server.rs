@@ -365,24 +365,6 @@ mod test_new {
     use ::std::net::SocketAddr;
 
     use crate::TestServer;
-    use tokio::sync::OnceCell;
-use super::*;
-    static SERVER_LOCAL: OnceCell<TestServer> = OnceCell::const_new(); // tokio OnceCell but its same for OnceLock
-    async fn get_server_local() -> &TestServer {
-        SERVER_LOCAL.get_or_init(|| async {
-            let config = TestServerConfig::builder()
-                .http_transport_with_ip_port(
-                    Some(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
-                    Some(PORT),
-                )
-                .build();
-    
-            let app = get_app().layer(MockConnectInfo(SocketAddr::from(([127, 0, 0, 1], PORT))));
-    
-            TestServer::new_with_config(app, config)
-                                .expect("Failed to create axum_test::TestServer")
-        }).await
-    }
 
     async fn get_ping() -> &'static str {
         "pong!"
