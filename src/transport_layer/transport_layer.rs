@@ -8,7 +8,7 @@ use ::std::fmt::Debug;
 use ::url::Url;
 
 #[async_trait]
-pub trait TransportLayer: Debug {
+pub trait TransportLayer: Debug + Send {
     async fn send(&mut self, request: Request<Body>) -> Result<(Parts, Bytes)>;
     fn url<'a>(&'a self) -> Option<&'a Url> {
         None
