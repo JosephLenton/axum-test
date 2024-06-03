@@ -67,7 +67,7 @@ tokio-tungstenite = { version = "0.23", optional = true }
 async-trait = "0.1"
 axum = { version = "0.7", features = ["multipart", "tokio", "ws"] }
 axum-extra = { version = "0.9", features = ["cookie", "typed-routing", "query"] }
-async-graphql-axum = "7.0.5"
+async-graphql-axum = "7.0"
 axum-msgpack = "0.4"
 axum-yaml = "0.4"
 futures-util = "0.3"
