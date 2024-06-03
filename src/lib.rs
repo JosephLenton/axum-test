@@ -461,3 +461,87 @@ mod integrated_test_cookie_saving {
         assert_eq!(response_text, "cookie-not-found");
     }
 }
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod integrated_test_typed_routing_and_query {
+    use super::*;
+
+    use ::axum::Routing;
+    use ::axum::extract::Query;
+    use ::serde::Deserialize;
+    use ::serde::Serialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path-query/:id")]
+    struct TestingPathQuery {
+        id: u32,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    struct QueryParams {
+        param: String,
+    }
+
+    async fn route_get_with_param(
+        TestingPathQuery { id }: TestingPathQuery,
+        Query(params): Query<QueryParams>,
+    ) -> String {
+        let query = params.param;
+
+        format!("get {id}, {query}")
+    }
+
+    fn new_app() -> Router {
+        Router::new()
+            .typed_get(route_get_with_param)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_typed_get_with_query_params() {
+        let server = TestServer::new(new_app()).await.unwrap();
+        let path = TestingPathQuery {
+            id: 123,
+        }.with_query_params(QueryParams {
+            param: "with-typed-query".to_string()
+        });
+
+        server
+            .typed_get(&path)
+            .expect_success()
+            .await
+            .assert_text("get 123, with-typed-query");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_typed_get_with_added_query_param() {
+        let server = TestServer::new(new_app()).await.unwrap();
+        let path = TestingPathQuery {
+            id: 123,
+        };
+
+        server
+            .typed_get(&path)
+            .add_query_param("param", "with-added-query")
+            .expect_success()
+            .await
+            .assert_text("get 123, with-added-query");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_typed_get_with_query_replaced() {
+        let server = TestServer::new(new_app()).await.unwrap();
+        let path = TestingPathQuery {
+            id: 123,
+        }.with_query_params(QueryParams {
+            param: "with-typed-query".to_string()
+        });
+
+        server
+            .typed_get(&path)
+            .add_query_param("param", "with-replaced-query")
+            .expect_success()
+            .await
+            .assert_text("get 123, with-replaced-query");
+    }
+}

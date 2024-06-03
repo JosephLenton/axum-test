@@ -10,6 +10,9 @@ use ::std::sync::Arc;
 use ::std::sync::Mutex;
 use ::url::Url;
 
+#[cfg(feature = "typed-routing")]
+use ::axum_extra::routing::TypedPath;
+
 use crate::internals::ExpectedState;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
@@ -176,6 +179,72 @@ impl TestServer {
                 format!("Trying to create internal request, for request {method} {path}")
             })
             .unwrap()
+    }
+
+    /// Creates a HTTP GET request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_get<P>(&slf, method: Method, path: &P) -> TestRequest
+    where
+        P: TypedPath
+    {
+        self.typed_method(Method::GET, path)
+    }
+
+    /// Creates a HTTP POST request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_post<P>(&slf, method: Method, path: &P) -> TestRequest
+    where
+        P: TypedPath
+    {
+        self.typed_method(Method::POST, path)
+    }
+
+    /// Creates a HTTP PATCH request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_patch<P>(&slf, method: Method, path: &P) -> TestRequest
+    where
+        P: TypedPath
+    {
+        self.typed_method(Method::PATCH, path)
+    }
+
+    /// Creates a HTTP PUT request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_put<P>(&slf, method: Method, path: &P) -> TestRequest
+    where
+        P: TypedPath
+    {
+        self.typed_method(Method::PUT, path)
+    }
+
+    /// Creates a HTTP DELETE request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_delete<P>(&slf, method: Method, path: &P) -> TestRequest
+    where
+        P: TypedPath
+    {
+        self.typed_method(Method::DELETE, path)
+    }
+
+    /// Creates a typed HTTP request, using the method provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_method<P>(&slf, method: Method, path: &P) -> TestRequest
+    where
+        P: TypedPath
+    {
+        self.method(method, &path.to_string())
     }
 
     /// Returns the local web address for the test server,
@@ -1373,5 +1442,297 @@ mod test_scheme {
         server.get("/scheme").await.assert_text("https");
 
         server.get("/scheme").await.assert_text("https");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_get {
+    use super::*;
+
+    use ::axum::extract::Query;
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_get(
+        TestingPath { id }: TestingPath,
+        Query(params): Query<QueryParams>,
+    ) -> String {
+        format!("get {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new()
+            .typed_get(route_get)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_get() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_get(&TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("get 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_post {
+    use super::*;
+
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_post(
+        TestingPath { id }: TestingPath
+    ) -> String {
+        format!("post {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new()
+            .typed_post(route_post)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_post() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_post(&TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("post 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_patch {
+    use super::*;
+
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_patch(
+        TestingPath { id }: TestingPath
+    ) -> String {
+        format!("patch {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new()
+            .typed_patch(route_patch)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_patch() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_patch(&TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("patch 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_put {
+    use super::*;
+
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_put(
+        TestingPath { id }: TestingPath
+    ) -> String {
+        format!("put {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new()
+            .typed_put(route_put)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_put() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_put(&TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("put 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_delete {
+    use super::*;
+
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_delete(
+        TestingPath { id }: TestingPath
+    ) -> String {
+        format!("delete {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new()
+            .typed_delete(route_delete)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_delete() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_delete(&TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("delete 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_method {
+    use super::*;
+
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_get(
+        TestingPath { id }: TestingPath
+    ) -> String {
+        format!("get {id}")
+    }
+
+    async fn route_post(TestingPath { id }: TestingPath) -> String {
+        format!("post {id}")
+    }
+
+    async fn route_patch(TestingPath { id }: TestingPath) -> String {
+        format!("patch {id}")
+    }
+
+    async fn route_put(TestingPath { id }: TestingPath) -> String {
+        format!("put {id}")
+    }
+
+    async fn route_delete(TestingPath { id }: TestingPath) -> String {
+        format!("delete {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new()
+            .typed_get(route_get)
+            .typed_post(route_post)
+            .typed_patch(route_patch)
+            .typed_put(route_put)
+            .typed_delete(route_delete)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_get() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_method(Method::GET, &TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("get 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_post() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_method(Method::POST, &TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("post 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_patch() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_method(Method::PATCH, &TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("patch 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_put() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_method(Method::PUT, &TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("put 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_delete() {
+        let server = TestServer::new(new_app()).await.unwrap();
+
+        server
+            .typed_method(Method::DELETE, &TestingPath {
+                id: 123,
+            })
+            .await
+            .assert_text("delete 123");
     }
 }
