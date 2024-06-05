@@ -1,3 +1,4 @@
+use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::cookie::Cookie;
@@ -5,6 +6,7 @@ use ::cookie::CookieJar;
 use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Method;
+use ::http::Uri;
 use ::serde::Serialize;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
@@ -25,6 +27,7 @@ use crate::Transport;
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
 use crate::internals::RequestPathFormatter;
+use crate::internals::QueryParamsStore;
 
 const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 
@@ -171,21 +174,21 @@ impl TestServer {
 
     /// Creates a HTTP request, to the method and path provided.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
-        let config = self.test_request_config(method.clone(), path);
-        let maybe_request = TestRequest::new(self.state.clone(), self.transport.clone(), config);
-
-        maybe_request
+        let maybe_config = self.test_request_config(method.clone(), path);
+        let config = maybe_config
             .with_context(|| {
-                format!("Trying to create internal request, for request {method} {path}")
+                format!("Failed to build, for request {method} {path}")
             })
-            .unwrap()
+            .unwrap();
+
+        TestRequest::new(self.state.clone(), self.transport.clone(), config)
     }
 
     /// Creates a HTTP GET request, using the typed path provided.
     ///
     /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
     #[cfg(feature = "typed-routing")]
-    pub fn typed_get<P>(&slf, method: Method, path: &P) -> TestRequest
+    pub fn typed_get<P>(&self, path: &P) -> TestRequest
     where
         P: TypedPath
     {
@@ -196,7 +199,7 @@ impl TestServer {
     ///
     /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
     #[cfg(feature = "typed-routing")]
-    pub fn typed_post<P>(&slf, method: Method, path: &P) -> TestRequest
+    pub fn typed_post<P>(&self, path: &P) -> TestRequest
     where
         P: TypedPath
     {
@@ -207,7 +210,7 @@ impl TestServer {
     ///
     /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
     #[cfg(feature = "typed-routing")]
-    pub fn typed_patch<P>(&slf, method: Method, path: &P) -> TestRequest
+    pub fn typed_patch<P>(&self, path: &P) -> TestRequest
     where
         P: TypedPath
     {
@@ -218,7 +221,7 @@ impl TestServer {
     ///
     /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
     #[cfg(feature = "typed-routing")]
-    pub fn typed_put<P>(&slf, method: Method, path: &P) -> TestRequest
+    pub fn typed_put<P>(&self, path: &P) -> TestRequest
     where
         P: TypedPath
     {
@@ -229,7 +232,7 @@ impl TestServer {
     ///
     /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
     #[cfg(feature = "typed-routing")]
-    pub fn typed_delete<P>(&slf, method: Method, path: &P) -> TestRequest
+    pub fn typed_delete<P>(&self, path: &P) -> TestRequest
     where
         P: TypedPath
     {
@@ -240,7 +243,7 @@ impl TestServer {
     ///
     /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
     #[cfg(feature = "typed-routing")]
-    pub fn typed_method<P>(&slf, method: Method, path: &P) -> TestRequest
+    pub fn typed_method<P>(&self, method: Method, path: &P) -> TestRequest
     where
         P: TypedPath
     {
@@ -395,31 +398,146 @@ impl TestServer {
         self.transport.url().map(|url| url.clone())
     }
 
-    pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
+    pub(crate) fn test_request_config(&self, method: Method, path: &str) -> Result<TestRequestConfig> {
         let url = self
             .url()
             .unwrap_or_else(|| DEFAULT_URL_ADDRESS.parse().unwrap());
 
-        TestRequestConfig {
+        let server_locked = self.state.as_ref().lock().map_err(|err| {
+            anyhow!(
+                "Failed to lock InternalTestServer, for request {method} {path}, received {err:?}",
+            )
+        })?;
+
+        let cookies = server_locked.cookies().clone();
+        let mut query_params = server_locked.query_params().clone();
+        let headers = server_locked.headers().clone();
+        let mut full_request_url = build_url(url, path, &mut query_params, self.is_http_path_restricted)?;
+
+        if let Some(scheme) = server_locked.scheme() {
+            full_request_url.set_scheme(scheme).map_err(|_| {
+                let debug_request_format = RequestPathFormatter::new(&method, full_request_url.as_str(), Some(&query_params));
+                anyhow!("Scheme '{scheme}' from TestServer cannot be set to request {debug_request_format}")
+            })?;
+        }
+
+        ::std::mem::drop(server_locked);
+
+        Ok(TestRequestConfig {
             is_saving_cookies: self.save_cookies,
             expected_state: self.expected_state,
             content_type: self.default_content_type.clone(),
-            full_request_url: build_url(url, path, self.is_http_path_restricted),
-            request_format: RequestPathFormatter::new(method, path.to_string()),
-        }
+            method,
+
+            full_request_url,
+            cookies,
+            query_params,
+            headers,
+        })
     }
 }
 
-fn build_url(mut url: Url, path: &str, is_http_restricted: bool) -> Url {
-    if is_http_restricted {
-        url.set_path(path);
-        return url;
+fn build_url(mut url: Url, path: &str, query_params: &mut QueryParamsStore, is_http_restricted: bool) -> Result<Url> {
+    let path_uri = path.parse::<Uri>()?;
+    let is_not_allowed = is_path_blocked(&url, &path_uri, is_http_restricted);
+
+    if is_not_allowed {
+        return Err(anyhow!("Request disallowed for path '{path}', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this."));
     }
 
-    path.parse().unwrap_or_else(|_| {
-        url.set_path(path);
-        url
-    })
+    if !is_http_restricted {
+        if let Some(scheme) = path_uri.scheme_str() {
+            url.set_scheme(scheme)
+                .map_err(|_| {
+                    anyhow!("Failed to set scheme for request, with path '{path}'")
+                })?;
+        }
+
+        if let Some(authority) = path_uri.authority() {
+            url.set_host(Some(authority.host()))
+                .map_err(|_| {
+                    anyhow!("Failed to set host for request, with path '{path}'")
+                })?;
+            url.set_port(authority.port().map(|p| p.as_u16()))
+                .map_err(|_| {
+                    anyhow!("Failed to set port for request, with path '{path}'")
+                })?;
+
+            // todo, add username:password support
+        }
+    }
+
+    // Why does this exist?
+    //
+    // This exists to allow `server.get("/users")` and `server.get("users")` (without a slash)
+    // to go to the same place.
+    //
+    // It does this by saying ...
+    //  - if there is a scheme, it's a full path.
+    //  - if no scheme, it must be a path
+    //
+    if path_uri.scheme().is_some() {
+        url.set_path(path_uri.path());
+    } else {
+        // Grab everything up until the query parameters, or everything after that
+        let calculated_path = path.split('?').next().unwrap_or(&path);
+        url.set_path(calculated_path);
+    }
+
+    // Move any query parameters from the url to the query params store.
+    if let Some(url_query) = url.query() {
+        query_params.add_raw(url_query.to_string());
+        url.set_query(None);
+    }
+
+    if let Some(path_query) = path_uri.query() {
+        query_params.add_raw(path_query.to_string());
+    }
+
+    Ok(url)
+}
+
+fn is_path_blocked(url: &Url, path_uri: &Uri, is_http_restricted: bool) -> bool {
+    if !is_http_restricted {
+        return false;
+    }
+
+    if let Some(scheme) = path_uri.scheme_str() {
+        if dbg!(scheme) != dbg!(url.scheme()) {
+            return true;
+        }
+
+        if let Some(authority) = path_uri.authority() {
+            if dbg!(authority.as_str()) != dbg!(url.authority()) {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+#[cfg(test)]
+mod test_is_path_blocked {
+    use super::*;
+
+    #[test]
+    fn it_should_disallow_same_address_different_scheme_when_restricted() {
+        let base_url = "http://example.com:123".parse::<Url>().unwrap();
+        let path = "https://example.com:123".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(true, is_blocked);
+    }
+
+    #[test]
+    fn it_should_disallow_http_to_same_address_and_different_port() {
+        let base_url = "http://example.com:123".parse::<Url>().unwrap();
+        let path = "http://example.com:666".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(true, is_blocked);
+    }
 }
 
 #[cfg(test)]
@@ -511,7 +629,7 @@ mod test_get {
     }
 
     #[tokio::test]
-    async fn it_should_not_get_using_absolute_path_if_restricted() {
+    async fn it_should_get_using_absolute_path_and_restricted_if_path_is_for_server() {
         // Build an application with a route.
         let app = Router::new().route("/ping", get(get_ping));
 
@@ -537,12 +655,39 @@ mod test_get {
         let absolute_url = format!("http://{ip}:{port}/ping");
         let response = server.get(&absolute_url).await;
 
-        response.assert_status_not_found();
+        response.assert_text(&"pong!");
         let request_path = response.request_url();
-        assert_eq!(
-            request_path.to_string(),
-            format!("http://{ip}:{port}/http://{ip}:{port}/ping")
-        );
+        assert_eq!(request_path.to_string(), format!("http://{ip}:{port}/ping"));
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_not_get_using_absolute_path_if_restricted_and_different_port() {
+        // Build an application with a route.
+        let app = Router::new().route("/ping", get(get_ping));
+
+        // Reserve an IP / Port
+        let reserved_address = ReservedSocketAddr::reserve_random_socket_addr().unwrap();
+        let ip = reserved_address.ip();
+        let mut port = reserved_address.port();
+
+        // Run the server.
+        let test_config = TestServerConfig {
+            transport: Some(Transport::HttpIpPort {
+                ip: Some(ip),
+                port: Some(port),
+            }),
+            restrict_requests_with_http_schema: true, // Key part of the test!
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, test_config)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        // Get the request.
+        port += 1; // << Change the port to be off by one and not match the server
+        let absolute_url = format!("http://{ip}:{port}/ping");
+        server.get(&absolute_url).await;
     }
 
     #[tokio::test]
@@ -1450,7 +1595,8 @@ mod test_scheme {
 mod test_typed_get {
     use super::*;
 
-    use ::axum::extract::Query;
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
     use ::serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
@@ -1461,7 +1607,6 @@ mod test_typed_get {
 
     async fn route_get(
         TestingPath { id }: TestingPath,
-        Query(params): Query<QueryParams>,
     ) -> String {
         format!("get {id}")
     }
@@ -1473,7 +1618,7 @@ mod test_typed_get {
 
     #[tokio::test]
     async fn it_should_send_get() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_get(&TestingPath {
@@ -1489,6 +1634,8 @@ mod test_typed_get {
 mod test_typed_post {
     use super::*;
 
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
     use ::serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
@@ -1510,7 +1657,7 @@ mod test_typed_post {
 
     #[tokio::test]
     async fn it_should_send_post() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_post(&TestingPath {
@@ -1526,6 +1673,8 @@ mod test_typed_post {
 mod test_typed_patch {
     use super::*;
 
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
     use ::serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
@@ -1547,7 +1696,7 @@ mod test_typed_patch {
 
     #[tokio::test]
     async fn it_should_send_patch() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_patch(&TestingPath {
@@ -1563,6 +1712,8 @@ mod test_typed_patch {
 mod test_typed_put {
     use super::*;
 
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
     use ::serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
@@ -1584,7 +1735,7 @@ mod test_typed_put {
 
     #[tokio::test]
     async fn it_should_send_put() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_put(&TestingPath {
@@ -1600,6 +1751,8 @@ mod test_typed_put {
 mod test_typed_delete {
     use super::*;
 
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
     use ::serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
@@ -1621,7 +1774,7 @@ mod test_typed_delete {
 
     #[tokio::test]
     async fn it_should_send_delete() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_delete(&TestingPath {
@@ -1637,6 +1790,8 @@ mod test_typed_delete {
 mod test_typed_method {
     use super::*;
 
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
     use ::serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
@@ -1678,7 +1833,7 @@ mod test_typed_method {
 
     #[tokio::test]
     async fn it_should_send_get() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_method(Method::GET, &TestingPath {
@@ -1690,7 +1845,7 @@ mod test_typed_method {
 
     #[tokio::test]
     async fn it_should_send_post() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_method(Method::POST, &TestingPath {
@@ -1702,7 +1857,7 @@ mod test_typed_method {
 
     #[tokio::test]
     async fn it_should_send_patch() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_method(Method::PATCH, &TestingPath {
@@ -1714,7 +1869,7 @@ mod test_typed_method {
 
     #[tokio::test]
     async fn it_should_send_put() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_method(Method::PUT, &TestingPath {
@@ -1726,7 +1881,7 @@ mod test_typed_method {
 
     #[tokio::test]
     async fn it_should_send_delete() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
 
         server
             .typed_method(Method::DELETE, &TestingPath {

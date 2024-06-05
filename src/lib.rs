@@ -467,8 +467,10 @@ mod integrated_test_cookie_saving {
 mod integrated_test_typed_routing_and_query {
     use super::*;
 
-    use ::axum::Routing;
+    use ::axum::Router;
     use ::axum::extract::Query;
+    use ::axum_extra::routing::RouterExt;
+    use ::axum_extra::routing::TypedPath;
     use ::serde::Deserialize;
     use ::serde::Serialize;
 
@@ -481,6 +483,7 @@ mod integrated_test_typed_routing_and_query {
     #[derive(Serialize, Deserialize)]
     struct QueryParams {
         param: String,
+        other: Option<String>
     }
 
     async fn route_get_with_param(
@@ -488,8 +491,11 @@ mod integrated_test_typed_routing_and_query {
         Query(params): Query<QueryParams>,
     ) -> String {
         let query = params.param;
-
-        format!("get {id}, {query}")
+        if let Some(other) = params.other {
+            format!("get {id}, {query}&{other}")
+        } else {
+            format!("get {id}, {query}")
+        }
     }
 
     fn new_app() -> Router {
@@ -499,11 +505,12 @@ mod integrated_test_typed_routing_and_query {
 
     #[tokio::test]
     async fn it_should_send_typed_get_with_query_params() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
         let path = TestingPathQuery {
             id: 123,
         }.with_query_params(QueryParams {
-            param: "with-typed-query".to_string()
+            param: "with-typed-query".to_string(),
+            other: None,
         });
 
         server
@@ -515,7 +522,7 @@ mod integrated_test_typed_routing_and_query {
 
     #[tokio::test]
     async fn it_should_send_typed_get_with_added_query_param() {
-        let server = TestServer::new(new_app()).await.unwrap();
+        let server = TestServer::new(new_app()).unwrap();
         let path = TestingPathQuery {
             id: 123,
         };
@@ -529,19 +536,20 @@ mod integrated_test_typed_routing_and_query {
     }
 
     #[tokio::test]
-    async fn it_should_send_typed_get_with_query_replaced() {
-        let server = TestServer::new(new_app()).await.unwrap();
+    async fn it_should_send_both_typed_and_added_query() {
+        let server = TestServer::new(new_app()).unwrap();
         let path = TestingPathQuery {
             id: 123,
         }.with_query_params(QueryParams {
-            param: "with-typed-query".to_string()
+            param: "with-typed-query".to_string(),
+            other: None,
         });
 
         server
             .typed_get(&path)
-            .add_query_param("param", "with-replaced-query")
+            .add_query_param("other", "with-added-query")
             .expect_success()
             .await
-            .assert_text("get 123, with-replaced-query");
+            .assert_text("get 123, with-typed-query&with-added-query");
     }
 }

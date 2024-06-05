@@ -8,6 +8,7 @@ use ::http::header::SET_COOKIE;
 use ::http::response::Parts;
 use ::http::HeaderMap;
 use ::http::HeaderValue;
+use ::http::Method;
 use ::http::StatusCode;
 use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
@@ -121,7 +122,7 @@ use crate::internals::StatusCodeFormatter;
 ///
 #[derive(Clone, Debug)]
 pub struct TestResponse {
-    request_format: RequestPathFormatter,
+    method: Method,
 
     /// This is the actual url that was used for the request.
     full_request_url: Url,
@@ -132,13 +133,13 @@ pub struct TestResponse {
 
 impl TestResponse {
     pub(crate) fn new(
-        request_format: RequestPathFormatter,
+        method: Method,
         full_request_url: Url,
         parts: Parts,
         response_body: Bytes,
     ) -> Self {
         Self {
-            request_format,
+            method,
             full_request_url,
             headers: parts.headers,
             status_code: parts.status,
@@ -231,9 +232,9 @@ impl TestResponse {
     {
         serde_json::from_slice::<T>(&self.as_bytes())
             .with_context(|| {
-                let request_format = &self.request_format;
+                let debug_request_format = self.debug_request_format();
 
-                format!("Deserializing response from Json, for request {request_format}")
+                format!("Deserializing response from Json, for request {debug_request_format}")
             })
             .unwrap()
     }
@@ -286,9 +287,9 @@ impl TestResponse {
     {
         serde_yaml::from_slice::<T>(&self.as_bytes())
             .with_context(|| {
-                let request_format = &self.request_format;
+                let debug_request_format = self.debug_request_format();
 
-                format!("Deserializing response from YAML, for request {request_format}")
+                format!("Deserializing response from YAML, for request {debug_request_format}")
             })
             .unwrap()
     }
@@ -341,9 +342,9 @@ impl TestResponse {
     {
         rmp_serde::from_slice::<T>(&self.as_bytes())
             .with_context(|| {
-                let request_format = &self.request_format;
+                let debug_request_format = self.debug_request_format();
 
-                format!("Deserializing response from MsgPack, for request {request_format}")
+                format!("Deserializing response from MsgPack, for request {debug_request_format}")
             })
             .unwrap()
     }
@@ -395,9 +396,9 @@ impl TestResponse {
     {
         serde_urlencoded::from_bytes::<T>(&self.as_bytes())
             .with_context(|| {
-                let request_format = &self.request_format;
+                let debug_request_format = self.debug_request_format();
 
-                format!("Deserializing response from Form, for request {request_format}")
+                format!("Deserializing response from Form, for request {debug_request_format}")
             })
             .unwrap()
     }
@@ -419,6 +420,12 @@ impl TestResponse {
     #[must_use]
     pub fn status_code(&self) -> StatusCode {
         self.status_code
+    }
+
+    /// The Method used to produce this response.
+    #[must_use]
+    pub fn request_method(&self) -> Method {
+        self.method.clone()
     }
 
     /// The full URL that was used to produce this response.
@@ -461,9 +468,9 @@ impl TestResponse {
             .get(header_name)
             .map(|h| h.to_owned())
             .with_context(|| {
-                let request_format = &self.request_format;
+                let debug_request_format = self.debug_request_format();
 
-                format!("Cannot find header {debug_header}, for request {request_format}",)
+                format!("Cannot find header {debug_header}, for request {debug_request_format}",)
             })
             .unwrap()
     }
@@ -509,9 +516,9 @@ impl TestResponse {
     pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
         self.maybe_cookie(cookie_name)
             .with_context(|| {
-                let request_format = &self.request_format;
+                let debug_request_format = self.debug_request_format();
 
-                format!("Cannot find cookie {cookie_name}, for request {request_format}")
+                format!("Cannot find cookie {cookie_name}, for request {debug_request_format}")
             })
             .unwrap()
     }
@@ -538,17 +545,17 @@ impl TestResponse {
             let header_str = header
                 .to_str()
                 .with_context(|| {
-                    let request_format = &self.request_format;
+                    let debug_request_format = self.debug_request_format();
 
-                    format!("Reading header 'Set-Cookie' as string, for request {request_format}",)
+                    format!("Reading header 'Set-Cookie' as string, for request {debug_request_format}",)
                 })
                 .unwrap();
 
             Cookie::parse(header_str)
                 .with_context(|| {
-                    let request_format = &self.request_format;
+                    let debug_request_format = self.debug_request_format();
 
-                    format!("Parsing 'Set-Cookie' header, for request {request_format}",)
+                    format!("Parsing 'Set-Cookie' header, for request {debug_request_format}",)
                 })
                 .unwrap()
         })
@@ -625,11 +632,11 @@ impl TestResponse {
     pub fn assert_status_success(&self) {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
-        let request_format = &self.request_format;
+        let debug_request_format = self.debug_request_format();
 
         assert!(
             200 <= status_code && status_code <= 299,
-            "Expect status code within 2xx range, got {received_debug}, for request {request_format}"
+            "Expect status code within 2xx range, got {received_debug}, for request {debug_request_format}"
         );
     }
 
@@ -639,11 +646,11 @@ impl TestResponse {
     pub fn assert_status_failure(&self) {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
-        let request_format = &self.request_format;
+        let debug_request_format = self.debug_request_format();
 
         assert!(
             status_code < 200 || 299 < status_code,
-            "Expect status code outside 2xx range, got {received_debug}, for request {request_format}",
+            "Expect status code outside 2xx range, got {received_debug}, for request {debug_request_format}",
         );
     }
 
@@ -689,11 +696,11 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
-        let request_format = &self.request_format;
+        let debug_request_format = self.debug_request_format();
 
         assert_eq!(
             expected_status_code, status_code,
-            "Expected status code {expected_debug}, got {received_debug}, for request {request_format}",
+            "Expected status code {expected_debug}, got {received_debug}, for request {debug_request_format}",
         );
     }
 
@@ -701,13 +708,17 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_not_status(&self, expected_status_code: StatusCode) {
         let expected_debug = StatusCodeFormatter(expected_status_code);
-        let request_format = &self.request_format;
+        let debug_request_format = self.debug_request_format();
 
         assert_ne!(
             expected_status_code,
             self.status_code(),
-            "Expected status code to not be {expected_debug}, it is, for request {request_format}",
+            "Expected status code to not be {expected_debug}, it is, for request {debug_request_format}"
         );
+    }
+
+    fn debug_request_format<'a>(&'a self) -> RequestPathFormatter<'a> {
+        RequestPathFormatter::new(&self.method, &self.full_request_url.as_str(), None)
     }
 }
 
