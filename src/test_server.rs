@@ -26,8 +26,8 @@ use crate::Transport;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-use crate::internals::RequestPathFormatter;
 use crate::internals::QueryParamsStore;
+use crate::internals::RequestPathFormatter;
 
 const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 
@@ -176,9 +176,7 @@ impl TestServer {
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
         let maybe_config = self.test_request_config(method.clone(), path);
         let config = maybe_config
-            .with_context(|| {
-                format!("Failed to build, for request {method} {path}")
-            })
+            .with_context(|| format!("Failed to build, for request {method} {path}"))
             .unwrap();
 
         TestRequest::new(self.state.clone(), self.transport.clone(), config)
@@ -190,7 +188,7 @@ impl TestServer {
     #[cfg(feature = "typed-routing")]
     pub fn typed_get<P>(&self, path: &P) -> TestRequest
     where
-        P: TypedPath
+        P: TypedPath,
     {
         self.typed_method(Method::GET, path)
     }
@@ -201,7 +199,7 @@ impl TestServer {
     #[cfg(feature = "typed-routing")]
     pub fn typed_post<P>(&self, path: &P) -> TestRequest
     where
-        P: TypedPath
+        P: TypedPath,
     {
         self.typed_method(Method::POST, path)
     }
@@ -212,7 +210,7 @@ impl TestServer {
     #[cfg(feature = "typed-routing")]
     pub fn typed_patch<P>(&self, path: &P) -> TestRequest
     where
-        P: TypedPath
+        P: TypedPath,
     {
         self.typed_method(Method::PATCH, path)
     }
@@ -223,7 +221,7 @@ impl TestServer {
     #[cfg(feature = "typed-routing")]
     pub fn typed_put<P>(&self, path: &P) -> TestRequest
     where
-        P: TypedPath
+        P: TypedPath,
     {
         self.typed_method(Method::PUT, path)
     }
@@ -234,7 +232,7 @@ impl TestServer {
     #[cfg(feature = "typed-routing")]
     pub fn typed_delete<P>(&self, path: &P) -> TestRequest
     where
-        P: TypedPath
+        P: TypedPath,
     {
         self.typed_method(Method::DELETE, path)
     }
@@ -245,7 +243,7 @@ impl TestServer {
     #[cfg(feature = "typed-routing")]
     pub fn typed_method<P>(&self, method: Method, path: &P) -> TestRequest
     where
-        P: TypedPath
+        P: TypedPath,
     {
         self.method(method, &path.to_string())
     }
@@ -398,7 +396,11 @@ impl TestServer {
         self.transport.url().map(|url| url.clone())
     }
 
-    pub(crate) fn test_request_config(&self, method: Method, path: &str) -> Result<TestRequestConfig> {
+    pub(crate) fn test_request_config(
+        &self,
+        method: Method,
+        path: &str,
+    ) -> Result<TestRequestConfig> {
         let url = self
             .url()
             .unwrap_or_else(|| DEFAULT_URL_ADDRESS.parse().unwrap());
@@ -412,7 +414,8 @@ impl TestServer {
         let cookies = server_locked.cookies().clone();
         let mut query_params = server_locked.query_params().clone();
         let headers = server_locked.headers().clone();
-        let mut full_request_url = build_url(url, path, &mut query_params, self.is_http_path_restricted)?;
+        let mut full_request_url =
+            build_url(url, path, &mut query_params, self.is_http_path_restricted)?;
 
         if let Some(scheme) = server_locked.scheme() {
             full_request_url.set_scheme(scheme).map_err(|_| {
@@ -437,7 +440,12 @@ impl TestServer {
     }
 }
 
-fn build_url(mut url: Url, path: &str, query_params: &mut QueryParamsStore, is_http_restricted: bool) -> Result<Url> {
+fn build_url(
+    mut url: Url,
+    path: &str,
+    query_params: &mut QueryParamsStore,
+    is_http_restricted: bool,
+) -> Result<Url> {
     let path_uri = path.parse::<Uri>()?;
     let is_not_allowed = is_path_blocked(&url, &path_uri, is_http_restricted);
 
@@ -448,20 +456,14 @@ fn build_url(mut url: Url, path: &str, query_params: &mut QueryParamsStore, is_h
     if !is_http_restricted {
         if let Some(scheme) = path_uri.scheme_str() {
             url.set_scheme(scheme)
-                .map_err(|_| {
-                    anyhow!("Failed to set scheme for request, with path '{path}'")
-                })?;
+                .map_err(|_| anyhow!("Failed to set scheme for request, with path '{path}'"))?;
         }
 
         if let Some(authority) = path_uri.authority() {
             url.set_host(Some(authority.host()))
-                .map_err(|_| {
-                    anyhow!("Failed to set host for request, with path '{path}'")
-                })?;
+                .map_err(|_| anyhow!("Failed to set host for request, with path '{path}'"))?;
             url.set_port(authority.port().map(|p| p.as_u16()))
-                .map_err(|_| {
-                    anyhow!("Failed to set port for request, with path '{path}'")
-                })?;
+                .map_err(|_| anyhow!("Failed to set port for request, with path '{path}'"))?;
 
             // todo, add username:password support
         }
@@ -1605,15 +1607,12 @@ mod test_typed_get {
         id: u32,
     }
 
-    async fn route_get(
-        TestingPath { id }: TestingPath,
-    ) -> String {
+    async fn route_get(TestingPath { id }: TestingPath) -> String {
         format!("get {id}")
     }
 
     fn new_app() -> Router {
-        Router::new()
-            .typed_get(route_get)
+        Router::new().typed_get(route_get)
     }
 
     #[tokio::test]
@@ -1621,9 +1620,7 @@ mod test_typed_get {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_get(&TestingPath {
-                id: 123,
-            })
+            .typed_get(&TestingPath { id: 123 })
             .await
             .assert_text("get 123");
     }
@@ -1644,15 +1641,12 @@ mod test_typed_post {
         id: u32,
     }
 
-    async fn route_post(
-        TestingPath { id }: TestingPath
-    ) -> String {
+    async fn route_post(TestingPath { id }: TestingPath) -> String {
         format!("post {id}")
     }
 
     fn new_app() -> Router {
-        Router::new()
-            .typed_post(route_post)
+        Router::new().typed_post(route_post)
     }
 
     #[tokio::test]
@@ -1660,9 +1654,7 @@ mod test_typed_post {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_post(&TestingPath {
-                id: 123,
-            })
+            .typed_post(&TestingPath { id: 123 })
             .await
             .assert_text("post 123");
     }
@@ -1683,15 +1675,12 @@ mod test_typed_patch {
         id: u32,
     }
 
-    async fn route_patch(
-        TestingPath { id }: TestingPath
-    ) -> String {
+    async fn route_patch(TestingPath { id }: TestingPath) -> String {
         format!("patch {id}")
     }
 
     fn new_app() -> Router {
-        Router::new()
-            .typed_patch(route_patch)
+        Router::new().typed_patch(route_patch)
     }
 
     #[tokio::test]
@@ -1699,9 +1688,7 @@ mod test_typed_patch {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_patch(&TestingPath {
-                id: 123,
-            })
+            .typed_patch(&TestingPath { id: 123 })
             .await
             .assert_text("patch 123");
     }
@@ -1722,15 +1709,12 @@ mod test_typed_put {
         id: u32,
     }
 
-    async fn route_put(
-        TestingPath { id }: TestingPath
-    ) -> String {
+    async fn route_put(TestingPath { id }: TestingPath) -> String {
         format!("put {id}")
     }
 
     fn new_app() -> Router {
-        Router::new()
-            .typed_put(route_put)
+        Router::new().typed_put(route_put)
     }
 
     #[tokio::test]
@@ -1738,9 +1722,7 @@ mod test_typed_put {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_put(&TestingPath {
-                id: 123,
-            })
+            .typed_put(&TestingPath { id: 123 })
             .await
             .assert_text("put 123");
     }
@@ -1761,15 +1743,12 @@ mod test_typed_delete {
         id: u32,
     }
 
-    async fn route_delete(
-        TestingPath { id }: TestingPath
-    ) -> String {
+    async fn route_delete(TestingPath { id }: TestingPath) -> String {
         format!("delete {id}")
     }
 
     fn new_app() -> Router {
-        Router::new()
-            .typed_delete(route_delete)
+        Router::new().typed_delete(route_delete)
     }
 
     #[tokio::test]
@@ -1777,9 +1756,7 @@ mod test_typed_delete {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_delete(&TestingPath {
-                id: 123,
-            })
+            .typed_delete(&TestingPath { id: 123 })
             .await
             .assert_text("delete 123");
     }
@@ -1800,9 +1777,7 @@ mod test_typed_method {
         id: u32,
     }
 
-    async fn route_get(
-        TestingPath { id }: TestingPath
-    ) -> String {
+    async fn route_get(TestingPath { id }: TestingPath) -> String {
         format!("get {id}")
     }
 
@@ -1836,9 +1811,7 @@ mod test_typed_method {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_method(Method::GET, &TestingPath {
-                id: 123,
-            })
+            .typed_method(Method::GET, &TestingPath { id: 123 })
             .await
             .assert_text("get 123");
     }
@@ -1848,9 +1821,7 @@ mod test_typed_method {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_method(Method::POST, &TestingPath {
-                id: 123,
-            })
+            .typed_method(Method::POST, &TestingPath { id: 123 })
             .await
             .assert_text("post 123");
     }
@@ -1860,9 +1831,7 @@ mod test_typed_method {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_method(Method::PATCH, &TestingPath {
-                id: 123,
-            })
+            .typed_method(Method::PATCH, &TestingPath { id: 123 })
             .await
             .assert_text("patch 123");
     }
@@ -1872,9 +1841,7 @@ mod test_typed_method {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_method(Method::PUT, &TestingPath {
-                id: 123,
-            })
+            .typed_method(Method::PUT, &TestingPath { id: 123 })
             .await
             .assert_text("put 123");
     }
@@ -1884,9 +1851,7 @@ mod test_typed_method {
         let server = TestServer::new(new_app()).unwrap();
 
         server
-            .typed_method(Method::DELETE, &TestingPath {
-                id: 123,
-            })
+            .typed_method(Method::DELETE, &TestingPath { id: 123 })
             .await
             .assert_text("delete 123");
     }

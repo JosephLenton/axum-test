@@ -547,7 +547,9 @@ impl TestResponse {
                 .with_context(|| {
                     let debug_request_format = self.debug_request_format();
 
-                    format!("Reading header 'Set-Cookie' as string, for request {debug_request_format}",)
+                    format!(
+                        "Reading header 'Set-Cookie' as string, for request {debug_request_format}",
+                    )
                 })
                 .unwrap();
 

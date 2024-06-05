@@ -467,8 +467,8 @@ mod integrated_test_cookie_saving {
 mod integrated_test_typed_routing_and_query {
     use super::*;
 
-    use ::axum::Router;
     use ::axum::extract::Query;
+    use ::axum::Router;
     use ::axum_extra::routing::RouterExt;
     use ::axum_extra::routing::TypedPath;
     use ::serde::Deserialize;
@@ -483,7 +483,7 @@ mod integrated_test_typed_routing_and_query {
     #[derive(Serialize, Deserialize)]
     struct QueryParams {
         param: String,
-        other: Option<String>
+        other: Option<String>,
     }
 
     async fn route_get_with_param(
@@ -499,16 +499,13 @@ mod integrated_test_typed_routing_and_query {
     }
 
     fn new_app() -> Router {
-        Router::new()
-            .typed_get(route_get_with_param)
+        Router::new().typed_get(route_get_with_param)
     }
 
     #[tokio::test]
     async fn it_should_send_typed_get_with_query_params() {
         let server = TestServer::new(new_app()).unwrap();
-        let path = TestingPathQuery {
-            id: 123,
-        }.with_query_params(QueryParams {
+        let path = TestingPathQuery { id: 123 }.with_query_params(QueryParams {
             param: "with-typed-query".to_string(),
             other: None,
         });
@@ -523,9 +520,7 @@ mod integrated_test_typed_routing_and_query {
     #[tokio::test]
     async fn it_should_send_typed_get_with_added_query_param() {
         let server = TestServer::new(new_app()).unwrap();
-        let path = TestingPathQuery {
-            id: 123,
-        };
+        let path = TestingPathQuery { id: 123 };
 
         server
             .typed_get(&path)
@@ -538,9 +533,7 @@ mod integrated_test_typed_routing_and_query {
     #[tokio::test]
     async fn it_should_send_both_typed_and_added_query() {
         let server = TestServer::new(new_app()).unwrap();
-        let path = TestingPathQuery {
-            id: 123,
-        }.with_query_params(QueryParams {
+        let path = TestingPathQuery { id: 123 }.with_query_params(QueryParams {
             param: "with-typed-query".to_string(),
             other: None,
         });
@@ -551,5 +544,22 @@ mod integrated_test_typed_routing_and_query {
             .expect_success()
             .await
             .assert_text("get 123, with-typed-query&with-added-query");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_replaced_query_when_cleared() {
+        let server = TestServer::new(new_app()).unwrap();
+        let path = TestingPathQuery { id: 123 }.with_query_params(QueryParams {
+            param: "with-typed-query".to_string(),
+            other: Some("with-typed-other".to_string()),
+        });
+
+        server
+            .typed_get(&path)
+            .clear_query_params()
+            .add_query_param("param", "with-added-query")
+            .expect_success()
+            .await
+            .assert_text("get 123, with-added-query");
     }
 }

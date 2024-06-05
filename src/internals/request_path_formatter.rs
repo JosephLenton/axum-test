@@ -1,6 +1,6 @@
+use super::QueryParamsStore;
 use ::http::Method;
 use ::std::fmt;
-use super::QueryParamsStore;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RequestPathFormatter<'a> {
@@ -12,7 +12,11 @@ pub struct RequestPathFormatter<'a> {
 }
 
 impl<'a> RequestPathFormatter<'a> {
-    pub fn new(method: &'a Method, user_requested_path: &'a str, query_params: Option<&'a QueryParamsStore>) -> Self {
+    pub fn new(
+        method: &'a Method,
+        user_requested_path: &'a str,
+        query_params: Option<&'a QueryParamsStore>,
+    ) -> Self {
         Self {
             method,
             user_requested_path,
@@ -33,7 +37,7 @@ impl<'a> fmt::Display for RequestPathFormatter<'a> {
         match self.query_params {
             None => {
                 write!(f, "{method} {user_requested_path}")
-            },
+            }
             Some(query_params) => {
                 if query_params.is_empty() {
                     write!(f, "{method} {user_requested_path}")

@@ -390,10 +390,14 @@ impl TestRequest {
     where
         V: Serialize,
     {
-        self.config.query_params
+        self.config
+            .query_params
             .add(query_params)
             .with_context(|| {
-                format!("It should serialize query parameters, for request {}", self.debug_request_format())
+                format!(
+                    "It should serialize query parameters, for request {}",
+                    self.debug_request_format()
+                )
             })
             .unwrap();
 
@@ -534,7 +538,8 @@ impl TestRequest {
         let expected_state = self.expected_state;
         let save_cookies = self.config.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
-        let url = Self::build_url_query_params(self.config.full_request_url, &self.config.query_params);
+        let url =
+            Self::build_url_query_params(self.config.full_request_url, &self.config.query_params);
 
         let request = Self::build_request(
             method.clone(),
@@ -582,9 +587,7 @@ impl TestRequest {
         headers: Vec<(HeaderName, HeaderValue)>,
         debug_request_format: &str,
     ) -> Result<Request<Body>> {
-        let mut request_builder = Request::builder()
-            .uri(url.as_str())
-            .method(method);
+        let mut request_builder = Request::builder().uri(url.as_str()).method(method);
 
         // Add all the headers we have.
         if let Some(content_type) = content_type {
@@ -621,7 +624,11 @@ impl TestRequest {
     }
 
     fn debug_request_format<'a>(&'a self) -> RequestPathFormatter<'a> {
-        RequestPathFormatter::new(&self.config.method, &self.config.full_request_url.as_str(), Some(&self.config.query_params))
+        RequestPathFormatter::new(
+            &self.config.method,
+            &self.config.full_request_url.as_str(),
+            Some(&self.config.query_params),
+        )
     }
 }
 
@@ -643,7 +650,7 @@ impl TryFrom<TestRequest> for Request<Body> {
             test_request.config.content_type,
             test_request.config.cookies,
             test_request.config.headers,
-            &debug_request_format
+            &debug_request_format,
         )
     }
 }
