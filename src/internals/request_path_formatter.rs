@@ -23,10 +23,6 @@ impl<'a> RequestPathFormatter<'a> {
             query_params,
         }
     }
-
-    pub fn method(&self) -> &Method {
-        self.method
-    }
 }
 
 impl<'a> fmt::Display for RequestPathFormatter<'a> {

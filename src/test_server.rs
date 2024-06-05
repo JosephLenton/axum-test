@@ -505,12 +505,12 @@ fn is_path_blocked(url: &Url, path_uri: &Uri, is_http_restricted: bool) -> bool 
     }
 
     if let Some(scheme) = path_uri.scheme_str() {
-        if dbg!(scheme) != dbg!(url.scheme()) {
+        if scheme != url.scheme() {
             return true;
         }
 
         if let Some(authority) = path_uri.authority() {
-            if dbg!(authority.as_str()) != dbg!(url.authority()) {
+            if authority.as_str() != url.authority() {
                 return true;
             }
         }
@@ -524,7 +524,34 @@ mod test_is_path_blocked {
     use super::*;
 
     #[test]
-    fn it_should_disallow_same_address_different_scheme_when_restricted() {
+    fn it_should_allow_different_host_when_unrestricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "http://google.com".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, false);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_different_scheme_when_unrestricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "ftp://example.com".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, false);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_same_schem_host_port_when_restricted() {
+        let base_url = "http://example.com:123".parse::<Url>().unwrap();
+        let path = "http://example.com:123".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_disallow_different_scheme_when_restricted() {
         let base_url = "http://example.com:123".parse::<Url>().unwrap();
         let path = "https://example.com:123".parse::<Uri>().unwrap();
         let is_blocked = is_path_blocked(&base_url, &path, true);
@@ -533,12 +560,57 @@ mod test_is_path_blocked {
     }
 
     #[test]
-    fn it_should_disallow_http_to_same_address_and_different_port() {
+    fn it_should_disallow_different_port_when_restricted() {
         let base_url = "http://example.com:123".parse::<Url>().unwrap();
         let path = "http://example.com:666".parse::<Uri>().unwrap();
         let is_blocked = is_path_blocked(&base_url, &path, true);
 
         assert_eq!(true, is_blocked);
+    }
+
+    #[test]
+    fn it_should_disallow_different_host_when_restricted() {
+        let base_url = "http://example.com:123".parse::<Url>().unwrap();
+        let path = "http://google.com:123".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(true, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_path_looking_uri() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "google".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_domain_looking_uri() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "google.com".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_path_when_restricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "/users".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_path_with_query_when_restricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "/users?limit=123".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
     }
 }
 
