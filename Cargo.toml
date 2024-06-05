@@ -1,7 +1,8 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "14.10.0"
+version = "15.0.0"
+rust-version = "1.75"
 edition = "2021"
 license = "MIT"
 description = "For spinning up and testing Axum servers"
@@ -22,7 +23,6 @@ pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 
 [dependencies]
-async-trait = "0.1"
 auto-future = "1.0"
 axum = { version = "0.7", features = ["tokio"] }
 anyhow = "1.0"
@@ -47,6 +47,7 @@ tower = { version = "0.4", features = ["util", "make"] }
 url = "2.5"
 
 [dev-dependencies]
+async-trait = "0.1"
 axum = { version = "0.7", features = ["multipart", "tokio"] }
 axum-extra = { version = "0.9", features = ["cookie", "query"] }
 axum-msgpack = "0.4"

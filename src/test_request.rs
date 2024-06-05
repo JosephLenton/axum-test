@@ -93,7 +93,7 @@ pub struct TestRequest {
     config: TestRequestConfig,
 
     server_state: Arc<Mutex<ServerSharedState>>,
-    transport: Arc<Mutex<Box<dyn TransportLayer>>>,
+    transport: Arc<Box<dyn TransportLayer>>,
 
     body: Option<Body>,
     headers: Vec<(HeaderName, HeaderValue)>,
@@ -106,7 +106,7 @@ pub struct TestRequest {
 impl TestRequest {
     pub(crate) fn new(
         server_state: Arc<Mutex<ServerSharedState>>,
-        transport: Arc<Mutex<Box<dyn TransportLayer>>>,
+        transport: Arc<Box<dyn TransportLayer>>,
         mut config: TestRequestConfig,
     ) -> Result<Self> {
         let expected_state = config.expected_state;
@@ -569,12 +569,7 @@ impl TestRequest {
         )?;
 
         let (parts, response_bytes) = {
-            let mut transport_locked = self.transport.as_ref().lock().map_err(|err| {
-                anyhow!(
-                    "Expect Response to succeed, for request {request_format}, received {err:?}"
-                )
-            })?;
-            transport_locked.send(request).await?
+            self.transport.send(request).await?
         };
 
         if save_cookies {
