@@ -64,7 +64,7 @@ const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 #[derive(Debug)]
 pub struct TestServer {
     state: Arc<Mutex<ServerSharedState>>,
-    transport: Arc<Mutex<Box<dyn TransportLayer>>>,
+    transport: Arc<Box<dyn TransportLayer>>,
     save_cookies: bool,
     expected_state: ExpectedState,
     default_content_type: Option<String>,
@@ -106,21 +106,21 @@ impl TestServer {
             None => {
                 let builder = TransportLayerBuilder::new(None, None);
                 let transport = app.into_default_transport(builder)?;
-                Arc::new(Mutex::new(transport))
+                Arc::new(transport)
             }
             Some(Transport::HttpRandomPort) => {
                 let builder = TransportLayerBuilder::new(None, None);
                 let transport = app.into_http_transport_layer(builder)?;
-                Arc::new(Mutex::new(transport))
+                Arc::new(transport)
             }
             Some(Transport::HttpIpPort { ip, port }) => {
                 let builder = TransportLayerBuilder::new(ip, port);
                 let transport = app.into_http_transport_layer(builder)?;
-                Arc::new(Mutex::new(transport))
+                Arc::new(transport)
             }
             Some(Transport::MockHttp) => {
                 let transport = app.into_mock_transport_layer()?;
-                Arc::new(Mutex::new(transport))
+                Arc::new(transport)
             }
         };
 
@@ -323,12 +323,7 @@ impl TestServer {
     }
 
     pub(crate) fn url(&self) -> Option<Url> {
-        let locked = self
-            .transport
-            .lock()
-            .expect("Failed to lock TransportLayer");
-
-        locked.url().map(|url| url.clone())
+        self.transport.url().map(|url| url.clone())
     }
 
     pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
@@ -479,6 +474,37 @@ mod test_get {
             request_path.to_string(),
             format!("http://{ip}:{port}/http://{ip}:{port}/ping")
         );
+    }
+
+    #[tokio::test]
+    async fn it_should_work_in_parallel() {
+        let app = Router::new().route("/ping", get(get_ping));
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let future1 = async { server.get("/ping").await };
+        let future2 = async { server.get("/ping").await };
+        let (r1, r2) = tokio::join!(future1, future2);
+
+        assert_eq!(r1.text(), r2.text());
+    }
+
+    #[tokio::test]
+    async fn it_should_work_in_parallel_with_sleeping_requests() {
+        let app = axum::Router::new().route(
+            &"/slow",
+            axum::routing::get(|| async {
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                "hello!"
+            }),
+        );
+
+        let server = TestServer::new(app).expect("Should create test server");
+
+        let future1 = async { server.get("/slow").await };
+        let future2 = async { server.get("/slow").await };
+        let (r1, r2) = tokio::join!(future1, future2);
+
+        assert_eq!(r1.text(), r2.text());
     }
 }
 

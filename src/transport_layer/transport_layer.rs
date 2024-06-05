@@ -1,15 +1,15 @@
 use ::anyhow::Result;
-use ::async_trait::async_trait;
 use ::axum::body::Body;
 use ::bytes::Bytes;
 use ::http::response::Parts;
 use ::http::Request;
 use ::std::fmt::Debug;
 use ::url::Url;
+use ::std::future::Future;
+use ::std::pin::Pin;
 
-#[async_trait]
 pub trait TransportLayer: Debug + Send {
-    async fn send(&mut self, request: Request<Body>) -> Result<(Parts, Bytes)>;
+    fn send<'a>(&'a self, request: Request<Body>) -> Pin<Box<dyn 'a + Future<Output = Result<(Parts, Bytes)>>>>;
     fn url<'a>(&'a self) -> Option<&'a Url> {
         None
     }
