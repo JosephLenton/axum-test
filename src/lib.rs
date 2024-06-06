@@ -68,6 +68,16 @@
 //! # }
 //! ```
 //!
+//! ## Crate Features
+//!
+//! Here are a list of all features so far that can be enabled:
+//!
+//!  * `all` _off by default_, turns on all features below.
+//!  * `pretty-assertions` **on by default**, uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) for the output to the `assert_*` functions.
+//!  * `yaml` _off by default_, adds support for sending, receiving, and asserting, [yaml content](https://yaml.org/).
+//!  * `msgpack` _off by default_, adds support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).
+//!  * `axum-extra` _off by default_, adds support for the `TypedPath` from [axum-extra](https://crates.io/crates/axum-extra).
+//!
 //! ## Features
 //!
 //! ### Auto Cookie Saving 🍪
