@@ -1,3 +1,4 @@
+use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Result;
 use ::cookie::Cookie;
@@ -5,10 +6,14 @@ use ::cookie::CookieJar;
 use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Method;
+use ::http::Uri;
 use ::serde::Serialize;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 use ::url::Url;
+
+#[cfg(feature = "typed-routing")]
+use ::axum_extra::routing::TypedPath;
 
 use crate::internals::ExpectedState;
 use crate::transport_layer::IntoTransportLayer;
@@ -21,6 +26,7 @@ use crate::Transport;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
+use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
 
 const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
@@ -168,14 +174,121 @@ impl TestServer {
 
     /// Creates a HTTP request, to the method and path provided.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
-        let config = self.test_request_config(method.clone(), path);
-        let maybe_request = TestRequest::new(self.state.clone(), self.transport.clone(), config);
+        let maybe_config = self.test_request_config(method.clone(), path);
+        let config = maybe_config
+            .with_context(|| format!("Failed to build, for request {method} {path}"))
+            .unwrap();
 
-        maybe_request
-            .with_context(|| {
-                format!("Trying to create internal request, for request {method} {path}")
-            })
-            .unwrap()
+        TestRequest::new(self.state.clone(), self.transport.clone(), config)
+    }
+
+    /// Creates a HTTP GET request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
+    ///
+    /// # Example Test
+    ///
+    /// Using a `TypedPath` you can write build and test a route like below:
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Json;
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::axum_extra::routing::RouterExt;
+    /// use ::axum_extra::routing::TypedPath;
+    /// use ::serde::Deserialize;
+    /// use ::serde::Serialize;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// #[derive(TypedPath, Deserialize)]
+    /// #[typed_path("/users/:user_id")]
+    /// struct UserPath {
+    ///     pub user_id: u32,
+    /// }
+    ///
+    /// // Build a typed route:
+    /// async fn route_get_user(UserPath { user_id }: UserPath) -> String {
+    ///     format!("hello user {user_id}")
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .typed_get(route_get_user);
+    ///
+    /// // Then test the route:
+    /// let server = TestServer::new(app)?;
+    /// server
+    ///     .typed_get(&UserPath { user_id: 123 })
+    ///     .await
+    ///     .assert_text("hello user 123");
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_get<P>(&self, path: &P) -> TestRequest
+    where
+        P: TypedPath,
+    {
+        self.typed_method(Method::GET, path)
+    }
+
+    /// Creates a HTTP POST request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_post<P>(&self, path: &P) -> TestRequest
+    where
+        P: TypedPath,
+    {
+        self.typed_method(Method::POST, path)
+    }
+
+    /// Creates a HTTP PATCH request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_patch<P>(&self, path: &P) -> TestRequest
+    where
+        P: TypedPath,
+    {
+        self.typed_method(Method::PATCH, path)
+    }
+
+    /// Creates a HTTP PUT request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_put<P>(&self, path: &P) -> TestRequest
+    where
+        P: TypedPath,
+    {
+        self.typed_method(Method::PUT, path)
+    }
+
+    /// Creates a HTTP DELETE request, using the typed path provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_delete<P>(&self, path: &P) -> TestRequest
+    where
+        P: TypedPath,
+    {
+        self.typed_method(Method::DELETE, path)
+    }
+
+    /// Creates a typed HTTP request, using the method provided.
+    ///
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
+    #[cfg(feature = "typed-routing")]
+    pub fn typed_method<P>(&self, method: Method, path: &P) -> TestRequest
+    where
+        P: TypedPath,
+    {
+        self.method(method, &path.to_string())
     }
 
     /// Returns the local web address for the test server,
@@ -326,31 +439,320 @@ impl TestServer {
         self.transport.url().map(|url| url.clone())
     }
 
-    pub(crate) fn test_request_config(&self, method: Method, path: &str) -> TestRequestConfig {
+    pub(crate) fn test_request_config(
+        &self,
+        method: Method,
+        path: &str,
+    ) -> Result<TestRequestConfig> {
         let url = self
             .url()
             .unwrap_or_else(|| DEFAULT_URL_ADDRESS.parse().unwrap());
 
-        TestRequestConfig {
+        let server_locked = self.state.as_ref().lock().map_err(|err| {
+            anyhow!(
+                "Failed to lock InternalTestServer, for request {method} {path}, received {err:?}",
+            )
+        })?;
+
+        let cookies = server_locked.cookies().clone();
+        let mut query_params = server_locked.query_params().clone();
+        let headers = server_locked.headers().clone();
+        let mut full_request_url =
+            build_url(url, path, &mut query_params, self.is_http_path_restricted)?;
+
+        if let Some(scheme) = server_locked.scheme() {
+            full_request_url.set_scheme(scheme).map_err(|_| {
+                let debug_request_format = RequestPathFormatter::new(&method, full_request_url.as_str(), Some(&query_params));
+                anyhow!("Scheme '{scheme}' from TestServer cannot be set to request {debug_request_format}")
+            })?;
+        }
+
+        ::std::mem::drop(server_locked);
+
+        Ok(TestRequestConfig {
             is_saving_cookies: self.save_cookies,
             expected_state: self.expected_state,
             content_type: self.default_content_type.clone(),
-            full_request_url: build_url(url, path, self.is_http_path_restricted),
-            request_format: RequestPathFormatter::new(method, path.to_string()),
-        }
+            method,
+
+            full_request_url,
+            cookies,
+            query_params,
+            headers,
+        })
     }
 }
 
-fn build_url(mut url: Url, path: &str, is_http_restricted: bool) -> Url {
-    if is_http_restricted {
-        url.set_path(path);
-        return url;
+fn build_url(
+    mut url: Url,
+    path: &str,
+    query_params: &mut QueryParamsStore,
+    is_http_restricted: bool,
+) -> Result<Url> {
+    let path_uri = path.parse::<Uri>()?;
+    let is_not_allowed = is_path_blocked(&url, &path_uri, is_http_restricted);
+
+    if is_not_allowed {
+        return Err(anyhow!("Request disallowed for path '{path}', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this."));
     }
 
-    path.parse().unwrap_or_else(|_| {
-        url.set_path(path);
-        url
-    })
+    if !is_http_restricted {
+        if let Some(scheme) = path_uri.scheme_str() {
+            url.set_scheme(scheme)
+                .map_err(|_| anyhow!("Failed to set scheme for request, with path '{path}'"))?;
+
+            // We only set the host/port if the scheme is also present.
+            if let Some(authority) = path_uri.authority() {
+                url.set_host(Some(authority.host()))
+                    .map_err(|_| anyhow!("Failed to set host for request, with path '{path}'"))?;
+                url.set_port(authority.port().map(|p| p.as_u16()))
+                    .map_err(|_| anyhow!("Failed to set port for request, with path '{path}'"))?;
+
+                // todo, add username:password support
+            }
+        }
+    }
+
+    // Why does this exist?
+    //
+    // This exists to allow `server.get("/users")` and `server.get("users")` (without a slash)
+    // to go to the same place.
+    //
+    // It does this by saying ...
+    //  - if there is a scheme, it's a full path.
+    //  - if no scheme, it must be a path
+    //
+    if path_uri.scheme().is_some() {
+        url.set_path(path_uri.path());
+
+        // In this path we are replacing, so drop any query params on the original url.
+        if url.query().is_some() {
+            url.set_query(None);
+        }
+    } else {
+        // Grab everything up until the query parameters, or everything after that
+        let calculated_path = path.split('?').next().unwrap_or(&path);
+        url.set_path(calculated_path);
+
+        // Move any query parameters from the url to the query params store.
+        if let Some(url_query) = url.query() {
+            query_params.add_raw(url_query.to_string());
+            url.set_query(None);
+        }
+    }
+
+    if let Some(path_query) = path_uri.query() {
+        query_params.add_raw(path_query.to_string());
+    }
+
+    Ok(url)
+}
+
+fn is_path_blocked(url: &Url, path_uri: &Uri, is_http_restricted: bool) -> bool {
+    if !is_http_restricted {
+        return false;
+    }
+
+    if let Some(scheme) = path_uri.scheme_str() {
+        if scheme != url.scheme() {
+            return true;
+        }
+
+        if let Some(authority) = path_uri.authority() {
+            if authority.as_str() != url.authority() {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+#[cfg(test)]
+mod test_build_url {
+    use super::*;
+
+    #[test]
+    fn it_should_copy_path_to_url_returned_when_restricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "/users";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, true).unwrap();
+
+        assert_eq!("http://example.com/users", result.as_str());
+        assert!(query_params.is_empty());
+    }
+
+    #[test]
+    fn it_should_copy_all_query_params_to_store_when_restricted() {
+        let base_url = "http://example.com?base=aaa".parse::<Url>().unwrap();
+        let path = "/users?path=bbb&path-flag";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, true).unwrap();
+
+        assert_eq!("http://example.com/users", result.as_str());
+        assert_eq!("base=aaa&path=bbb&path-flag", query_params.to_string());
+    }
+
+    #[test]
+    fn it_should_copy_host_like_as_path_when_restricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "users.csv";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, true).unwrap();
+
+        assert_eq!("http://example.com/users.csv", result.as_str());
+        assert!(query_params.is_empty());
+    }
+
+    #[test]
+    fn it_should_not_replace_url_when_restricted() {
+        let base_url = "http://example.com?base=666".parse::<Url>().unwrap();
+        let path = "ftp://google.com:123/users.csv?limit=456";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_copy_path_to_url_returned_when_unrestricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "/users";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, false).unwrap();
+
+        assert_eq!("http://example.com/users", result.as_str());
+        assert!(query_params.is_empty());
+    }
+
+    #[test]
+    fn it_should_copy_all_query_params_to_store_when_unrestricted() {
+        let base_url = "http://example.com?base=aaa".parse::<Url>().unwrap();
+        let path = "/users?path=bbb&path-flag";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, false).unwrap();
+
+        assert_eq!("http://example.com/users", result.as_str());
+        assert_eq!("base=aaa&path=bbb&path-flag", query_params.to_string());
+    }
+
+    #[test]
+    fn it_should_copy_host_like_as_path_when_unrestricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "users.csv";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, false).unwrap();
+
+        assert_eq!("http://example.com/users.csv", result.as_str());
+        assert!(query_params.is_empty());
+    }
+
+    #[test]
+    fn it_should_replace_url_when_unrestricted() {
+        let base_url = "http://example.com?base=666".parse::<Url>().unwrap();
+        let path = "ftp://google.com:123/users.csv?limit=456";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, false).unwrap();
+
+        assert_eq!("ftp://google.com:123/users.csv", result.as_str());
+        assert_eq!("limit=456", query_params.to_string());
+    }
+}
+
+#[cfg(test)]
+mod test_is_path_blocked {
+    use super::*;
+
+    #[test]
+    fn it_should_allow_different_host_when_unrestricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "http://google.com".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, false);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_different_scheme_when_unrestricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "ftp://example.com".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, false);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_same_schem_host_port_when_restricted() {
+        let base_url = "http://example.com:123".parse::<Url>().unwrap();
+        let path = "http://example.com:123".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_disallow_different_scheme_when_restricted() {
+        let base_url = "http://example.com:123".parse::<Url>().unwrap();
+        let path = "https://example.com:123".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(true, is_blocked);
+    }
+
+    #[test]
+    fn it_should_disallow_different_port_when_restricted() {
+        let base_url = "http://example.com:123".parse::<Url>().unwrap();
+        let path = "http://example.com:666".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(true, is_blocked);
+    }
+
+    #[test]
+    fn it_should_disallow_different_host_when_restricted() {
+        let base_url = "http://example.com:123".parse::<Url>().unwrap();
+        let path = "http://google.com:123".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(true, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_path_looking_uri() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "google".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_domain_looking_uri() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "google.com".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_path_when_restricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "/users".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
+
+    #[test]
+    fn it_should_allow_path_with_query_when_restricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "/users?limit=123".parse::<Uri>().unwrap();
+        let is_blocked = is_path_blocked(&base_url, &path, true);
+
+        assert_eq!(false, is_blocked);
+    }
 }
 
 #[cfg(test)]
@@ -442,7 +844,7 @@ mod test_get {
     }
 
     #[tokio::test]
-    async fn it_should_not_get_using_absolute_path_if_restricted() {
+    async fn it_should_get_using_absolute_path_and_restricted_if_path_is_for_server() {
         // Build an application with a route.
         let app = Router::new().route("/ping", get(get_ping));
 
@@ -468,12 +870,39 @@ mod test_get {
         let absolute_url = format!("http://{ip}:{port}/ping");
         let response = server.get(&absolute_url).await;
 
-        response.assert_status_not_found();
+        response.assert_text(&"pong!");
         let request_path = response.request_url();
-        assert_eq!(
-            request_path.to_string(),
-            format!("http://{ip}:{port}/http://{ip}:{port}/ping")
-        );
+        assert_eq!(request_path.to_string(), format!("http://{ip}:{port}/ping"));
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_not_get_using_absolute_path_if_restricted_and_different_port() {
+        // Build an application with a route.
+        let app = Router::new().route("/ping", get(get_ping));
+
+        // Reserve an IP / Port
+        let reserved_address = ReservedSocketAddr::reserve_random_socket_addr().unwrap();
+        let ip = reserved_address.ip();
+        let mut port = reserved_address.port();
+
+        // Run the server.
+        let test_config = TestServerConfig {
+            transport: Some(Transport::HttpIpPort {
+                ip: Some(ip),
+                port: Some(port),
+            }),
+            restrict_requests_with_http_schema: true, // Key part of the test!
+            ..TestServerConfig::default()
+        };
+        let server = TestServer::new_with_config(app, test_config)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        // Get the request.
+        port += 1; // << Change the port to be off by one and not match the server
+        let absolute_url = format!("http://{ip}:{port}/ping");
+        server.get(&absolute_url).await;
     }
 
     #[tokio::test]
@@ -1373,5 +1802,270 @@ mod test_scheme {
         server.get("/scheme").await.assert_text("https");
 
         server.get("/scheme").await.assert_text("https");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_get {
+    use super::*;
+
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_get(TestingPath { id }: TestingPath) -> String {
+        format!("get {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new().typed_get(route_get)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_get() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_get(&TestingPath { id: 123 })
+            .await
+            .assert_text("get 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_post {
+    use super::*;
+
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_post(TestingPath { id }: TestingPath) -> String {
+        format!("post {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new().typed_post(route_post)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_post() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_post(&TestingPath { id: 123 })
+            .await
+            .assert_text("post 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_patch {
+    use super::*;
+
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_patch(TestingPath { id }: TestingPath) -> String {
+        format!("patch {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new().typed_patch(route_patch)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_patch() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_patch(&TestingPath { id: 123 })
+            .await
+            .assert_text("patch 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_put {
+    use super::*;
+
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_put(TestingPath { id }: TestingPath) -> String {
+        format!("put {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new().typed_put(route_put)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_put() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_put(&TestingPath { id: 123 })
+            .await
+            .assert_text("put 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_delete {
+    use super::*;
+
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_delete(TestingPath { id }: TestingPath) -> String {
+        format!("delete {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new().typed_delete(route_delete)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_delete() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_delete(&TestingPath { id: 123 })
+            .await
+            .assert_text("delete 123");
+    }
+}
+
+#[cfg(feature = "typed-routing")]
+#[cfg(test)]
+mod test_typed_method {
+    use super::*;
+
+    use ::axum::Router;
+    use ::axum_extra::routing::RouterExt;
+    use ::serde::Deserialize;
+
+    #[derive(TypedPath, Deserialize)]
+    #[typed_path("/path/:id")]
+    struct TestingPath {
+        id: u32,
+    }
+
+    async fn route_get(TestingPath { id }: TestingPath) -> String {
+        format!("get {id}")
+    }
+
+    async fn route_post(TestingPath { id }: TestingPath) -> String {
+        format!("post {id}")
+    }
+
+    async fn route_patch(TestingPath { id }: TestingPath) -> String {
+        format!("patch {id}")
+    }
+
+    async fn route_put(TestingPath { id }: TestingPath) -> String {
+        format!("put {id}")
+    }
+
+    async fn route_delete(TestingPath { id }: TestingPath) -> String {
+        format!("delete {id}")
+    }
+
+    fn new_app() -> Router {
+        Router::new()
+            .typed_get(route_get)
+            .typed_post(route_post)
+            .typed_patch(route_patch)
+            .typed_put(route_put)
+            .typed_delete(route_delete)
+    }
+
+    #[tokio::test]
+    async fn it_should_send_get() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_method(Method::GET, &TestingPath { id: 123 })
+            .await
+            .assert_text("get 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_post() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_method(Method::POST, &TestingPath { id: 123 })
+            .await
+            .assert_text("post 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_patch() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_method(Method::PATCH, &TestingPath { id: 123 })
+            .await
+            .assert_text("patch 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_put() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_method(Method::PUT, &TestingPath { id: 123 })
+            .await
+            .assert_text("put 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_delete() {
+        let server = TestServer::new(new_app()).unwrap();
+
+        server
+            .typed_method(Method::DELETE, &TestingPath { id: 123 })
+            .await
+            .assert_text("delete 123");
     }
 }

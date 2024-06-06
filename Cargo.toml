@@ -18,13 +18,17 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["pretty-assertions"]
+all = ["msgpack", "pretty-assertions", "yaml", "typed-routing"]
+
 msgpack = ["dep:rmp-serde"]
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
+typed-routing = ["dep:axum-extra"]
 
 [dependencies]
 auto-future = "1.0"
 axum = { version = "0.7", features = ["tokio"] }
+axum-extra = { version = "0.9", features = ["typed-routing"], optional = true }
 anyhow = "1.0"
 bytes = "1.6"
 cookie = "0.18"
@@ -42,20 +46,20 @@ serde_json = "1.0"
 serde_yaml = { version = "0.9", optional = true }
 serde_urlencoded = "0.7"
 smallvec = "1.13"
-tokio = { version = "1.37", features = ["rt", "time"] }
+tokio = { version = "1.38", features = ["rt", "time"] }
 tower = { version = "0.4", features = ["util", "make"] }
 url = "2.5"
 
 [dev-dependencies]
 async-trait = "0.1"
 axum = { version = "0.7", features = ["multipart", "tokio"] }
-axum-extra = { version = "0.9", features = ["cookie", "query"] }
+axum-extra = { version = "0.9", features = ["cookie", "typed-routing", "query"] }
 axum-msgpack = "0.4"
 axum-yaml = "0.4"
 local-ip-address = "0.6"
 regex = "1.10"
 serde-email = { version = "3.0", features = ["serde"] }
-tokio = { version = "1.37", features = ["rt", "rt-multi-thread", "time", "macros"] }
+tokio = { version = "1.38", features = ["rt", "rt-multi-thread", "time", "macros"] }
 
 [[example]]
 name = "example-todo"

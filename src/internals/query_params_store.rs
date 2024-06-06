@@ -5,7 +5,7 @@ use ::std::fmt::Display;
 use ::std::fmt::Formatter;
 use ::std::fmt::Result as FmtResult;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct QueryParamsStore {
     query_params: SmallVec<[String; 0]>,
 }
@@ -57,5 +57,40 @@ impl Display for QueryParamsStore {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test_add_raw {
+    use super::QueryParamsStore;
+
+    #[test]
+    fn it_should_add_key_value_pairs_correctly() {
+        let mut params = QueryParamsStore::new();
+
+        params.add_raw("key=value".to_string());
+        params.add_raw("another=value".to_string());
+
+        assert_eq!("key=value&another=value", params.to_string());
+    }
+
+    #[test]
+    fn it_should_add_single_keys_correctly() {
+        let mut params = QueryParamsStore::new();
+
+        params.add_raw("key".to_string());
+        params.add_raw("another".to_string());
+
+        assert_eq!("key&another", params.to_string());
+    }
+
+    #[test]
+    fn it_should_add_query_param_strings_correctly() {
+        let mut params = QueryParamsStore::new();
+
+        params.add_raw("key=value&another=value".to_string());
+        params.add_raw("more=value".to_string());
+
+        assert_eq!("key=value&another=value&more=value", params.to_string());
     }
 }

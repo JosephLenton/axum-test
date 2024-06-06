@@ -12,9 +12,9 @@ use ::http::header;
 use ::http::header::SET_COOKIE;
 use ::http::HeaderName;
 use ::http::HeaderValue;
+use ::http::Method;
 use ::http::Request;
 use ::serde::Serialize;
-use ::std::convert::AsRef;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
 use ::std::future::IntoFuture;
@@ -96,9 +96,6 @@ pub struct TestRequest {
     transport: Arc<Box<dyn TransportLayer>>,
 
     body: Option<Body>,
-    headers: Vec<(HeaderName, HeaderValue)>,
-    cookies: CookieJar,
-    query_params: QueryParamsStore,
 
     expected_state: ExpectedState,
 }
@@ -107,38 +104,17 @@ impl TestRequest {
     pub(crate) fn new(
         server_state: Arc<Mutex<ServerSharedState>>,
         transport: Arc<Box<dyn TransportLayer>>,
-        mut config: TestRequestConfig,
-    ) -> Result<Self> {
+        config: TestRequestConfig,
+    ) -> Self {
         let expected_state = config.expected_state;
-        let server_locked = server_state.as_ref().lock().map_err(|err| {
-            let request_format = &config.request_format;
-            anyhow!(
-                "Failed to lock InternalTestServer, for request {request_format}, received {err:?}",
-            )
-        })?;
 
-        if let Some(scheme) = server_locked.scheme() {
-            config.full_request_url.set_scheme(scheme).map_err(|_| {
-                anyhow!("Scheme '{scheme}' from TestServer cannot be set to request")
-            })?;
-        }
-
-        let cookies = server_locked.cookies().clone();
-        let query_params = server_locked.query_params().clone();
-        let headers = server_locked.headers().clone();
-
-        ::std::mem::drop(server_locked);
-
-        Ok(Self {
+        Self {
             config,
             server_state,
             transport,
             body: None,
-            headers,
-            cookies,
-            query_params,
             expected_state,
-        })
+        }
     }
 
     /// Set the body of the request to send up data as Json,
@@ -288,14 +264,14 @@ impl TestRequest {
 
     /// Adds a Cookie to be sent with this request.
     pub fn add_cookie<'c>(mut self, cookie: Cookie<'c>) -> Self {
-        self.cookies.add(cookie.into_owned());
+        self.config.cookies.add(cookie.into_owned());
         self
     }
 
     /// Adds many cookies to be used with this request.
     pub fn add_cookies(mut self, cookies: CookieJar) -> Self {
         for cookie in cookies.iter() {
-            self.cookies.add(cookie.clone());
+            self.config.cookies.add(cookie.clone());
         }
 
         self
@@ -304,7 +280,7 @@ impl TestRequest {
     /// Clears all cookies used internally within this Request,
     /// including any that came from the `TestServer`.
     pub fn clear_cookies(mut self) -> Self {
-        self.cookies = CookieJar::new();
+        self.config.cookies = CookieJar::new();
         self
     }
 
@@ -414,11 +390,14 @@ impl TestRequest {
     where
         V: Serialize,
     {
-        self.query_params
+        self.config
+            .query_params
             .add(query_params)
             .with_context(|| {
-                let request_format = &self.config.request_format;
-                format!("It should serialize query parameters, for request {request_format}")
+                format!(
+                    "It should serialize query parameters, for request {}",
+                    self.debug_request_format()
+                )
             })
             .unwrap();
 
@@ -450,7 +429,7 @@ impl TestRequest {
     /// ```
     ///
     pub fn add_raw_query_param(mut self, query_param: &str) -> Self {
-        self.query_params.add_raw(query_param.to_string());
+        self.config.query_params.add_raw(query_param.to_string());
 
         self
     }
@@ -458,19 +437,19 @@ impl TestRequest {
     /// Clears all query params set,
     /// including any that came from the [`TestServer`](crate::TestServer).
     pub fn clear_query_params(mut self) -> Self {
-        self.query_params.clear();
+        self.config.query_params.clear();
         self
     }
 
     /// Adds a header to be sent with this request.
     pub fn add_header<'c>(mut self, name: HeaderName, value: HeaderValue) -> Self {
-        self.headers.push((name, value));
+        self.config.headers.push((name, value));
         self
     }
 
     /// Clears all headers set.
     pub fn clear_headers(mut self) -> Self {
-        self.headers = vec![];
+        self.config.headers = vec![];
         self
     }
 
@@ -553,31 +532,32 @@ impl TestRequest {
     }
 
     async fn send(mut self) -> Result<TestResponse> {
+        let debug_request_format = self.debug_request_format().to_string();
+
+        let method = self.config.method;
         let expected_state = self.expected_state;
         let save_cookies = self.config.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
-        let request_format = self.config.request_format;
+        let url =
+            Self::build_url_query_params(self.config.full_request_url, &self.config.query_params);
 
-        let url = Self::build_url_query_params(self.config.full_request_url, &self.query_params);
         let request = Self::build_request(
-            &request_format,
+            method.clone(),
             &url,
             body,
             self.config.content_type,
-            self.cookies,
-            self.headers,
+            self.config.cookies,
+            self.config.headers,
+            &debug_request_format,
         )?;
-
-        let (parts, response_bytes) = {
-            self.transport.send(request).await?
-        };
+        let (parts, response_bytes) = self.transport.send(request).await?;
 
         if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
             ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
-        let response = TestResponse::new(request_format, url, parts, response_bytes);
+        let response = TestResponse::new(method, url, parts, response_bytes);
 
         // Assert if ok or not.
         match expected_state {
@@ -599,21 +579,20 @@ impl TestRequest {
     }
 
     fn build_request(
-        request_format: &RequestPathFormatter,
+        method: Method,
         url: &Url,
         body: Body,
         content_type: Option<String>,
         cookies: CookieJar,
         headers: Vec<(HeaderName, HeaderValue)>,
+        debug_request_format: &str,
     ) -> Result<Request<Body>> {
-        let mut request_builder = Request::builder()
-            .uri(url.as_str())
-            .method(request_format.method().clone());
+        let mut request_builder = Request::builder().uri(url.as_str()).method(method);
 
         // Add all the headers we have.
         if let Some(content_type) = content_type {
             let (header_key, header_value) =
-                build_content_type_header(&content_type, &request_format)?;
+                build_content_type_header(&content_type, &debug_request_format)?;
             request_builder = request_builder.header(header_key, header_value);
         }
 
@@ -638,10 +617,18 @@ impl TestRequest {
         }
 
         let request = request_builder.body(body).with_context(|| {
-            format!("Expect valid hyper Request to be built, for request {request_format}")
+            format!("Expect valid hyper Request to be built, for request {debug_request_format}")
         })?;
 
         Ok(request)
+    }
+
+    fn debug_request_format<'a>(&'a self) -> RequestPathFormatter<'a> {
+        RequestPathFormatter::new(
+            &self.config.method,
+            &self.config.full_request_url.as_str(),
+            Some(&self.config.query_params),
+        )
     }
 }
 
@@ -649,19 +636,21 @@ impl TryFrom<TestRequest> for Request<Body> {
     type Error = AnyhowError;
 
     fn try_from(test_request: TestRequest) -> Result<Request<Body>> {
+        let debug_request_format = test_request.debug_request_format().to_string();
         let url = TestRequest::build_url_query_params(
             test_request.config.full_request_url,
-            &test_request.query_params,
+            &test_request.config.query_params,
         );
         let body = test_request.body.unwrap_or(Body::empty());
 
         TestRequest::build_request(
-            &test_request.config.request_format,
+            test_request.config.method,
             &url,
             body,
             test_request.config.content_type,
-            test_request.cookies,
-            test_request.headers,
+            test_request.config.cookies,
+            test_request.config.headers,
+            &debug_request_format,
         )
     }
 }
@@ -682,11 +671,11 @@ impl IntoFuture for TestRequest {
 
 fn build_content_type_header(
     content_type: &str,
-    request_format: &RequestPathFormatter,
+    debug_request_format: &str,
 ) -> Result<(HeaderName, HeaderValue)> {
     let header_value = HeaderValue::from_str(content_type).with_context(|| {
         format!(
-            "Failed to store header content type '{content_type}', for request {request_format}"
+            "Failed to store header content type '{content_type}', for request {debug_request_format}"
         )
     })?;
 
