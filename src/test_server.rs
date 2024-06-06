@@ -1734,10 +1734,10 @@ mod test_typed_get {
     async fn it_should_send_get() {
         let server = TestServer::new(new_app()).unwrap();
 
-server
-    .typed_get(&TestingPath { id: 123 })
-    .await
-    .assert_text("get 123");
+        server
+            .typed_get(&TestingPath { id: 123 })
+            .await
+            .assert_text("get 123");
     }
 }
 
