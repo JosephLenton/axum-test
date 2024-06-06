@@ -184,7 +184,50 @@ impl TestServer {
 
     /// Creates a HTTP GET request, using the typed path provided.
     ///
-    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
+    ///
+    /// # Example Test
+    ///
+    /// Using a `TypedPath` you can write build and test a route like below:
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Json;
+    /// use ::axum::routing::Router;
+    /// use ::axum::routing::get;
+    /// use ::axum_extra::routing::RouterExt;
+    /// use ::axum_extra::routing::TypedPath;
+    /// use ::serde::Deserialize;
+    /// use ::serde::Serialize;
+    ///
+    /// use ::axum_test::TestServer;
+    ///
+    /// #[derive(TypedPath, Deserialize)]
+    /// #[typed_path("/users/:user_id")]
+    /// struct UserPath {
+    ///     pub user_id: u32,
+    /// }
+    ///
+    /// // Build a typed route:
+    /// async fn route_get_user(UserPath { user_id }: UserPath) -> String {
+    ///     format!("hello user {user_id}")
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .typed_get(route_get_user);
+    ///
+    /// // Then test the route:
+    /// let server = TestServer::new(app)?;
+    /// server
+    ///     .typed_get(&UserPath { user_id: 123 })
+    ///     .await
+    ///     .assert_text("hello user 123");
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
     #[cfg(feature = "typed-routing")]
     pub fn typed_get<P>(&self, path: &P) -> TestRequest
     where
@@ -195,7 +238,7 @@ impl TestServer {
 
     /// Creates a HTTP POST request, using the typed path provided.
     ///
-    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
     #[cfg(feature = "typed-routing")]
     pub fn typed_post<P>(&self, path: &P) -> TestRequest
     where
@@ -206,7 +249,7 @@ impl TestServer {
 
     /// Creates a HTTP PATCH request, using the typed path provided.
     ///
-    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
     #[cfg(feature = "typed-routing")]
     pub fn typed_patch<P>(&self, path: &P) -> TestRequest
     where
@@ -217,7 +260,7 @@ impl TestServer {
 
     /// Creates a HTTP PUT request, using the typed path provided.
     ///
-    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
     #[cfg(feature = "typed-routing")]
     pub fn typed_put<P>(&self, path: &P) -> TestRequest
     where
@@ -228,7 +271,7 @@ impl TestServer {
 
     /// Creates a HTTP DELETE request, using the typed path provided.
     ///
-    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
     #[cfg(feature = "typed-routing")]
     pub fn typed_delete<P>(&self, path: &P) -> TestRequest
     where
@@ -239,7 +282,7 @@ impl TestServer {
 
     /// Creates a typed HTTP request, using the method provided.
     ///
-    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on `TypedPath`.
+    /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).
     #[cfg(feature = "typed-routing")]
     pub fn typed_method<P>(&self, method: Method, path: &P) -> TestRequest
     where
@@ -1691,10 +1734,10 @@ mod test_typed_get {
     async fn it_should_send_get() {
         let server = TestServer::new(new_app()).unwrap();
 
-        server
-            .typed_get(&TestingPath { id: 123 })
-            .await
-            .assert_text("get 123");
+server
+    .typed_get(&TestingPath { id: 123 })
+    .await
+    .assert_text("get 123");
     }
 }
 
