@@ -500,15 +500,16 @@ fn build_url(
         if let Some(scheme) = path_uri.scheme_str() {
             url.set_scheme(scheme)
                 .map_err(|_| anyhow!("Failed to set scheme for request, with path '{path}'"))?;
-        }
 
-        if let Some(authority) = path_uri.authority() {
-            url.set_host(Some(authority.host()))
-                .map_err(|_| anyhow!("Failed to set host for request, with path '{path}'"))?;
-            url.set_port(authority.port().map(|p| p.as_u16()))
-                .map_err(|_| anyhow!("Failed to set port for request, with path '{path}'"))?;
+            // We only set the host/port if the scheme is also present.
+            if let Some(authority) = path_uri.authority() {
+                url.set_host(Some(authority.host()))
+                    .map_err(|_| anyhow!("Failed to set host for request, with path '{path}'"))?;
+                url.set_port(authority.port().map(|p| p.as_u16()))
+                    .map_err(|_| anyhow!("Failed to set port for request, with path '{path}'"))?;
 
-            // todo, add username:password support
+                // todo, add username:password support
+            }
         }
     }
 
@@ -523,16 +524,21 @@ fn build_url(
     //
     if path_uri.scheme().is_some() {
         url.set_path(path_uri.path());
+
+        // In this path we are replacing, so drop any query params on the original url.
+        if url.query().is_some() {
+            url.set_query(None);
+        }
     } else {
         // Grab everything up until the query parameters, or everything after that
         let calculated_path = path.split('?').next().unwrap_or(&path);
         url.set_path(calculated_path);
-    }
 
-    // Move any query parameters from the url to the query params store.
-    if let Some(url_query) = url.query() {
-        query_params.add_raw(url_query.to_string());
-        url.set_query(None);
+        // Move any query parameters from the url to the query params store.
+        if let Some(url_query) = url.query() {
+            query_params.add_raw(url_query.to_string());
+            url.set_query(None);
+        }
     }
 
     if let Some(path_query) = path_uri.query() {
@@ -560,6 +566,98 @@ fn is_path_blocked(url: &Url, path_uri: &Uri, is_http_restricted: bool) -> bool 
     }
 
     false
+}
+
+#[cfg(test)]
+mod test_build_url {
+    use super::*;
+
+    #[test]
+    fn it_should_copy_path_to_url_returned_when_restricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "/users";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, true).unwrap();
+
+        assert_eq!("http://example.com/users", result.as_str());
+        assert!(query_params.is_empty());
+    }
+
+    #[test]
+    fn it_should_copy_all_query_params_to_store_when_restricted() {
+        let base_url = "http://example.com?base=aaa".parse::<Url>().unwrap();
+        let path = "/users?path=bbb&path-flag";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, true).unwrap();
+
+        assert_eq!("http://example.com/users", result.as_str());
+        assert_eq!("base=aaa&path=bbb&path-flag", query_params.to_string());
+    }
+
+    #[test]
+    fn it_should_copy_host_like_as_path_when_restricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "users.csv";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, true).unwrap();
+
+        assert_eq!("http://example.com/users.csv", result.as_str());
+        assert!(query_params.is_empty());
+    }
+
+    #[test]
+    fn it_should_not_replace_url_when_restricted() {
+        let base_url = "http://example.com?base=666".parse::<Url>().unwrap();
+        let path = "ftp://google.com:123/users.csv?limit=456";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_copy_path_to_url_returned_when_unrestricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "/users";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, false).unwrap();
+
+        assert_eq!("http://example.com/users", result.as_str());
+        assert!(query_params.is_empty());
+    }
+
+    #[test]
+    fn it_should_copy_all_query_params_to_store_when_unrestricted() {
+        let base_url = "http://example.com?base=aaa".parse::<Url>().unwrap();
+        let path = "/users?path=bbb&path-flag";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, false).unwrap();
+
+        assert_eq!("http://example.com/users", result.as_str());
+        assert_eq!("base=aaa&path=bbb&path-flag", query_params.to_string());
+    }
+
+    #[test]
+    fn it_should_copy_host_like_as_path_when_unrestricted() {
+        let base_url = "http://example.com".parse::<Url>().unwrap();
+        let path = "users.csv";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, false).unwrap();
+
+        assert_eq!("http://example.com/users.csv", result.as_str());
+        assert!(query_params.is_empty());
+    }
+
+    #[test]
+    fn it_should_replace_url_when_unrestricted() {
+        let base_url = "http://example.com?base=666".parse::<Url>().unwrap();
+        let path = "ftp://google.com:123/users.csv?limit=456";
+        let mut query_params = QueryParamsStore::new();
+        let result = build_url(base_url, &path, &mut query_params, false).unwrap();
+
+        assert_eq!("ftp://google.com:123/users.csv", result.as_str());
+        assert_eq!("limit=456", query_params.to_string());
+    }
 }
 
 #[cfg(test)]
