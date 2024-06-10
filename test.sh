@@ -7,6 +7,7 @@ cargo test --example=example-todo
 cargo test  --features all "$@"
 cargo test "$@"
 
+# Check the various build variations work
 cargo check --features all
 cargo check --features msgpack
 cargo check --features yaml
