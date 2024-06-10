@@ -182,6 +182,12 @@ impl TestServer {
         TestRequest::new(self.state.clone(), self.transport.clone(), config)
     }
 
+    /// Starts a WebSocket request to the path given.
+    #[cfg(feature = "ws")]
+    pub fn ws(&self, path: &str) -> TestWsRequest {
+        unimplemented!("todo")
+    }
+
     /// Creates a HTTP GET request, using the typed path provided.
     ///
     /// See [`axum-extra`](https://docs.rs/axum-extra) for full documentation on [`TypedPath`](axum_extra::routing::TypedPath).

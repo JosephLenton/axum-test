@@ -18,12 +18,13 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["pretty-assertions"]
-all = ["msgpack", "pretty-assertions", "yaml", "typed-routing"]
+all = ["msgpack", "pretty-assertions", "yaml", "typed-routing", "ws"]
 
 msgpack = ["dep:rmp-serde"]
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 typed-routing = ["dep:axum-extra"]
+ws = ["axum/ws"]
 
 [dependencies]
 auto-future = "1.0"
