@@ -182,10 +182,23 @@ impl TestServer {
         TestRequest::new(self.state.clone(), self.transport.clone(), config)
     }
 
-    /// Starts a WebSocket request to the path given.
+    /// Creates a request to the server, to start a Websocket connection,
+    /// on the path given.
+    ///
+    /// This is the requivalent of making a GET request to the endpoint,
+    /// and setting the various headers needed for making an upgrade request.
     #[cfg(feature = "ws")]
-    pub fn ws(&self, path: &str) -> TestWsRequest {
-        unimplemented!("todo")
+    pub fn websocket(&self, path: &str) -> TestRequest {
+        use http::header;
+
+        self.get(path)
+            .add_header(header::CONNECTION, "upgrade".parse().unwrap())
+            .add_header(header::UPGRADE, "websocket".parse().unwrap())
+            .add_header(header::SEC_WEBSOCKET_VERSION, "13".parse().unwrap())
+            .add_header(
+                header::SEC_WEBSOCKET_KEY,
+                crate::internals::generate_ws_key().parse().unwrap(),
+            )
     }
 
     /// Creates a HTTP GET request, using the typed path provided.

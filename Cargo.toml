@@ -24,13 +24,14 @@ msgpack = ["dep:rmp-serde"]
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 typed-routing = ["dep:axum-extra"]
-ws = ["axum/ws"]
+ws = ["axum/ws", "dep:uuid", "dep:base64"]
 
 [dependencies]
 auto-future = "1.0"
 axum = { version = "0.7", features = ["tokio"] }
 axum-extra = { version = "0.9", features = ["typed-routing"], optional = true }
 anyhow = "1.0"
+base64 = { version = "0.22", optional = true }
 bytes = "1.6"
 cookie = "0.18"
 http = "1.1"
@@ -49,6 +50,7 @@ serde_urlencoded = "0.7"
 smallvec = "1.13"
 tokio = { version = "1.38", features = ["rt", "time"] }
 tower = { version = "0.4", features = ["util", "make"] }
+uuid = { version = "1.8.0", optional = true, features = ["v4"]}
 url = "2.5"
 
 [dev-dependencies]
