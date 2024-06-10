@@ -11,10 +11,10 @@ use crate::internals::QueryParamsStore;
 pub struct TestRequestConfig {
     pub is_saving_cookies: bool,
     pub expected_state: ExpectedState,
+
     pub content_type: Option<String>,
     pub full_request_url: Url,
     pub method: Method,
-
     pub cookies: CookieJar,
     pub query_params: QueryParamsStore,
     pub headers: Vec<(HeaderName, HeaderValue)>,
