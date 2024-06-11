@@ -4,6 +4,7 @@ set -e
 
 cargo check
 cargo test --example=example-todo
+cargo test --example=example-websockets --features ws
 cargo test  --features all "$@"
 cargo test "$@"
 

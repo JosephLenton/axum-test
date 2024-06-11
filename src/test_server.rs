@@ -188,10 +188,11 @@ impl TestServer {
     /// This is the requivalent of making a GET request to the endpoint,
     /// and setting the various headers needed for making an upgrade request.
     #[cfg(feature = "ws")]
-    pub fn websocket(&self, path: &str) -> TestRequest {
+    pub fn get_websocket(&self, path: &str) -> TestRequest {
         use http::header;
 
         self.get(path)
+            .expect_switching_protocols()
             .add_header(header::CONNECTION, "upgrade".parse().unwrap())
             .add_header(header::UPGRADE, "websocket".parse().unwrap())
             .add_header(header::SEC_WEBSOCKET_VERSION, "13".parse().unwrap())

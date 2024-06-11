@@ -516,9 +516,8 @@ impl TestRequest {
     /// # }
     /// ```
     ///
-    pub fn expect_success(mut self) -> Self {
-        self.expected_state = ExpectedState::Success;
-        self
+    pub fn expect_success(self) -> Self {
+        self.expect_state(ExpectedState::Success)
     }
 
     /// Marks that this request is expected to return a HTTP status code
@@ -526,8 +525,16 @@ impl TestRequest {
     ///
     /// If a code _within_ the 2xx range is returned,
     /// then this will panic.
-    pub fn expect_failure(mut self) -> Self {
-        self.expected_state = ExpectedState::Failure;
+    pub fn expect_failure(self) -> Self {
+        self.expect_state(ExpectedState::Failure)
+    }
+
+    pub fn expect_switching_protocols(self) -> Self {
+        self.expect_state(ExpectedState::SwitchingProtocols)
+    }
+
+    fn expect_state(mut self, expected_state: ExpectedState) -> Self {
+        self.expected_state = expected_state;
         self
     }
 
@@ -562,6 +569,7 @@ impl TestRequest {
         // Assert if ok or not.
         match expected_state {
             ExpectedState::Success => response.assert_status_success(),
+            ExpectedState::SwitchingProtocols => response.assert_status_switching_protocols(),
             ExpectedState::Failure => response.assert_status_failure(),
             ExpectedState::None => {}
         }

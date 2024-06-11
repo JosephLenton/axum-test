@@ -55,7 +55,7 @@ url = "2.5"
 
 [dev-dependencies]
 async-trait = "0.1"
-axum = { version = "0.7", features = ["multipart", "tokio"] }
+axum = { version = "0.7", features = ["multipart", "tokio", "ws"] }
 axum-extra = { version = "0.9", features = ["cookie", "typed-routing", "query"] }
 axum-msgpack = "0.4"
 axum-yaml = "0.4"

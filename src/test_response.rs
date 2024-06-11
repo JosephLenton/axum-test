@@ -692,6 +692,15 @@ impl TestResponse {
         self.assert_not_status(StatusCode::OK)
     }
 
+    /// Assert the response status code is 101.
+    ///
+    /// This type of code is used in Web Socket connection when
+    /// first request.
+    #[track_caller]
+    pub fn assert_status_switching_protocols(&self) {
+        self.assert_status(StatusCode::SWITCHING_PROTOCOLS)
+    }
+
     /// Assert the response status code matches the one given.
     #[track_caller]
     pub fn assert_status(&self, expected_status_code: StatusCode) {

@@ -2,6 +2,7 @@
 pub enum ExpectedState {
     Success,
     Failure,
+    SwitchingProtocols,
     None,
 }
 
