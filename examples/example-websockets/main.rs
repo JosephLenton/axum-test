@@ -4,29 +4,17 @@
 //! At the bottom of this file are a series of tests for using websockets.
 //!
 
-use ::anyhow::anyhow;
 use ::anyhow::Result;
 use ::axum::extract::ws::WebSocket;
-use ::axum::extract::Json;
 use ::axum::extract::State;
 use ::axum::extract::WebSocketUpgrade;
 use ::axum::response::Response;
 use ::axum::routing::get;
-use ::axum::routing::post;
-use ::axum::routing::put;
 use ::axum::serve::serve;
 use ::axum::Router;
-use ::axum_extra::extract::cookie::Cookie;
-use ::axum_extra::extract::cookie::CookieJar;
-use ::http::StatusCode;
-use ::serde::Deserialize;
-use ::serde::Serialize;
-use ::serde_email::Email;
-use ::std::collections::HashMap;
 use ::std::net::IpAddr;
 use ::std::net::Ipv4Addr;
 use ::std::net::SocketAddr;
-use ::std::result::Result as StdResult;
 use ::std::sync::Arc;
 use ::std::sync::RwLock;
 use ::tokio::net::TcpListener;
@@ -64,7 +52,28 @@ type SharedAppState = Arc<RwLock<AppState>>;
 #[derive(Debug)]
 pub struct AppState {}
 
-pub async fn route_get_websocket(
+pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+    ws.on_upgrade(move |socket| handle_ping_pong(socket))
+}
+
+async fn handle_ping_pong(mut socket: WebSocket) {
+    while let Some(msg) = socket.recv().await {
+        let msg = if let Ok(msg) = msg {
+            println!("received {msg:?}");
+            msg
+        } else {
+            // client disconnected
+            return;
+        };
+
+        if socket.send(msg).await.is_err() {
+            // client disconnected
+            return;
+        }
+    }
+}
+
+pub async fn route_get_websocket_chat(
     State(state): State<SharedAppState>,
     ws: WebSocketUpgrade,
 ) -> Response {
@@ -92,7 +101,8 @@ pub(crate) fn new_app() -> Router {
     let shared_state = Arc::new(RwLock::new(state));
 
     Router::new()
-        .route(&"/ws", get(route_get_websocket))
+        .route(&"/ws-ping-pong", get(route_get_websocket))
+        .route(&"/ws-chat", get(route_get_websocket))
         .with_state(shared_state)
 }
 
@@ -100,17 +110,17 @@ pub(crate) fn new_app() -> Router {
 fn new_test_app() -> TestServer {
     let app = new_app();
     let config = TestServerConfig::builder()
-        .http_transport()
-        // .mock_transport()
+        .http_transport() // Important! It must be a HTTP Transport here.
         .build();
 
     TestServer::new_with_config(app, config).unwrap()
 }
 
 #[cfg(test)]
-mod test_websockets {
+mod test_websockets_ping_pong {
     use super::*;
 
+    use ::axum_test::WsMessage;
     use ::serde_json::json;
 
     #[tokio::test]
@@ -118,10 +128,26 @@ mod test_websockets {
         let server = new_test_app();
 
         let response = server
-            .get_websocket(&"/ws")
+            .get_websocket(&"/ws-ping-pong")
             .expect_switching_protocols()
             .await;
 
         response.assert_status_switching_protocols();
+    }
+
+    #[tokio::test]
+    async fn it_should_ping_pong_messages() {
+        let server = new_test_app();
+
+        let response = server
+            .get_websocket(&"/ws-ping-pong")
+            .expect_switching_protocols()
+            .await;
+
+        let mut websocket = response.into_websocket().await;
+        websocket.send_text("Hello!").await;
+
+        let response_message = websocket.receive_message().await;
+        assert_eq!(WsMessage::Text("Hello!".to_string()), response_message);
     }
 }

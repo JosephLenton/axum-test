@@ -193,17 +193,8 @@ pub(crate) mod internals;
 
 pub mod multipart;
 
-mod transport;
-pub use self::transport::*;
-
-mod test_server;
-pub use self::test_server::*;
-
-mod test_server_config_builder;
-pub use self::test_server_config_builder::*;
-
-mod test_server_config;
-pub use self::test_server_config::*;
+pub mod transport_layer;
+pub mod util;
 
 mod test_request;
 pub use self::test_request::*;
@@ -211,8 +202,24 @@ pub use self::test_request::*;
 mod test_response;
 pub use self::test_response::*;
 
-pub mod transport_layer;
-pub mod util;
+mod test_server_config_builder;
+pub use self::test_server_config_builder::*;
+
+mod test_server_config;
+pub use self::test_server_config::*;
+
+mod test_server;
+pub use self::test_server::*;
+
+#[cfg(feature = "ws")]
+mod test_web_socket;
+#[cfg(feature = "ws")]
+pub use self::test_web_socket::*;
+#[cfg(feature = "ws")]
+pub use ::tokio_tungstenite::tungstenite::Message as WsMessage;
+
+mod transport;
+pub use self::transport::*;
 
 pub use ::http;
 

@@ -22,6 +22,7 @@ use ::pretty_assertions::{assert_eq, assert_ne};
 
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
+use crate::TestWebSocket;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -130,7 +131,7 @@ pub struct TestResponse {
     headers: HeaderMap<HeaderValue>,
     status_code: StatusCode,
     response_body: Bytes,
-    on_upgrade: Option<OnUpgrade>,
+    maybe_on_upgrade: Option<OnUpgrade>,
 }
 
 impl TestResponse {
@@ -139,7 +140,7 @@ impl TestResponse {
         full_request_url: Url,
         parts: Parts,
         response_body: Bytes,
-        on_upgrade: Option<OnUpgrade>,
+        maybe_on_upgrade: Option<OnUpgrade>,
     ) -> Self {
         Self {
             method,
@@ -147,7 +148,7 @@ impl TestResponse {
             headers: parts.headers,
             status_code: parts.status,
             response_body,
-            on_upgrade,
+            maybe_on_upgrade,
         }
     }
 
@@ -730,6 +731,28 @@ impl TestResponse {
             self.status_code(),
             "Expected status code to not be {expected_debug}, it is, for request {debug_request_format}"
         );
+    }
+
+    /// Consumes the request, turning it into a `TestWebSocket`.
+    ///
+    /// If this cannot be done, then the response will panic.
+    #[must_use]
+    pub async fn into_websocket(self) -> TestWebSocket {
+        let debug_request_format = self.debug_request_format().to_string();
+
+        let on_upgrade = self.maybe_on_upgrade.with_context(|| {
+            format!("Expected WebSocket upgrade to be found, it is missing, for request {debug_request_format}")
+        })
+        .unwrap();
+
+        let upgraded = on_upgrade
+            .await
+            .with_context(|| {
+                format!("Failed to upgrade connection for, for request {debug_request_format}")
+            })
+            .unwrap();
+
+        TestWebSocket::new(upgraded).await
     }
 
     fn debug_request_format<'a>(&'a self) -> RequestPathFormatter<'a> {
