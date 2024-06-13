@@ -1,9 +1,7 @@
 use ::anyhow::Result;
 use ::axum::body::Body;
-use ::bytes::Bytes;
-use ::http::response::Parts;
 use ::http::Request;
-use ::http_body_util::BodyExt;
+use ::http::Response;
 use ::hyper_util::client::legacy::Client;
 use ::reserve_port::ReservedPort;
 use ::std::future::Future;
@@ -45,15 +43,16 @@ impl TransportLayer for HttpTransportLayer {
     fn send<'a>(
         &'a self,
         request: Request<Body>,
-    ) -> Pin<Box<dyn 'a + Future<Output = Result<(Parts, Bytes)>>>> {
+    ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>>>> {
         Box::pin(async {
             let client = Client::builder(hyper_util::rt::TokioExecutor::new()).build_http();
             let hyper_response = client.request(request).await?;
 
             let (parts, response_body) = hyper_response.into_parts();
-            let response_bytes = response_body.collect().await?.to_bytes();
+            let returned_response: Response<Body> =
+                Response::from_parts(parts, Body::new(response_body));
 
-            Ok((parts, response_bytes))
+            Ok(returned_response)
         })
     }
 

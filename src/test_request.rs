@@ -14,6 +14,7 @@ use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Method;
 use ::http::Request;
+use ::http_body_util::BodyExt;
 use ::serde::Serialize;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
@@ -557,24 +558,31 @@ impl TestRequest {
             self.config.headers,
             &debug_request_format,
         )?;
-        let (parts, response_bytes) = self.transport.send(request).await?;
+
+        let mut http_response = self.transport.send(request).await?;
+        let on_upgrade = http_response
+            .extensions_mut()
+            .remove::<hyper::upgrade::OnUpgrade>();
+
+        let (parts, response_body) = http_response.into_parts();
+        let response_bytes = response_body.collect().await?.to_bytes();
 
         if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
             ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
-        let response = TestResponse::new(method, url, parts, response_bytes);
+        let test_response = TestResponse::new(method, url, parts, response_bytes, on_upgrade);
 
         // Assert if ok or not.
         match expected_state {
-            ExpectedState::Success => response.assert_status_success(),
-            ExpectedState::SwitchingProtocols => response.assert_status_switching_protocols(),
-            ExpectedState::Failure => response.assert_status_failure(),
+            ExpectedState::Success => test_response.assert_status_success(),
+            ExpectedState::SwitchingProtocols => test_response.assert_status_switching_protocols(),
+            ExpectedState::Failure => test_response.assert_status_failure(),
             ExpectedState::None => {}
         }
 
-        Ok(response)
+        Ok(test_response)
     }
 
     fn build_url_query_params(mut url: Url, query_params: &QueryParamsStore) -> Url {

@@ -10,6 +10,7 @@ use ::http::HeaderMap;
 use ::http::HeaderValue;
 use ::http::Method;
 use ::http::StatusCode;
+use ::hyper::upgrade::OnUpgrade;
 use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
@@ -129,6 +130,7 @@ pub struct TestResponse {
     headers: HeaderMap<HeaderValue>,
     status_code: StatusCode,
     response_body: Bytes,
+    on_upgrade: Option<OnUpgrade>,
 }
 
 impl TestResponse {
@@ -137,6 +139,7 @@ impl TestResponse {
         full_request_url: Url,
         parts: Parts,
         response_body: Bytes,
+        on_upgrade: Option<OnUpgrade>,
     ) -> Self {
         Self {
             method,
@@ -144,6 +147,7 @@ impl TestResponse {
             headers: parts.headers,
             status_code: parts.status,
             response_body,
+            on_upgrade,
         }
     }
 

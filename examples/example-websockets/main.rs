@@ -6,9 +6,11 @@
 
 use ::anyhow::anyhow;
 use ::anyhow::Result;
+use ::axum::extract::ws::WebSocket;
 use ::axum::extract::Json;
 use ::axum::extract::State;
 use ::axum::extract::WebSocketUpgrade;
+use ::axum::response::Response;
 use ::axum::routing::get;
 use ::axum::routing::post;
 use ::axum::routing::put;
@@ -33,8 +35,6 @@ use ::tokio::net::TcpListener;
 use ::axum_test::TestServer;
 #[cfg(test)]
 use ::axum_test::TestServerConfig;
-use axum::extract::ws::WebSocket;
-use axum::response::Response;
 
 const PORT: u16 = 8080;
 
