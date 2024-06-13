@@ -571,12 +571,12 @@ impl TestResponse {
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
     #[track_caller]
-    pub fn assert_text<C>(&self, other: C)
+    pub fn assert_text<C>(&self, expected: C)
     where
         C: AsRef<str>,
     {
-        let other_contents = other.as_ref();
-        assert_eq!(other_contents, &self.text());
+        let expected_contents = expected.as_ref();
+        assert_eq!(expected_contents, &self.text());
     }
 
     /// Deserializes the contents of the request as Json,
@@ -585,11 +585,11 @@ impl TestResponse {
     /// If `other` does not match, or the response is not Json,
     /// then this will panic.
     #[track_caller]
-    pub fn assert_json<T>(&self, other: &T)
+    pub fn assert_json<T>(&self, expected: &T)
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
-        assert_eq!(*other, self.json::<T>());
+        assert_eq!(*expected, self.json::<T>());
     }
 
     /// Deserializes the contents of the request as Yaml,

@@ -131,32 +131,32 @@ impl TestRequest {
             .content_type(mime::APPLICATION_JSON.essence_str())
     }
 
-    /// Set the body of the request to send up data as MsgPack,
-    /// and changes the content type to `application/msgpack`.
-    #[cfg(feature = "msgpack")]
-    pub fn msgpack<J>(self, body: &J) -> Self
-    where
-        J: ?Sized + Serialize,
-    {
-        let body_bytes =
-            ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
-
-        self.bytes(body_bytes.into())
-            .content_type("application/msgpack")
-    }
-
     /// Set the body of the request to send up data as Yaml,
     /// and changes the content type to `application/yaml`.
     #[cfg(feature = "yaml")]
-    pub fn yaml<J>(self, body: &J) -> Self
+    pub fn yaml<Y>(self, body: &Y) -> Self
     where
-        J: ?Sized + Serialize,
+        Y: ?Sized + Serialize,
     {
         let body =
             ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
 
         self.bytes(body.into_bytes().into())
             .content_type("application/yaml")
+    }
+
+    /// Set the body of the request to send up data as MsgPack,
+    /// and changes the content type to `application/msgpack`.
+    #[cfg(feature = "msgpack")]
+    pub fn msgpack<M>(self, body: &M) -> Self
+    where
+        M: ?Sized + Serialize,
+    {
+        let body_bytes =
+            ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
+
+        self.bytes(body_bytes.into())
+            .content_type("application/msgpack")
     }
 
     /// Sets the body of the request, with the content type
