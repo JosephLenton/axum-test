@@ -180,10 +180,7 @@ mod test_websockets_chat {
     async fn it_should_start_a_websocket_connection() {
         let server = new_test_app();
 
-        let response = server
-            .get_websocket(&"/ws-chat/john")
-            .expect_switching_protocols()
-            .await;
+        let response = server.get_websocket(&"/ws-chat/john").await;
 
         response.assert_status_switching_protocols();
     }
@@ -194,14 +191,12 @@ mod test_websockets_chat {
 
         let mut alice_chat = server
             .get_websocket(&"/ws-chat/alice")
-            .expect_switching_protocols()
             .await
             .into_websocket()
             .await;
 
         let mut bob_chat = server
             .get_websocket(&"/ws-chat/bob")
-            .expect_switching_protocols()
             .await
             .into_websocket()
             .await;
