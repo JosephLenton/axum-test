@@ -1,8 +1,13 @@
 <div align="center">
   <h1>
-    Example WebSockets Chat<br>
-    a simple chat application with tests
+    Example WebSockets Chat<br/>
   </h1>
+
+  <h3>
+    a simple chat application with tests
+  </h3>
+
+  <br/>
 </div>
 
 This is a very simple application using WebSockets. It aims to show ...
