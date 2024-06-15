@@ -1,7 +1,7 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "15.0.1"
+version = "15.1.0"
 rust-version = "1.75"
 edition = "2021"
 license = "MIT"
@@ -18,11 +18,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["pretty-assertions", "ws"]
-all = ["msgpack", "pretty-assertions", "yaml", "typed-routing", "ws"]
+all = ["pretty-assertions", "yaml", "msgpack", "typed-routing", "ws"]
 
-msgpack = ["dep:rmp-serde"]
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
+msgpack = ["dep:rmp-serde"]
 typed-routing = ["dep:axum-extra"]
 ws = ["axum/ws", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
 

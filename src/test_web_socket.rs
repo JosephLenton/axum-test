@@ -174,7 +174,7 @@ impl TestWebSocket {
     }
 
     #[must_use]
-    pub async fn maybe_receive_message(&mut self) -> Option<WsMessage> {
+    async fn maybe_receive_message(&mut self) -> Option<WsMessage> {
         let maybe_message = self.stream.next().await;
 
         match maybe_message {

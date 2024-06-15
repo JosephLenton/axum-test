@@ -4,7 +4,7 @@
   </h1>
 
   <h3>
-    Easy E2E testing for applications built on Axum
+    Easy E2E testing for applications built on Axum, including REST and WebSockets
   </h3>
 
   [![crate](https://img.shields.io/crates/v/axum-test.svg)](https://crates.io/crates/axum-test)
@@ -13,7 +13,8 @@
   <br/>
 </div>
 
-Using this library, you can host your application and query against it with requests. Then decode the responses, and assert what is returned.
+Using this library, you can host your application and query against it with requests.
+Then decode the responses, and assert what is returned.
 
 ```rust
   use ::axum::Router;
@@ -49,7 +50,7 @@ In both cases allowing multiple servers to run in parallel, across your tests.
 
 This behaviour can be changed in the `TestServerConfig`, by selecting the `transport` to be used.
 
-### Axum Compatability
+## Axum Compatability
 
 Axum Test requires the latest version of Axum (0.7).
 
@@ -57,28 +58,6 @@ Axum Test requires the latest version of Axum (0.7).
 |--------------|-------------------|
 | 0.7 (latest) | 14, 15+ (latest)  |
 | 0.6          | [13.4.1](https://crates.io/crates/axum-test/13.4.1)            |
-
-### Example
-
-You can find a thorough example in the [/examples folder](/examples/example-todo/).
-
-### Request building
-
-Querying your application on the `TestServer` supports all of the common request building you would expect.
-
- - Serializing and deserializing Json and Form content using Serde
- - Cookie setting and reading
- - Access to setting and reading headers
- - Status code reading and assertions
- - Assertions for defining what you expect to have returned
-
-### It also includes
-
- - Saving cookies returned for use across future requests.
- - Setting headers and query parameters for use across all TestRequests.
- - Can optionally run requests using a real web server.
- - Automatic status assertions for checking requests always succeed or fail.
- - Prettifying the assertion output.
 
 ## Crate Features
 
@@ -88,7 +67,37 @@ Here are a list of all features so far that can be enabled:
  * `pretty-assertions` **on by default**, uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) for the output to the `assert_*` functions.
  * `yaml` _off by default_, adds support for sending, receiving, and asserting, [yaml content](https://yaml.org/).
  * `msgpack` _off by default_, adds support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).
- * `axum-extra` _off by default_, adds support for the `TypedPath` from [axum-extra](https://crates.io/crates/axum-extra).
+ * `typed-routing` _off by default_, adds support for the `TypedPath` from [axum-extra](https://crates.io/crates/axum-extra).
+ * `ws` _off by default_, adds support for WebSockets.
+
+## Examples
+
+You can find examples of writing tests in the [/examples folder](/examples/).
+These include tests for:
+
+ * [a REST Todo application](/examples/example-todo)
+ * [a WebSocket ping pong application](/examples/example-websocket-ping-pong) which sends requests up and down
+ * [a simple WebSocket chat application](/examples/example-websocket-chat)
+
+## Request Building Features
+
+Querying your application on the `TestServer` supports all of the common request building you would expect.
+
+ - Serializing and deserializing Json and Form content using Serde
+ - Cookie setting and reading
+ - Access to setting and reading headers
+ - Status code reading and assertions
+ - Assertions for defining what you expect to have returned
+ - Upgrading a connection for use with WebSockets
+
+### It also includes
+
+ - Saving cookies returned for use across future requests
+ - Setting headers and query parameters for use across all TestRequests
+ - Can optionally run requests using a real web server
+ - Automatic status assertions for checking requests always succeed or fail
+ - Prettifying the assertion output
+ - Typed Routing from Axum Extra
 
 ## Contributions
 
