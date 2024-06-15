@@ -23,6 +23,8 @@ use ::pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::transport_layer::TransportLayerType;
+
+#[cfg(feature = "ws")]
 use crate::TestWebSocket;
 
 ///
@@ -751,20 +753,24 @@ impl TestResponse {
     /// #
     /// use ::axum::Router;
     /// use ::axum_test::TestServer;
+    /// use ::axum_test::TestServerConfig;
     ///
     /// let app = Router::new();
     /// let config = TestServerConfig::builder().http_transport().build();
-    /// let mut server = TestServer::new_with_config(app, config)?;
+    /// let server = TestServer::new_with_config(app, config)?;
     ///
-    /// let websocket = server
+    /// let mut websocket = server
     ///     .get_websocket(&"/my-web-socket-end-point")
     ///     .await
     ///     .into_websocket()
     ///     .await;
     ///
-    /// websocket.send_test("Hello!").await;
+    /// websocket.send_text("Hello!").await;
     /// #
-    /// # Ok(()) }```
+    /// # Ok(()) }
+    /// ```
+    ///
+    #[cfg(feature = "ws")]
     #[must_use]
     pub async fn into_websocket(self) -> TestWebSocket {
         // Using the mock approach will just fail.
