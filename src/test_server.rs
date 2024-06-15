@@ -95,7 +95,7 @@ impl TestServer {
     /// however you can customise some of the configuration.
     /// This includes which port to run on, or default settings.
     ///
-    /// See the [`TestServerConfig`] for more information on each configuration setting.
+    /// See the [`TestServerConfig`](crate::TestServerConfig) for more information on each configuration setting.
     pub fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
     where
         A: IntoTransportLayer,
@@ -187,6 +187,33 @@ impl TestServer {
     ///
     /// This is the requivalent of making a GET request to the endpoint,
     /// and setting the various headers needed for making an upgrade request.
+    ///
+    /// *Note*, this requires the server to be running on a real HTTP
+    /// port. Either using a randomly assigned port, or a specified one.
+    /// See the [`TestServerConfig::transport`](crate::TestServerConfig::transport) for more details.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let config = TestServerConfig::builder().http_transport().build();
+    /// let mut server = TestServer::new_with_config(app, config)?;
+    ///
+    /// let websocket = server
+    ///     .get_websocket(&"/my-web-socket-end-point")
+    ///     .await
+    ///     .into_websocket()
+    ///     .await;
+    ///
+    /// websocket.send_test("Hello!").await;
+    /// #
+    /// # Ok(()) }```
+    ///
     #[cfg(feature = "ws")]
     pub fn get_websocket(&self, path: &str) -> TestRequest {
         use http::header;

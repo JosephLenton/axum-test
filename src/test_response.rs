@@ -738,8 +738,33 @@ impl TestResponse {
     }
 
     /// Consumes the request, turning it into a `TestWebSocket`.
-    ///
     /// If this cannot be done, then the response will panic.
+    ///
+    /// *Note*, this requires the server to be running on a real HTTP
+    /// port. Either using a randomly assigned port, or a specified one.
+    /// See the [`TestServerConfig::transport`](crate::TestServerConfig::transport) for more details.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let config = TestServerConfig::builder().http_transport().build();
+    /// let mut server = TestServer::new_with_config(app, config)?;
+    ///
+    /// let websocket = server
+    ///     .get_websocket(&"/my-web-socket-end-point")
+    ///     .await
+    ///     .into_websocket()
+    ///     .await;
+    ///
+    /// websocket.send_test("Hello!").await;
+    /// #
+    /// # Ok(()) }```
     #[must_use]
     pub async fn into_websocket(self) -> TestWebSocket {
         // Using the mock approach will just fail.
@@ -1344,5 +1369,55 @@ mod test_text {
         let response = server.get(&"/text").await.text();
 
         assert_eq!(response, "hello!");
+    }
+}
+
+#[cfg(feature = "ws")]
+#[cfg(test)]
+mod test_into_websocket {
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    use ::axum::extract::ws::WebSocket;
+    use ::axum::extract::WebSocketUpgrade;
+    use ::axum::response::Response;
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    fn new_test_router() -> Router {
+        pub async fn route_get_websocket(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(_) = socket.recv().await {
+                    // do nothing
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws", get(route_get_websocket));
+
+        app
+    }
+
+    #[tokio::test]
+    async fn it_should_upgrade_on_http_transport() {
+        let router = new_test_router();
+        let config = TestServerConfig::builder().http_transport().build();
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        let _ = server.get_websocket(&"/ws").await.into_websocket().await;
+
+        assert!(true);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_fail_to_upgrade_on_mock_transport() {
+        let router = new_test_router();
+        let config = TestServerConfig::builder().mock_transport().build();
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        let _ = server.get_websocket(&"/ws").await.into_websocket().await;
     }
 }

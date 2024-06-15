@@ -17,7 +17,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["pretty-assertions", "ws"]
+default = ["pretty-assertions"]
 all = ["pretty-assertions", "yaml", "msgpack", "typed-routing", "ws"]
 
 pretty-assertions = ["dep:pretty_assertions"]
