@@ -133,14 +133,14 @@ async fn handle_chat(socket: WebSocket, username: String, state: SharedAppState)
     tokio::select! {
         rv_a = (&mut send_task) => {
             match rv_a {
-                Ok(a) => println!("Messages sent"),
+                Ok(_) => println!("Messages sent"),
                 Err(a) => println!("Error sending messages {a:?}")
             }
             recv_task.abort();
         },
         rv_b = (&mut recv_task) => {
             match rv_b {
-                Ok(b) => println!("Received messages"),
+                Ok(_) => println!("Received messages"),
                 Err(b) => println!("Error receiving messages {b:?}")
             }
             send_task.abort();

@@ -10,6 +10,7 @@ use ::tokio::task::JoinHandle;
 use ::url::Url;
 
 use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerType;
 
 #[derive(Debug)]
 pub struct HttpTransportLayer {
@@ -58,6 +59,10 @@ impl TransportLayer for HttpTransportLayer {
 
     fn url<'a>(&'a self) -> Option<&'a Url> {
         Some(&self.url)
+    }
+
+    fn get_type(&self) -> TransportLayerType {
+        TransportLayerType::Http
     }
 }
 

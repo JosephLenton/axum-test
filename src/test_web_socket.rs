@@ -223,3 +223,303 @@ fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
 
     Ok(bytes)
 }
+
+#[cfg(test)]
+mod test_assert_receive_text {
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    use ::axum::extract::ws::Message;
+    use ::axum::extract::ws::WebSocket;
+    use ::axum::extract::WebSocketUpgrade;
+    use ::axum::response::Response;
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(maybe_message) = socket.recv().await {
+                    let message_text = maybe_message.unwrap().into_text().unwrap();
+
+                    let encoded_text = format!("Text: {message_text}");
+                    let encoded_data = format!("Binary: {message_text}").into_bytes();
+
+                    socket.send(Message::Text(encoded_text)).await.unwrap();
+                    socket.send(Message::Binary(encoded_data)).await.unwrap();
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
+        let config = TestServerConfig::builder().http_transport().build();
+
+        TestServer::new_with_config(app, config).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_ping_pong_text_in_text_and_binary() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket.send_text("Hello World! 🦊").await;
+
+        websocket.assert_receive_text("Text: Hello World! 🦊").await;
+        websocket
+            .assert_receive_text("Binary: Hello World! 🦊")
+            .await;
+    }
+}
+
+#[cfg(test)]
+mod test_assert_receive_json {
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    use ::axum::extract::ws::Message;
+    use ::axum::extract::ws::WebSocket;
+    use ::axum::extract::WebSocketUpgrade;
+    use ::axum::response::Response;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::serde_json::json;
+    use ::serde_json::Value;
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(maybe_message) = socket.recv().await {
+                    let message_text = maybe_message.unwrap().into_text().unwrap();
+                    let decoded = serde_json::from_str::<Value>(&message_text).unwrap();
+
+                    let encoded_text = serde_json::to_string(&json!({
+                        "format": "text",
+                        "message": decoded
+                    }))
+                    .unwrap();
+                    let encoded_data = serde_json::to_vec(&json!({
+                        "format": "binary",
+                        "message": decoded
+                    }))
+                    .unwrap();
+
+                    socket.send(Message::Text(encoded_text)).await.unwrap();
+                    socket.send(Message::Binary(encoded_data)).await.unwrap();
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
+        let config = TestServerConfig::builder().http_transport().build();
+
+        TestServer::new_with_config(app, config).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_ping_pong_json_in_text_and_binary() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        // Once for text
+        websocket
+            .assert_receive_json(&json!({
+                "format": "text",
+                "message": {
+                    "hello": "world",
+                    "numbers": [1, 2, 3],
+                },
+            }))
+            .await;
+
+        // Again for binary
+        websocket
+            .assert_receive_json(&json!({
+                "format": "binary",
+                "message": {
+                    "hello": "world",
+                    "numbers": [1, 2, 3],
+                },
+            }))
+            .await;
+    }
+}
+
+#[cfg(feature = "yaml")]
+#[cfg(test)]
+mod test_assert_receive_yaml {
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    use ::axum::extract::ws::Message;
+    use ::axum::extract::ws::WebSocket;
+    use ::axum::extract::WebSocketUpgrade;
+    use ::axum::response::Response;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::serde_json::json;
+    use ::serde_json::Value;
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(maybe_message) = socket.recv().await {
+                    let message_text = maybe_message.unwrap().into_text().unwrap();
+                    let decoded = serde_yaml::from_str::<Value>(&message_text).unwrap();
+
+                    let encoded_text = serde_yaml::to_string(&json!({
+                        "format": "text",
+                        "message": decoded
+                    }))
+                    .unwrap();
+                    let encoded_data = serde_yaml::to_string(&json!({
+                        "format": "binary",
+                        "message": decoded
+                    }))
+                    .unwrap()
+                    .into_bytes();
+
+                    socket.send(Message::Text(encoded_text)).await.unwrap();
+                    socket.send(Message::Binary(encoded_data)).await.unwrap();
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
+        let config = TestServerConfig::builder().http_transport().build();
+
+        TestServer::new_with_config(app, config).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_ping_pong_yaml_in_text_and_binary() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        // Once for text
+        websocket
+            .assert_receive_yaml(&json!({
+                "format": "text",
+                "message": {
+                    "hello": "world",
+                    "numbers": [1, 2, 3],
+                },
+            }))
+            .await;
+
+        // Again for binary
+        websocket
+            .assert_receive_yaml(&json!({
+                "format": "binary",
+                "message": {
+                    "hello": "world",
+                    "numbers": [1, 2, 3],
+                },
+            }))
+            .await;
+    }
+}
+
+#[cfg(feature = "msgpack")]
+#[cfg(test)]
+mod test_assert_receive_msgpack {
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    use ::axum::extract::ws::Message;
+    use ::axum::extract::ws::WebSocket;
+    use ::axum::extract::WebSocketUpgrade;
+    use ::axum::response::Response;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::serde_json::json;
+    use ::serde_json::Value;
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(maybe_message) = socket.recv().await {
+                    let message_data = maybe_message.unwrap().into_data();
+                    let decoded = rmp_serde::from_slice::<Value>(&message_data).unwrap();
+
+                    let encoded_data = ::rmp_serde::to_vec(&json!({
+                        "format": "binary",
+                        "message": decoded
+                    }))
+                    .unwrap();
+
+                    socket.send(Message::Binary(encoded_data)).await.unwrap();
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
+        let config = TestServerConfig::builder().http_transport().build();
+
+        TestServer::new_with_config(app, config).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_ping_pong_msgpack_in_binary() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_msgpack(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        websocket
+            .assert_receive_msgpack(&json!({
+                "format": "binary",
+                "message": {
+                    "hello": "world",
+                    "numbers": [1, 2, 3],
+                },
+            }))
+            .await;
+    }
+}

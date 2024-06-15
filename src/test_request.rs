@@ -530,10 +530,6 @@ impl TestRequest {
         self.expect_state(ExpectedState::Failure)
     }
 
-    pub fn expect_switching_protocols(self) -> Self {
-        self.expect_state(ExpectedState::SwitchingProtocols)
-    }
-
     fn expect_state(mut self, expected_state: ExpectedState) -> Self {
         self.expected_state = expected_state;
         self
@@ -572,12 +568,18 @@ impl TestRequest {
             ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
-        let test_response = TestResponse::new(method, url, parts, response_bytes, on_upgrade);
+        let test_response = TestResponse::new(
+            method,
+            url,
+            parts,
+            response_bytes,
+            on_upgrade,
+            self.transport.get_type(),
+        );
 
         // Assert if ok or not.
         match expected_state {
             ExpectedState::Success => test_response.assert_status_success(),
-            ExpectedState::SwitchingProtocols => test_response.assert_status_switching_protocols(),
             ExpectedState::Failure => test_response.assert_status_failure(),
             ExpectedState::None => {}
         }

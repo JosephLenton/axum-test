@@ -22,6 +22,7 @@ use ::pretty_assertions::{assert_eq, assert_ne};
 
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
+use crate::transport_layer::TransportLayerType;
 use crate::TestWebSocket;
 
 ///
@@ -132,6 +133,7 @@ pub struct TestResponse {
     status_code: StatusCode,
     response_body: Bytes,
     maybe_on_upgrade: Option<OnUpgrade>,
+    transport_type: TransportLayerType,
 }
 
 impl TestResponse {
@@ -141,6 +143,7 @@ impl TestResponse {
         parts: Parts,
         response_body: Bytes,
         maybe_on_upgrade: Option<OnUpgrade>,
+        transport_type: TransportLayerType,
     ) -> Self {
         Self {
             method,
@@ -149,6 +152,7 @@ impl TestResponse {
             status_code: parts.status,
             response_body,
             maybe_on_upgrade,
+            transport_type,
         }
     }
 
@@ -738,10 +742,15 @@ impl TestResponse {
     /// If this cannot be done, then the response will panic.
     #[must_use]
     pub async fn into_websocket(self) -> TestWebSocket {
+        // Using the mock approach will just fail.
+        if self.transport_type != TransportLayerType::Http {
+            unimplemented!("WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`");
+        }
+
         let debug_request_format = self.debug_request_format().to_string();
 
         let on_upgrade = self.maybe_on_upgrade.with_context(|| {
-            format!("Expected WebSocket upgrade to be found, it is missing, for request {debug_request_format}")
+            format!("Expected WebSocket upgrade to be found, it is None, for request {debug_request_format}")
         })
         .unwrap();
 

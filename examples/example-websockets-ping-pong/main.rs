@@ -82,34 +82,52 @@ fn new_test_app() -> TestServer {
 mod test_websockets_ping_pong {
     use super::*;
 
-    use ::axum_test::WsMessage;
     use ::serde_json::json;
 
     #[tokio::test]
     async fn it_should_start_a_websocket_connection() {
         let server = new_test_app();
 
-        let response = server
-            .get_websocket(&"/ws-ping-pong")
-            .expect_switching_protocols()
-            .await;
+        let response = server.get_websocket(&"/ws-ping-pong").await;
 
         response.assert_status_switching_protocols();
     }
 
     #[tokio::test]
-    async fn it_should_ping_pong_messages() {
+    async fn it_should_ping_pong_text() {
         let server = new_test_app();
 
-        let response = server
+        let mut websocket = server
             .get_websocket(&"/ws-ping-pong")
-            .expect_switching_protocols()
+            .await
+            .into_websocket()
             .await;
 
-        let mut websocket = response.into_websocket().await;
         websocket.send_text("Hello!").await;
+        websocket.assert_receive_text("Hello!").await;
+    }
 
-        let response_message = websocket.receive_message().await;
-        assert_eq!(WsMessage::Text("Hello!".to_string()), response_message);
+    #[tokio::test]
+    async fn it_should_ping_pong_json() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+        websocket
+            .assert_receive_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
     }
 }

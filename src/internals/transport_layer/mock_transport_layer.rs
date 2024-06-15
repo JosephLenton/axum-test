@@ -12,6 +12,7 @@ use ::tower::util::ServiceExt;
 use ::tower::Service;
 
 use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerType;
 
 pub struct MockTransportLayer<S> {
     service: S,
@@ -51,6 +52,10 @@ where
 
             Ok(response)
         })
+    }
+
+    fn get_type(&self) -> TransportLayerType {
+        TransportLayerType::Mock
     }
 }
 

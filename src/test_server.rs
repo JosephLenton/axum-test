@@ -192,7 +192,6 @@ impl TestServer {
         use http::header;
 
         self.get(path)
-            .expect_switching_protocols()
             .add_header(header::CONNECTION, "upgrade".parse().unwrap())
             .add_header(header::UPGRADE, "websocket".parse().unwrap())
             .add_header(header::SEC_WEBSOCKET_VERSION, "13".parse().unwrap())

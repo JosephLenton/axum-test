@@ -1,3 +1,4 @@
+use super::TransportLayerType;
 use ::anyhow::Result;
 use ::axum::body::Body;
 use ::http::Request;
@@ -16,4 +17,6 @@ pub trait TransportLayer: Debug + Send {
     fn url<'a>(&'a self) -> Option<&'a Url> {
         None
     }
+
+    fn get_type(&self) -> TransportLayerType;
 }
