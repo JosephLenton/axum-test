@@ -1,6 +1,11 @@
 mod transport_layer;
 pub use self::transport_layer::*;
 
+#[cfg(feature = "ws")]
+mod websockets;
+#[cfg(feature = "ws")]
+pub use self::websockets::*;
+
 mod expected_state;
 pub use self::expected_state::*;
 
@@ -18,8 +23,3 @@ pub use self::starting_tcp_setup::*;
 
 mod with_this_mut;
 pub use self::with_this_mut::*;
-
-#[cfg(feature = "ws")]
-mod ws_key_generator;
-#[cfg(feature = "ws")]
-pub use self::ws_key_generator::*;

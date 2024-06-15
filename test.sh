@@ -10,6 +10,7 @@ cargo test  --features all "$@"
 cargo test "$@"
 
 # Check the various build variations work
+cargo check --no-default-features
 cargo check --features all
 cargo check --features pretty-assertions
 cargo check --features yaml

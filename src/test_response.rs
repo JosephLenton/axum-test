@@ -10,7 +10,6 @@ use ::http::HeaderMap;
 use ::http::HeaderValue;
 use ::http::Method;
 use ::http::StatusCode;
-use ::hyper::upgrade::OnUpgrade;
 use ::serde::de::DeserializeOwned;
 use ::std::convert::AsRef;
 use ::std::fmt::Debug;
@@ -22,8 +21,9 @@ use ::pretty_assertions::{assert_eq, assert_ne};
 
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
-use crate::transport_layer::TransportLayerType;
 
+#[cfg(feature = "ws")]
+use crate::internals::TestResponseWebSocket;
 #[cfg(feature = "ws")]
 use crate::TestWebSocket;
 
@@ -134,8 +134,9 @@ pub struct TestResponse {
     headers: HeaderMap<HeaderValue>,
     status_code: StatusCode,
     response_body: Bytes,
-    maybe_on_upgrade: Option<OnUpgrade>,
-    transport_type: TransportLayerType,
+
+    #[cfg(feature = "ws")]
+    websockets: TestResponseWebSocket,
 }
 
 impl TestResponse {
@@ -144,8 +145,8 @@ impl TestResponse {
         full_request_url: Url,
         parts: Parts,
         response_body: Bytes,
-        maybe_on_upgrade: Option<OnUpgrade>,
-        transport_type: TransportLayerType,
+
+        #[cfg(feature = "ws")] websockets: TestResponseWebSocket,
     ) -> Self {
         Self {
             method,
@@ -153,8 +154,9 @@ impl TestResponse {
             headers: parts.headers,
             status_code: parts.status,
             response_body,
-            maybe_on_upgrade,
-            transport_type,
+
+            #[cfg(feature = "ws")]
+            websockets,
         }
     }
 
@@ -773,14 +775,16 @@ impl TestResponse {
     #[cfg(feature = "ws")]
     #[must_use]
     pub async fn into_websocket(self) -> TestWebSocket {
+        use crate::transport_layer::TransportLayerType;
+
         // Using the mock approach will just fail.
-        if self.transport_type != TransportLayerType::Http {
+        if self.websockets.transport_type != TransportLayerType::Http {
             unimplemented!("WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`");
         }
 
         let debug_request_format = self.debug_request_format().to_string();
 
-        let on_upgrade = self.maybe_on_upgrade.with_context(|| {
+        let on_upgrade = self.websockets.maybe_on_upgrade.with_context(|| {
             format!("Expected WebSocket upgrade to be found, it is None, for request {debug_request_format}")
         })
         .unwrap();

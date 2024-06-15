@@ -555,10 +555,21 @@ impl TestRequest {
             &debug_request_format,
         )?;
 
+        #[allow(unused_mut)] // Allowed for the `ws` use immediately after.
         let mut http_response = self.transport.send(request).await?;
-        let on_upgrade = http_response
-            .extensions_mut()
-            .remove::<hyper::upgrade::OnUpgrade>();
+
+        #[cfg(feature = "ws")]
+        let websockets = {
+            let maybe_on_upgrade = http_response
+                .extensions_mut()
+                .remove::<hyper::upgrade::OnUpgrade>();
+            let transport_type = self.transport.get_type();
+
+            crate::internals::TestResponseWebSocket {
+                maybe_on_upgrade,
+                transport_type,
+            }
+        };
 
         let (parts, response_body) = http_response.into_parts();
         let response_bytes = response_body.collect().await?.to_bytes();
@@ -573,8 +584,8 @@ impl TestRequest {
             url,
             parts,
             response_bytes,
-            on_upgrade,
-            self.transport.get_type(),
+            #[cfg(feature = "ws")]
+            websockets,
         );
 
         // Assert if ok or not.
