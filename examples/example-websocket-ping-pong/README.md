@@ -1,8 +1,13 @@
 <div align="center">
   <h1>
-    Example WebSockets Ping Pong<br>
-    an example application with tests
+    Example WebSockets Ping Pong<br/>
   </h1>
+
+  <h3>
+    an example websocket application with tests
+  </h3>
+
+  <br/>
 </div>
 
 This is a very simple application using WebSockets. It aims to show ...

@@ -4,7 +4,8 @@
   </h1>
 
   <h3>
-    Easy E2E testing for applications built on Axum, including REST and WebSockets
+    Easy E2E testing for applications built on Axum<br/>
+    including REST and WebSockets
   </h3>
 
   [![crate](https://img.shields.io/crates/v/axum-test.svg)](https://crates.io/crates/axum-test)
