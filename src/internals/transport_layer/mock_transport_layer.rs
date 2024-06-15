@@ -3,9 +3,8 @@ use ::anyhow::Result;
 use ::axum::body::Body;
 use ::axum::Router;
 use ::bytes::Bytes;
-use ::http::response::Parts;
 use ::http::Request;
-use ::http_body_util::BodyExt;
+use ::http::Response;
 use ::std::fmt::Debug;
 use ::std::future::Future;
 use ::std::pin::Pin;
@@ -13,6 +12,7 @@ use ::tower::util::ServiceExt;
 use ::tower::Service;
 
 use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerType;
 
 pub struct MockTransportLayer<S> {
     service: S,
@@ -38,7 +38,7 @@ where
     fn send<'a>(
         &'a self,
         request: Request<Body>,
-    ) -> Pin<Box<dyn 'a + Future<Output = Result<(Parts, Bytes)>>>> {
+    ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>>>> {
         Box::pin(async {
             let body: Body = Bytes::new().into();
             let empty_request = Request::builder()
@@ -49,11 +49,13 @@ where
             let router = service.oneshot(empty_request).await?;
 
             let response = router.oneshot(request).await?;
-            let (parts, response_body) = response.into_parts();
-            let response_bytes = response_body.collect().await?.to_bytes();
 
-            Ok((parts, response_bytes))
+            Ok(response)
         })
+    }
+
+    fn get_type(&self) -> TransportLayerType {
+        TransportLayerType::Mock
     }
 }
 

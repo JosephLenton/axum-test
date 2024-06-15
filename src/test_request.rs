@@ -14,6 +14,7 @@ use ::http::HeaderName;
 use ::http::HeaderValue;
 use ::http::Method;
 use ::http::Request;
+use ::http_body_util::BodyExt;
 use ::serde::Serialize;
 use ::std::fmt::Debug;
 use ::std::fmt::Display;
@@ -130,32 +131,32 @@ impl TestRequest {
             .content_type(mime::APPLICATION_JSON.essence_str())
     }
 
-    /// Set the body of the request to send up data as MsgPack,
-    /// and changes the content type to `application/msgpack`.
-    #[cfg(feature = "msgpack")]
-    pub fn msgpack<J>(self, body: &J) -> Self
-    where
-        J: ?Sized + Serialize,
-    {
-        let body_bytes =
-            ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
-
-        self.bytes(body_bytes.into())
-            .content_type("application/msgpack")
-    }
-
     /// Set the body of the request to send up data as Yaml,
     /// and changes the content type to `application/yaml`.
     #[cfg(feature = "yaml")]
-    pub fn yaml<J>(self, body: &J) -> Self
+    pub fn yaml<Y>(self, body: &Y) -> Self
     where
-        J: ?Sized + Serialize,
+        Y: ?Sized + Serialize,
     {
         let body =
             ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
 
         self.bytes(body.into_bytes().into())
             .content_type("application/yaml")
+    }
+
+    /// Set the body of the request to send up data as MsgPack,
+    /// and changes the content type to `application/msgpack`.
+    #[cfg(feature = "msgpack")]
+    pub fn msgpack<M>(self, body: &M) -> Self
+    where
+        M: ?Sized + Serialize,
+    {
+        let body_bytes =
+            ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
+
+        self.bytes(body_bytes.into())
+            .content_type("application/msgpack")
     }
 
     /// Sets the body of the request, with the content type
@@ -516,9 +517,8 @@ impl TestRequest {
     /// # }
     /// ```
     ///
-    pub fn expect_success(mut self) -> Self {
-        self.expected_state = ExpectedState::Success;
-        self
+    pub fn expect_success(self) -> Self {
+        self.expect_state(ExpectedState::Success)
     }
 
     /// Marks that this request is expected to return a HTTP status code
@@ -526,8 +526,12 @@ impl TestRequest {
     ///
     /// If a code _within_ the 2xx range is returned,
     /// then this will panic.
-    pub fn expect_failure(mut self) -> Self {
-        self.expected_state = ExpectedState::Failure;
+    pub fn expect_failure(self) -> Self {
+        self.expect_state(ExpectedState::Failure)
+    }
+
+    fn expect_state(mut self, expected_state: ExpectedState) -> Self {
+        self.expected_state = expected_state;
         self
     }
 
@@ -550,23 +554,48 @@ impl TestRequest {
             self.config.headers,
             &debug_request_format,
         )?;
-        let (parts, response_bytes) = self.transport.send(request).await?;
+
+        #[allow(unused_mut)] // Allowed for the `ws` use immediately after.
+        let mut http_response = self.transport.send(request).await?;
+
+        #[cfg(feature = "ws")]
+        let websockets = {
+            let maybe_on_upgrade = http_response
+                .extensions_mut()
+                .remove::<hyper::upgrade::OnUpgrade>();
+            let transport_type = self.transport.get_type();
+
+            crate::internals::TestResponseWebSocket {
+                maybe_on_upgrade,
+                transport_type,
+            }
+        };
+
+        let (parts, response_body) = http_response.into_parts();
+        let response_bytes = response_body.collect().await?.to_bytes();
 
         if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
             ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
         }
 
-        let response = TestResponse::new(method, url, parts, response_bytes);
+        let test_response = TestResponse::new(
+            method,
+            url,
+            parts,
+            response_bytes,
+            #[cfg(feature = "ws")]
+            websockets,
+        );
 
         // Assert if ok or not.
         match expected_state {
-            ExpectedState::Success => response.assert_status_success(),
-            ExpectedState::Failure => response.assert_status_failure(),
+            ExpectedState::Success => test_response.assert_status_success(),
+            ExpectedState::Failure => test_response.assert_status_failure(),
             ExpectedState::None => {}
         }
 
-        Ok(response)
+        Ok(test_response)
     }
 
     fn build_url_query_params(mut url: Url, query_params: &QueryParamsStore) -> Url {

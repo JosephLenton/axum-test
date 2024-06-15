@@ -22,6 +22,11 @@ use ::pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 
+#[cfg(feature = "ws")]
+use crate::internals::TestResponseWebSocket;
+#[cfg(feature = "ws")]
+use crate::TestWebSocket;
+
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
 /// The `TestServer` builds a [`TestRequest`](crate::TestRequest), which when awaited,
@@ -129,6 +134,9 @@ pub struct TestResponse {
     headers: HeaderMap<HeaderValue>,
     status_code: StatusCode,
     response_body: Bytes,
+
+    #[cfg(feature = "ws")]
+    websockets: TestResponseWebSocket,
 }
 
 impl TestResponse {
@@ -137,6 +145,8 @@ impl TestResponse {
         full_request_url: Url,
         parts: Parts,
         response_body: Bytes,
+
+        #[cfg(feature = "ws")] websockets: TestResponseWebSocket,
     ) -> Self {
         Self {
             method,
@@ -144,6 +154,9 @@ impl TestResponse {
             headers: parts.headers,
             status_code: parts.status,
             response_body,
+
+            #[cfg(feature = "ws")]
+            websockets,
         }
     }
 
@@ -566,12 +579,12 @@ impl TestResponse {
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
     #[track_caller]
-    pub fn assert_text<C>(&self, other: C)
+    pub fn assert_text<C>(&self, expected: C)
     where
         C: AsRef<str>,
     {
-        let other_contents = other.as_ref();
-        assert_eq!(other_contents, &self.text());
+        let expected_contents = expected.as_ref();
+        assert_eq!(expected_contents, &self.text());
     }
 
     /// Deserializes the contents of the request as Json,
@@ -580,11 +593,11 @@ impl TestResponse {
     /// If `other` does not match, or the response is not Json,
     /// then this will panic.
     #[track_caller]
-    pub fn assert_json<T>(&self, other: &T)
+    pub fn assert_json<T>(&self, expected: &T)
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
-        assert_eq!(*other, self.json::<T>());
+        assert_eq!(*expected, self.json::<T>());
     }
 
     /// Deserializes the contents of the request as Yaml,
@@ -692,6 +705,15 @@ impl TestResponse {
         self.assert_not_status(StatusCode::OK)
     }
 
+    /// Assert the response status code is 101.
+    ///
+    /// This type of code is used in Web Socket connection when
+    /// first request.
+    #[track_caller]
+    pub fn assert_status_switching_protocols(&self) {
+        self.assert_status(StatusCode::SWITCHING_PROTOCOLS)
+    }
+
     /// Assert the response status code matches the one given.
     #[track_caller]
     pub fn assert_status(&self, expected_status_code: StatusCode) {
@@ -717,6 +739,64 @@ impl TestResponse {
             self.status_code(),
             "Expected status code to not be {expected_debug}, it is, for request {debug_request_format}"
         );
+    }
+
+    /// Consumes the request, turning it into a `TestWebSocket`.
+    /// If this cannot be done, then the response will panic.
+    ///
+    /// *Note*, this requires the server to be running on a real HTTP
+    /// port. Either using a randomly assigned port, or a specified one.
+    /// See the [`TestServerConfig::transport`](crate::TestServerConfig::transport) for more details.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    /// use ::axum_test::TestServerConfig;
+    ///
+    /// let app = Router::new();
+    /// let config = TestServerConfig::builder().http_transport().build();
+    /// let server = TestServer::new_with_config(app, config)?;
+    ///
+    /// let mut websocket = server
+    ///     .get_websocket(&"/my-web-socket-end-point")
+    ///     .await
+    ///     .into_websocket()
+    ///     .await;
+    ///
+    /// websocket.send_text("Hello!").await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    #[cfg(feature = "ws")]
+    #[must_use]
+    pub async fn into_websocket(self) -> TestWebSocket {
+        use crate::transport_layer::TransportLayerType;
+
+        // Using the mock approach will just fail.
+        if self.websockets.transport_type != TransportLayerType::Http {
+            unimplemented!("WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`");
+        }
+
+        let debug_request_format = self.debug_request_format().to_string();
+
+        let on_upgrade = self.websockets.maybe_on_upgrade.with_context(|| {
+            format!("Expected WebSocket upgrade to be found, it is None, for request {debug_request_format}")
+        })
+        .unwrap();
+
+        let upgraded = on_upgrade
+            .await
+            .with_context(|| {
+                format!("Failed to upgrade connection for, for request {debug_request_format}")
+            })
+            .unwrap();
+
+        TestWebSocket::new(upgraded).await
     }
 
     fn debug_request_format<'a>(&'a self) -> RequestPathFormatter<'a> {
@@ -1299,5 +1379,55 @@ mod test_text {
         let response = server.get(&"/text").await.text();
 
         assert_eq!(response, "hello!");
+    }
+}
+
+#[cfg(feature = "ws")]
+#[cfg(test)]
+mod test_into_websocket {
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    use ::axum::extract::ws::WebSocket;
+    use ::axum::extract::WebSocketUpgrade;
+    use ::axum::response::Response;
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    fn new_test_router() -> Router {
+        pub async fn route_get_websocket(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(_) = socket.recv().await {
+                    // do nothing
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws", get(route_get_websocket));
+
+        app
+    }
+
+    #[tokio::test]
+    async fn it_should_upgrade_on_http_transport() {
+        let router = new_test_router();
+        let config = TestServerConfig::builder().http_transport().build();
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        let _ = server.get_websocket(&"/ws").await.into_websocket().await;
+
+        assert!(true);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_fail_to_upgrade_on_mock_transport() {
+        let router = new_test_router();
+        let config = TestServerConfig::builder().mock_transport().build();
+        let server = TestServer::new_with_config(router, config).unwrap();
+
+        let _ = server.get_websocket(&"/ws").await.into_websocket().await;
     }
 }
