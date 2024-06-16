@@ -157,6 +157,20 @@ impl TestWebSocket {
         assert_eq!(expected_contents, &self.receive_text().await);
     }
 
+    pub async fn assert_receive_text_contains<C>(&mut self, expected: C)
+    where
+        C: AsRef<str>,
+    {
+        let expected_contents = expected.as_ref();
+        let received = self.receive_text().await;
+        let is_contained = received.contains(expected_contents);
+
+        assert!(
+            is_contained,
+            "Failed to find '{expected_contents}', received '{received}'"
+        );
+    }
+
     #[cfg(feature = "yaml")]
     pub async fn assert_receive_yaml<T>(&mut self, expected: &T)
     where
@@ -269,12 +283,118 @@ mod test_assert_receive_text {
             .into_websocket()
             .await;
 
-        websocket.send_text("Hello World! 🦊").await;
+        websocket.send_text("Hello World!").await;
 
-        websocket.assert_receive_text("Text: Hello World! 🦊").await;
-        websocket
-            .assert_receive_text("Binary: Hello World! 🦊")
+        websocket.assert_receive_text("Text: Hello World!").await;
+        websocket.assert_receive_text("Binary: Hello World!").await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_not_match_partial_text_match() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
             .await;
+
+        websocket.send_text("Hello World!").await;
+        websocket.assert_receive_text("Hello World!").await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_not_match_different_text() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket.send_text("Hello World!").await;
+        websocket.assert_receive_text("🦊").await;
+    }
+}
+
+#[cfg(test)]
+mod test_assert_receive_text_contains {
+    use crate::TestServer;
+    use crate::TestServerConfig;
+
+    use ::axum::extract::ws::Message;
+    use ::axum::extract::ws::WebSocket;
+    use ::axum::extract::WebSocketUpgrade;
+    use ::axum::response::Response;
+    use ::axum::routing::get;
+    use ::axum::Router;
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(maybe_message) = socket.recv().await {
+                    let message_text = maybe_message.unwrap().into_text().unwrap();
+                    let encoded_text = format!("Text: {message_text}");
+
+                    socket.send(Message::Text(encoded_text)).await.unwrap();
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
+        let config = TestServerConfig::builder().http_transport().build();
+
+        TestServer::new_with_config(app, config).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_assert_whole_text_match() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket.send_text("Hello World!").await;
+        websocket
+            .assert_receive_text_contains("Text: Hello World!")
+            .await;
+    }
+
+    #[tokio::test]
+    async fn it_should_assert_partial_text_match() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket.send_text("Hello World!").await;
+        websocket.assert_receive_text_contains("Hello World!").await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_not_match_different_text() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket.send_text("Hello World!").await;
+        websocket.assert_receive_text_contains("🦊").await;
     }
 }
 

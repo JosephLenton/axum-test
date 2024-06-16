@@ -448,6 +448,28 @@ impl TestRequest {
         self
     }
 
+    /// Adds an 'AUTHORIZATION' HTTP header to the request,
+    /// with no internal formatting of what is given.
+    pub fn authorization<T>(self, authorization_header: T) -> Self
+    where
+        T: AsRef<str>,
+    {
+        let authorization_header_value = HeaderValue::from_str(authorization_header.as_ref())
+            .expect("Cannot build Authorization HeaderValue from token");
+
+        self.add_header(header::AUTHORIZATION, authorization_header_value)
+    }
+
+    /// Adds an 'AUTHORIZATION' HTTP header to the request,
+    /// in the 'Bearer {token}' format.
+    pub fn authorization_bearer<T>(self, authorization_bearer_token: T) -> Self
+    where
+        T: Display,
+    {
+        let authorization_bearer_header_str = format!("Bearer {authorization_bearer_token}");
+        self.authorization(authorization_bearer_header_str)
+    }
+
     /// Clears all headers set.
     pub fn clear_headers(mut self) -> Self {
         self.config.headers = vec![];
@@ -1557,6 +1579,130 @@ mod test_add_header {
 
         // Check it sent back the right text
         response.assert_text(TEST_HEADER_CONTENT)
+    }
+}
+
+#[cfg(test)]
+mod test_authorization {
+    use super::*;
+
+    use ::axum::async_trait;
+    use ::axum::extract::FromRequestParts;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::http::request::Parts;
+    use ::hyper::StatusCode;
+    use ::std::marker::Sync;
+
+    use crate::TestServer;
+
+    fn new_test_server() -> TestServer {
+        struct TestHeader(String);
+
+        #[async_trait]
+        impl<S: Sync> FromRequestParts<S> for TestHeader {
+            type Rejection = (StatusCode, &'static str);
+
+            async fn from_request_parts(
+                parts: &mut Parts,
+                _state: &S,
+            ) -> Result<TestHeader, Self::Rejection> {
+                parts
+                    .headers
+                    .get(header::AUTHORIZATION)
+                    .map(|v| TestHeader(v.to_str().unwrap().to_string()))
+                    .ok_or((StatusCode::BAD_REQUEST, "Missing test header"))
+            }
+        }
+
+        async fn ping_auth_header(TestHeader(header): TestHeader) -> String {
+            header
+        }
+
+        // Build an application with a route.
+        let app = Router::new().route("/auth-header", get(ping_auth_header));
+
+        // Run the server.
+        let mut server = TestServer::new(app).expect("Should create test server");
+        server.expect_success();
+
+        server
+    }
+
+    #[tokio::test]
+    async fn it_should_send_header_added_to_request() {
+        let server = new_test_server();
+
+        // Send a request with the header
+        let response = server
+            .get(&"/auth-header")
+            .authorization("Bearer abc123")
+            .await;
+
+        // Check it sent back the right text
+        response.assert_text("Bearer abc123")
+    }
+}
+
+#[cfg(test)]
+mod test_authorization_bearer {
+    use super::*;
+
+    use ::axum::async_trait;
+    use ::axum::extract::FromRequestParts;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::http::request::Parts;
+    use ::hyper::StatusCode;
+    use ::std::marker::Sync;
+
+    use crate::TestServer;
+
+    fn new_test_server() -> TestServer {
+        struct TestHeader(String);
+
+        #[async_trait]
+        impl<S: Sync> FromRequestParts<S> for TestHeader {
+            type Rejection = (StatusCode, &'static str);
+
+            async fn from_request_parts(
+                parts: &mut Parts,
+                _state: &S,
+            ) -> Result<TestHeader, Self::Rejection> {
+                parts
+                    .headers
+                    .get(header::AUTHORIZATION)
+                    .map(|v| TestHeader(v.to_str().unwrap().to_string().replace("Bearer ", "")))
+                    .ok_or((StatusCode::BAD_REQUEST, "Missing test header"))
+            }
+        }
+
+        async fn ping_auth_header(TestHeader(header): TestHeader) -> String {
+            header
+        }
+
+        // Build an application with a route.
+        let app = Router::new().route("/auth-header", get(ping_auth_header));
+
+        // Run the server.
+        let mut server = TestServer::new(app).expect("Should create test server");
+        server.expect_success();
+
+        server
+    }
+
+    #[tokio::test]
+    async fn it_should_send_header_added_to_request() {
+        let server = new_test_server();
+
+        // Send a request with the header
+        let response = server
+            .get(&"/auth-header")
+            .authorization_bearer("abc123")
+            .await;
+
+        // Check it sent back the right text
+        response.assert_text("abc123")
     }
 }
 
