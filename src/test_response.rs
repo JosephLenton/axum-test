@@ -587,6 +587,22 @@ impl TestResponse {
         assert_eq!(expected_contents, &self.text());
     }
 
+    /// This asserts if the text given is contained, somewhere, within the response.
+    #[track_caller]
+    pub fn assert_text_contains<C>(&self, expected: C)
+    where
+        C: AsRef<str>,
+    {
+        let expected_contents = expected.as_ref();
+        let received = self.text();
+        let is_contained = received.contains(expected_contents);
+
+        assert!(
+            is_contained,
+            "Failed to find '{expected_contents}', received '{received}'"
+        );
+    }
+
     /// Deserializes the contents of the request as Json,
     /// and asserts it matches the value given.
     ///
@@ -1146,6 +1162,94 @@ mod test_form {
                 age: 20,
             }
         );
+    }
+}
+
+#[cfg(test)]
+mod test_assert_text {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+
+    fn new_test_server() -> TestServer {
+        async fn route_get_text() -> &'static str {
+            "This is some example text"
+        }
+
+        let app = Router::new().route(&"/text", get(route_get_text));
+        TestServer::new(app).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_match_whole_text() {
+        let server = new_test_server();
+
+        server
+            .get(&"/text")
+            .await
+            .assert_text("This is some example text");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_not_match_partial_text() {
+        let server = new_test_server();
+
+        server.get(&"/text").await.assert_text("some example");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_not_match_different_text() {
+        let server = new_test_server();
+
+        server.get(&"/text").await.assert_text("🦊");
+    }
+}
+
+#[cfg(test)]
+mod test_assert_text_contains {
+    use crate::TestServer;
+
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+
+    fn new_test_server() -> TestServer {
+        async fn route_get_text() -> &'static str {
+            "This is some example text"
+        }
+
+        let app = Router::new().route(&"/text", get(route_get_text));
+        TestServer::new(app).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_match_whole_text() {
+        let server = new_test_server();
+
+        server
+            .get(&"/text")
+            .await
+            .assert_text_contains("This is some example text");
+    }
+
+    #[tokio::test]
+    async fn it_should_match_partial_text() {
+        let server = new_test_server();
+
+        server
+            .get(&"/text")
+            .await
+            .assert_text_contains("some example");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_not_match_different_text() {
+        let server = new_test_server();
+
+        server.get(&"/text").await.assert_text_contains("🦊");
     }
 }
 
