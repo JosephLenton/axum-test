@@ -173,9 +173,6 @@ fn new_test_app() -> TestServer {
 mod test_websockets_chat {
     use super::*;
 
-    use ::axum_test::WsMessage;
-    use ::serde_json::json;
-
     #[tokio::test]
     async fn it_should_start_a_websocket_connection() {
         let server = new_test_app();
