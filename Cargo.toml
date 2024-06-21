@@ -18,12 +18,13 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["pretty-assertions"]
-all = ["pretty-assertions", "yaml", "msgpack", "typed-routing", "ws"]
+all = ["pretty-assertions", "yaml", "msgpack", "typed-routing", "graphql", "ws"]
 
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 msgpack = ["dep:rmp-serde"]
 typed-routing = ["dep:axum-extra"]
+graphql = []
 ws = ["axum/ws", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
 
 [dependencies]
@@ -67,6 +68,7 @@ tokio-tungstenite = { version = "0.23", optional = true }
 async-trait = "0.1"
 axum = { version = "0.7", features = ["multipart", "tokio", "ws"] }
 axum-extra = { version = "0.9", features = ["cookie", "typed-routing", "query"] }
+async-graphql = "7.0"
 async-graphql-axum = "7.0"
 axum-msgpack = "0.4"
 axum-yaml = "0.4"

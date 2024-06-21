@@ -69,6 +69,7 @@ Here are a list of all features so far that can be enabled:
  * `yaml` _off by default_, adds support for sending, receiving, and asserting, [yaml content](https://yaml.org/).
  * `msgpack` _off by default_, adds support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).
  * `typed-routing` _off by default_, adds support for the `TypedPath` from [axum-extra](https://crates.io/crates/axum-extra).
+ * `graphql` _off by default_, adds support for GraphQL queries and mutations.
  * `ws` _off by default_, adds support for WebSockets.
 
 ## Examples

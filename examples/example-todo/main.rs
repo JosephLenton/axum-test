@@ -64,7 +64,6 @@ async fn main() {
 
 type SharedAppState = Arc<RwLock<AppState>>;
 
-// This my poor mans in memory DB.
 #[derive(Debug)]
 pub struct AppState {
     user_todos: HashMap<u32, Vec<Todo>>,
@@ -91,16 +90,36 @@ pub struct NumTodos {
     num: u32,
 }
 
-// Note you should never do something like this in a real application
-// for session cookies. It's really bad. Like _seriously_ bad.
-//
-// This is done like this here to keep the code shorter. That's all.
-fn get_user_id_from_cookie(cookies: &CookieJar) -> Result<u32> {
-    cookies
-        .get(&USER_ID_COOKIE_NAME)
-        .map(|c| c.value().to_string().parse::<u32>().ok())
-        .flatten()
-        .ok_or_else(|| anyhow!("id not found"))
+/// Build my application, with all it's endpoints.
+pub(crate) fn new_app() -> Router {
+    let state = AppState {
+        user_todos: HashMap::new(),
+    };
+    let shared_state = Arc::new(RwLock::new(state));
+
+    Router::new()
+        .route(&"/login", post(route_post_user_login))
+        .route(&"/todo", get(route_get_user_todos))
+        .route(&"/todo", put(route_put_user_todos))
+        .with_state(shared_state)
+}
+
+/// Build a common `axum_test::TestServer` for use in our tests.
+///
+/// This test server will run the todo application,
+/// and have any default settings I like.
+#[cfg(test)]
+fn new_test_app() -> TestServer {
+    let app = new_app();
+    let config = TestServerConfig::builder()
+        // Preserve cookies across requests
+        // for the session cookie to work.
+        .save_cookies()
+        .expect_success_by_default()
+        .mock_transport()
+        .build();
+
+    TestServer::new_with_config(app, config).unwrap()
 }
 
 pub async fn route_post_user_login(
@@ -147,31 +166,17 @@ pub async fn route_get_user_todos(
     Ok(Json(todos))
 }
 
-pub(crate) fn new_app() -> Router {
-    let state = AppState {
-        user_todos: HashMap::new(),
-    };
-    let shared_state = Arc::new(RwLock::new(state));
-
-    Router::new()
-        .route(&"/login", post(route_post_user_login))
-        .route(&"/todo", get(route_get_user_todos))
-        .route(&"/todo", put(route_put_user_todos))
-        .with_state(shared_state)
-}
-
-#[cfg(test)]
-fn new_test_app() -> TestServer {
-    let app = new_app();
-    let config = TestServerConfig::builder()
-        // Preserve cookies across requests
-        // for the session cookie to work.
-        .save_cookies()
-        .expect_success_by_default()
-        .mock_transport()
-        .build();
-
-    TestServer::new_with_config(app, config).unwrap()
+// Note you should never do something like this in a real application
+// for session cookies. This is insecure, as the user is declaring who
+// they are, without authentication.
+//
+// This is done like this here to keep the code short.
+fn get_user_id_from_cookie(cookies: &CookieJar) -> Result<u32> {
+    cookies
+        .get(&USER_ID_COOKIE_NAME)
+        .map(|c| c.value().to_string().parse::<u32>().ok())
+        .flatten()
+        .ok_or_else(|| anyhow!("id not found"))
 }
 
 #[cfg(test)]

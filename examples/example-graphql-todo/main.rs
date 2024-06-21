@@ -10,29 +10,25 @@
 //! At the bottom of this file are a series of tests for these endpoints.
 //!
 
-use ::anyhow::anyhow;
 use ::anyhow::Result;
-use ::axum::extract::Json;
-use ::axum::extract::State;
-use ::axum::routing::get;
-use ::axum::routing::post;
-use ::axum::routing::put;
+use ::async_graphql::Context;
+use ::async_graphql::EmptySubscription;
+use ::async_graphql::Object;
+use ::async_graphql::Schema;
+use ::async_graphql::ID;
+use ::async_graphql_axum::GraphQL;
+use ::axum::routing::post_service;
 use ::axum::serve::serve;
 use ::axum::Router;
-use ::axum_extra::extract::cookie::Cookie;
-use ::axum_extra::extract::cookie::CookieJar;
-use ::http::StatusCode;
 use ::serde::Deserialize;
 use ::serde::Serialize;
-use ::serde_email::Email;
 use ::std::collections::HashMap;
 use ::std::net::IpAddr;
 use ::std::net::Ipv4Addr;
 use ::std::net::SocketAddr;
-use ::std::result::Result as StdResult;
 use ::std::sync::Arc;
-use ::std::sync::RwLock;
 use ::tokio::net::TcpListener;
+use ::tokio::sync::Mutex;
 
 #[cfg(test)]
 use ::axum_test::TestServer;
@@ -40,7 +36,6 @@ use ::axum_test::TestServer;
 use ::axum_test::TestServerConfig;
 
 const PORT: u16 = 8080;
-const USER_ID_COOKIE_NAME: &'static str = &"example-todo-user-id";
 
 #[tokio::main]
 async fn main() {
@@ -62,104 +57,49 @@ async fn main() {
     };
 }
 
-type SharedAppState = Arc<RwLock<AppState>>;
+type SharedAppState = Arc<Mutex<AppState>>;
 
-// This my poor mans in memory DB.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AppState {
     user_todos: HashMap<u32, Vec<Todo>>,
+    todo_id_counter: u32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Todo {
+    id: ID,
     name: String,
     content: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct LoginRequest {
-    user: Email,
+#[Object]
+impl Todo {
+    async fn id(&self) -> &str {
+        &self.id
+    }
+
+    async fn name(&self) -> &str {
+        &self.name
+    }
+
+    async fn content(&self) -> &str {
+        &self.content
+    }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct AllTodos {
-    todos: Vec<Todo>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct NumTodos {
-    num: u32,
-}
-
-// Note you should never do something like this in a real application
-// for session cookies. It's really bad. Like _seriously_ bad.
-//
-// This is done like this here to keep the code shorter. That's all.
-fn get_user_id_from_cookie(cookies: &CookieJar) -> Result<u32> {
-    cookies
-        .get(&USER_ID_COOKIE_NAME)
-        .map(|c| c.value().to_string().parse::<u32>().ok())
-        .flatten()
-        .ok_or_else(|| anyhow!("id not found"))
-}
-
-pub async fn route_post_user_login(
-    State(ref mut state): State<SharedAppState>,
-    mut cookies: CookieJar,
-    Json(_body): Json<LoginRequest>,
-) -> CookieJar {
-    let mut lock = state.write().unwrap();
-    let user_todos = &mut lock.user_todos;
-    let user_id = user_todos.len() as u32;
-    user_todos.insert(user_id, vec![]);
-
-    let really_insecure_login_cookie = Cookie::new(USER_ID_COOKIE_NAME, user_id.to_string());
-    cookies = cookies.add(really_insecure_login_cookie);
-
-    cookies
-}
-
-pub async fn route_put_user_todos(
-    State(ref mut state): State<SharedAppState>,
-    mut cookies: CookieJar,
-    Json(todo): Json<Todo>,
-) -> StdResult<Json<u32>, StatusCode> {
-    let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
-
-    let mut lock = state.write().unwrap();
-    let todos = lock.user_todos.get_mut(&user_id).unwrap();
-
-    todos.push(todo);
-    let num_todos = todos.len() as u32;
-
-    Ok(Json(num_todos))
-}
-
-pub async fn route_get_user_todos(
-    State(ref state): State<SharedAppState>,
-    mut cookies: CookieJar,
-) -> StdResult<Json<Vec<Todo>>, StatusCode> {
-    let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
-
-    let lock = state.read().unwrap();
-    let todos = lock.user_todos[&user_id].clone();
-
-    Ok(Json(todos))
-}
-
+/// Build my application, with all it's endpoints.
 pub(crate) fn new_app() -> Router {
-    let state = AppState {
-        user_todos: HashMap::new(),
-    };
-    let shared_state = Arc::new(RwLock::new(state));
+    let schema = Schema::build(AppQueryRoot, AppMutationRoot, EmptySubscription)
+        .data(SharedAppState::default())
+        .finish();
 
-    Router::new()
-        .route(&"/login", post(route_post_user_login))
-        .route(&"/todo", get(route_get_user_todos))
-        .route(&"/todo", put(route_put_user_todos))
-        .with_state(shared_state)
+    Router::new().route("/", post_service(GraphQL::new(schema)))
 }
 
+/// Build a common `axum_test::TestServer` for use in our tests.
+///
+/// This test server will run the todo application,
+/// and have any default settings I like.
 #[cfg(test)]
 fn new_test_app() -> TestServer {
     let app = new_app();
@@ -172,6 +112,65 @@ fn new_test_app() -> TestServer {
         .build();
 
     TestServer::new_with_config(app, config).unwrap()
+}
+
+pub struct AppQueryRoot;
+
+#[Object]
+impl AppQueryRoot {
+    async fn todos(&self, ctx: &Context<'_>, user_id: u32) -> Vec<Todo> {
+        let state = ctx.data_unchecked::<SharedAppState>().lock().await;
+        let all_user_todos = state
+            .user_todos
+            .get(&user_id)
+            .cloned()
+            .unwrap_or_else(|| vec![]);
+
+        all_user_todos
+    }
+}
+
+pub struct AppMutationRoot;
+
+#[Object]
+impl AppMutationRoot {
+    async fn create_todo(
+        &self,
+        ctx: &Context<'_>,
+        user_id: u32,
+        name: String,
+        content: String,
+    ) -> ID {
+        let mut state = ctx.data_unchecked::<SharedAppState>().lock().await;
+
+        // Increment ID for the next Todo
+        state.todo_id_counter += 1;
+        let todo_id: ID = state.todo_id_counter.into();
+
+        // Add the new Todo
+        let user_todos = state.user_todos.entry(user_id).or_default();
+        user_todos.push(Todo {
+            id: todo_id.clone(),
+            name,
+            content,
+        });
+
+        todo_id
+    }
+
+    async fn delete_todo(&self, ctx: &Context<'_>, user_id: u32, id: ID) -> Result<bool> {
+        let mut state = ctx.data_unchecked::<SharedAppState>().lock().await;
+
+        if let Some(user_todos) = state.user_todos.get_mut(&user_id) {
+            let pre_size = user_todos.len();
+            user_todos.retain(|todo| todo.id != id);
+
+            let is_deleted = pre_size != user_todos.len();
+            return Ok(is_deleted);
+        }
+
+        Ok(false)
+    }
 }
 
 #[cfg(test)]

@@ -3,6 +3,7 @@
 set -e
 
 cargo check
+cargo test --example=example-graphql-todo --features graphql
 cargo test --example=example-todo
 cargo test --example=example-websocket-ping-pong --features ws
 cargo test --example=example-websocket-chat --features ws
@@ -16,4 +17,5 @@ cargo check --features pretty-assertions
 cargo check --features yaml
 cargo check --features msgpack
 cargo check --features typed-routing
+cargo check --features graphql
 cargo check --features ws
