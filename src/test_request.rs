@@ -2,6 +2,8 @@ use ::anyhow::anyhow;
 use ::anyhow::Context;
 use ::anyhow::Error as AnyhowError;
 use ::anyhow::Result;
+#[cfg(feature = "graphql")]
+use ::async_graphql::Request as GraphQlRequest;
 use ::auto_future::AutoFuture;
 use ::axum::body::Body;
 use ::bytes::Bytes;
@@ -129,6 +131,13 @@ impl TestRequest {
 
         self.bytes(body_bytes.into())
             .content_type(mime::APPLICATION_JSON.essence_str())
+    }
+
+    /// Set a GraphQL Request as the body,
+    /// and changes the content type to `application/json`.
+    #[cfg(feature = "graphql")]
+    pub fn graphql<Y>(self, body: &GraphQlRequest) -> Self {
+        self.json(body)
     }
 
     /// Set the body of the request to send up data as Yaml,

@@ -174,161 +174,17 @@ impl AppMutationRoot {
 }
 
 #[cfg(test)]
-mod test_post_login {
+mod test_todos {
     use super::*;
 
     use ::serde_json::json;
 
     #[tokio::test]
-    async fn it_should_create_session_on_login() {
+    async fn it_should_return_none_by_default() {
         let server = new_test_app();
 
-        let response = server
-            .post(&"/login")
-            .json(&json!({
-                "user": "my-login@example.com",
-            }))
-            .await;
+        let response = server.post(&"/").graphql(&unimplemented!("todo")).await;
 
-        let session_cookie = response.cookie(&USER_ID_COOKIE_NAME);
         assert_ne!(session_cookie.value(), "");
-    }
-
-    #[tokio::test]
-    async fn it_should_not_login_using_non_email() {
-        let server = new_test_app();
-
-        let response = server
-            .post(&"/login")
-            .json(&json!({
-                "user": "blah blah blah",
-            }))
-            .expect_failure()
-            .await;
-
-        // There should not be a session created.
-        let cookie = response.maybe_cookie(&USER_ID_COOKIE_NAME);
-        assert!(cookie.is_none());
-    }
-}
-
-#[cfg(test)]
-mod test_route_put_user_todos {
-    use super::*;
-
-    use ::serde_json::json;
-
-    #[tokio::test]
-    async fn it_should_not_store_todos_without_login() {
-        let server = new_test_app();
-
-        let response = server
-            .put(&"/todo")
-            .json(&json!({
-                "name": "shopping",
-                "content": "buy eggs",
-            }))
-            .expect_failure()
-            .await;
-
-        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[tokio::test]
-    async fn it_should_return_number_of_todos_as_more_are_pushed() {
-        let server = new_test_app();
-
-        server
-            .post(&"/login")
-            .json(&json!({
-                "user": "my-login@example.com",
-            }))
-            .await;
-
-        let num_todos = server
-            .put(&"/todo")
-            .json(&json!({
-                "name": "shopping",
-                "content": "buy eggs",
-            }))
-            .await
-            .json::<u32>();
-        assert_eq!(num_todos, 1);
-
-        let num_todos = server
-            .put(&"/todo")
-            .json(&json!({
-                "name": "afternoon",
-                "content": "buy shoes",
-            }))
-            .await
-            .json::<u32>();
-        assert_eq!(num_todos, 2);
-    }
-}
-
-#[cfg(test)]
-mod test_route_get_user_todos {
-    use super::*;
-
-    use ::serde_json::json;
-
-    #[tokio::test]
-    async fn it_should_not_return_todos_if_logged_out() {
-        let server = new_test_app();
-
-        let response = server
-            .put(&"/todo")
-            .json(&json!({
-                "name": "shopping",
-                "content": "buy eggs",
-            }))
-            .expect_failure()
-            .await;
-
-        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[tokio::test]
-    async fn it_should_return_all_todos_when_logged_in() {
-        let server = new_test_app();
-
-        server
-            .post(&"/login")
-            .json(&json!({
-                "user": "my-login@example.com",
-            }))
-            .await;
-
-        // Push two todos.
-        server
-            .put(&"/todo")
-            .json(&json!({
-                "name": "shopping",
-                "content": "buy eggs",
-            }))
-            .await;
-        server
-            .put(&"/todo")
-            .json(&json!({
-                "name": "afternoon",
-                "content": "buy shoes",
-            }))
-            .await;
-
-        // Get all todos out from the server.
-        let todos = server.get(&"/todo").await.json::<Vec<Todo>>();
-
-        let expected_todos: Vec<Todo> = vec![
-            Todo {
-                name: "shopping".to_string(),
-                content: "buy eggs".to_string(),
-            },
-            Todo {
-                name: "afternoon".to_string(),
-                content: "buy shoes".to_string(),
-            },
-        ];
-        assert_eq!(todos, expected_todos)
     }
 }
