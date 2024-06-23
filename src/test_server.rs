@@ -1853,6 +1853,68 @@ mod test_scheme {
     }
 }
 
+#[cfg(feature = "ws")]
+#[cfg(test)]
+mod test_get_websocket {
+    use super::*;
+
+    use ::axum::extract::ws::WebSocket;
+    use ::axum::extract::WebSocketUpgrade;
+    use ::axum::response::Response;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::serde_json::json;
+
+    pub(crate) fn new_app() -> Router {
+        pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        async fn handle_ping_pong(mut socket: WebSocket) {
+            while let Some(msg) = socket.recv().await {
+                let msg = if let Ok(msg) = msg {
+                    msg
+                } else {
+                    // client disconnected
+                    return;
+                };
+
+                if socket.send(msg).await.is_err() {
+                    // client disconnected
+                    return;
+                }
+            }
+        }
+
+        Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong))
+    }
+
+    #[tokio::test]
+    async fn it_should_run_for_http_server() {
+        let config = TestServerConfig::builder().http_transport().build();
+        let server = TestServer::new_with_config(new_app(), config).unwrap();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+        websocket
+            .assert_receive_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+    }
+}
+
 #[cfg(feature = "typed-routing")]
 #[cfg(test)]
 mod test_typed_get {
