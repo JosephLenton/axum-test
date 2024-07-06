@@ -8,7 +8,7 @@ use ::std::future::Future;
 use ::std::pin::Pin;
 use ::url::Url;
 
-pub trait TransportLayer: Debug + Send {
+pub trait TransportLayer: Debug + Send + Sync {
     fn send<'a>(
         &'a self,
         request: Request<Body>,

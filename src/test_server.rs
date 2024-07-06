@@ -2117,3 +2117,27 @@ mod test_typed_method {
             .assert_text("delete 123");
     }
 }
+
+#[cfg(test)]
+mod test_sync {
+    use super::*;
+    use axum::routing::get;
+    use axum::Router;
+    use std::cell::OnceCell;
+
+    #[tokio::test]
+    async fn it_should_be_able_to_be_in_one_cell() {
+        let cell: OnceCell<TestServer> = OnceCell::new();
+        let server = cell.get_or_init(|| {
+            async fn route_get() -> &'static str {
+                "it works"
+            }
+
+            let router = Router::new().route("/test", get(route_get));
+
+            TestServer::new(router).unwrap()
+        });
+
+        server.get("/test").await.assert_text("it works");
+    }
+}
