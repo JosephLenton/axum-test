@@ -648,6 +648,7 @@ impl TestRequest {
         }
 
         // Add all the non-expired cookies as headers
+        // Also strip cookies from their attributes, only their names and values should be preserved to conform the HTTP standard
         let now = OffsetDateTime::now_utc();
         for cookie in cookies.iter() {
             let expired = cookie
@@ -656,6 +657,7 @@ impl TestRequest {
                 .unwrap_or(false);
 
             if !expired {
+                let cookie = Cookie::new(cookie.name(), cookie.value());
                 let cookie_raw = cookie.to_string();
                 let header_value = HeaderValue::from_str(&cookie_raw)?;
                 request_builder = request_builder.header(header::COOKIE, header_value);
