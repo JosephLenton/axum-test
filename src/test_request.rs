@@ -648,6 +648,7 @@ impl TestRequest {
         }
 
         // Add all the non-expired cookies as headers
+        // Also strip cookies from their attributes, only their names and values should be preserved to conform the HTTP standard
         let now = OffsetDateTime::now_utc();
         for cookie in cookies.iter() {
             let expired = cookie
@@ -656,7 +657,7 @@ impl TestRequest {
                 .unwrap_or(false);
 
             if !expired {
-                let cookie_raw = cookie.to_string();
+                let cookie_raw = cookie.stripped().to_string();
                 let header_value = HeaderValue::from_str(&cookie_raw)?;
                 request_builder = request_builder.header(header::COOKIE, header_value);
             }
@@ -1368,11 +1369,13 @@ mod test_add_cookie {
 mod test_add_cookies {
     use crate::TestServer;
 
+    use ::axum::http::header::HeaderMap;
     use ::axum::routing::get;
     use ::axum::Router;
     use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
     use ::cookie::Cookie;
     use ::cookie::CookieJar;
+    use ::cookie::SameSite;
 
     async fn route_get_cookies(cookies: AxumCookieJar) -> String {
         let mut all_cookies = cookies
@@ -1382,6 +1385,17 @@ mod test_add_cookies {
         all_cookies.sort();
 
         all_cookies.join(&", ")
+    }
+
+    async fn get_cookie_headers_joined(headers: HeaderMap) -> String {
+        let cookies: String = headers
+            .get_all("cookie")
+            .into_iter()
+            .map(|c| c.to_str().unwrap_or("").to_string())
+            .reduce(|a, b| a + "; " + &b)
+            .unwrap_or_else(|| String::new());
+
+        cookies
     }
 
     #[tokio::test]
@@ -1401,6 +1415,102 @@ mod test_add_cookies {
             .add_cookies(cookie_jar)
             .await
             .assert_text("first-cookie=my-custom-cookie, second-cookie=other-cookie");
+    }
+
+    #[tokio::test]
+    async fn it_should_send_all_cookies_stripped_by_their_attributes() {
+        let app = Router::new().route("/cookies", get(get_cookie_headers_joined));
+        let server = TestServer::new(app).expect("Should create test server");
+
+        const TEST_COOKIE_NAME: &'static str = &"test-cookie";
+        const TEST_COOKIE_VALUE: &'static str = &"my-custom-cookie";
+
+        // Build cookie to send up
+        let cookie = Cookie::build((TEST_COOKIE_NAME, TEST_COOKIE_VALUE))
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::Strict)
+            .path("/cookie")
+            .build();
+        let mut cookie_jar = CookieJar::new();
+        cookie_jar.add(cookie);
+
+        server
+            .get(&"/cookies")
+            .add_cookies(cookie_jar)
+            .await
+            .assert_text(format!("{}={}", TEST_COOKIE_NAME, TEST_COOKIE_VALUE));
+    }
+}
+
+#[cfg(test)]
+mod test_do_save_cookies {
+    use crate::TestServer;
+
+    use ::axum::extract::Request;
+    use ::axum::http::header::HeaderMap;
+    use ::axum::routing::get;
+    use ::axum::routing::put;
+    use ::axum::Router;
+    use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use ::cookie::Cookie;
+    use ::cookie::SameSite;
+    use ::http_body_util::BodyExt;
+
+    const TEST_COOKIE_NAME: &'static str = &"test-cookie";
+
+    async fn put_cookie_with_attributes(
+        mut cookies: AxumCookieJar,
+        request: Request,
+    ) -> (AxumCookieJar, &'static str) {
+        let body_bytes = request
+            .into_body()
+            .collect()
+            .await
+            .expect("Should turn the body into bytes")
+            .to_bytes();
+
+        let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
+        let cookie = Cookie::build((TEST_COOKIE_NAME, body_text))
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::Strict)
+            .path("/cookie")
+            .build();
+        cookies = cookies.add(cookie);
+
+        (cookies, &"done")
+    }
+
+    async fn get_cookie_headers_joined(headers: HeaderMap) -> String {
+        let cookies: String = headers
+            .get_all("cookie")
+            .into_iter()
+            .map(|c| c.to_str().unwrap_or("").to_string())
+            .reduce(|a, b| a + "; " + &b)
+            .unwrap_or_else(|| String::new());
+
+        cookies
+    }
+
+    #[tokio::test]
+    async fn it_should_strip_cookies_from_their_attributes() {
+        let app = Router::new()
+            .route("/cookie", put(put_cookie_with_attributes))
+            .route("/cookie", get(get_cookie_headers_joined));
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Create a cookie.
+        server
+            .put(&"/cookie")
+            .text(&"cookie-found!")
+            .do_save_cookies()
+            .await;
+
+        // Check, only the cookie names and their values should come back.
+        let response_text = server.get(&"/cookie").await.text();
+
+        assert_eq!(response_text, format!("{}=cookie-found!", TEST_COOKIE_NAME));
     }
 }
 
