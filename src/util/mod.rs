@@ -6,3 +6,6 @@ pub use self::new_random_socket_addr::*;
 
 mod new_random_tcp_listener;
 pub use self::new_random_tcp_listener::*;
+
+mod new_random_tokio_tcp_listener;
+pub use self::new_random_tokio_tcp_listener::*;
