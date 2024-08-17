@@ -1,7 +1,7 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "15.3.1"
+version = "15.4.0"
 rust-version = "1.75"
 edition = "2021"
 license = "MIT"
@@ -30,12 +30,12 @@ ws = ["axum/ws", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures
 auto-future = "1.0"
 axum = { version = "0.7", features = ["tokio"] }
 anyhow = "1.0"
-bytes = "1.6"
+bytes = "1.7"
 cookie = "0.18"
 http = "1.1"
 http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["client", "http1", "client-legacy"] }
-hyper = { version = "1.3", features = ["http1"] }
+hyper = { version = "1.4", features = ["http1"] }
 mime = "0.3"
 rust-multipart-rfc7578_2 = "0.6"
 pretty_assertions = { version = "1.4", optional = true }
@@ -44,8 +44,8 @@ serde = { version = "1.0" }
 serde_json = "1.0"
 serde_urlencoded = "0.7"
 smallvec = "1.13"
-tokio = { version = "1.38", features = ["rt", "time"] }
-tower = { version = "0.4", features = ["util", "make"] }
+tokio = { version = "1.39", features = ["rt", "time"] }
+tower = { version = "0.5", features = ["util", "make"] }
 url = "2.5"
 
 # Yaml
@@ -58,7 +58,7 @@ rmp-serde = { version = "1.3", optional = true }
 axum-extra = { version = "0.9", features = ["typed-routing"], optional = true }
 
 # WebSockets
-uuid = { version = "1.8", optional = true, features = ["v4"]}
+uuid = { version = "1.10", optional = true, features = ["v4"]}
 base64 = { version = "0.22", optional = true }
 futures-util = { version = "0.3", optional = true }
 tokio-tungstenite = { version = "0.23", optional = true }
@@ -73,7 +73,7 @@ futures-util = "0.3"
 local-ip-address = "0.6"
 regex = "1.10"
 serde-email = { version = "3.0", features = ["serde"] }
-tokio = { version = "1.38", features = ["rt", "rt-multi-thread", "time", "macros"] }
+tokio = { version = "1.39", features = ["rt", "rt-multi-thread", "time", "macros"] }
 
 [[example]]
 name = "example-todo"
