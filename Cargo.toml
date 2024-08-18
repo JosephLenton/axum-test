@@ -17,8 +17,10 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["pretty-assertions"]
-all = ["pretty-assertions", "yaml", "msgpack", "shuttle", "typed-routing", "ws"]
+default = ["pretty-assertions", "reqwest"]
+# default = ["pretty-assertions"]
+
+all = ["pretty-assertions", "yaml", "msgpack", "reqwest", "shuttle", "typed-routing", "ws"]
 
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
@@ -26,6 +28,7 @@ msgpack = ["dep:rmp-serde"]
 shuttle = ["dep:shuttle-axum"]
 typed-routing = ["dep:axum-extra"]
 ws = ["axum/ws", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
+reqwest = ["dep:reqwest"]
 
 [dependencies]
 auto-future = "1.0"
@@ -66,6 +69,9 @@ uuid = { version = "1.10", optional = true, features = ["v4"]}
 base64 = { version = "0.22", optional = true }
 futures-util = { version = "0.3", optional = true }
 tokio-tungstenite = { version = "0.23", optional = true }
+
+# Reqwest
+reqwest = { version = "0.12.5", optional = true }
 
 [dev-dependencies]
 async-trait = "0.1"

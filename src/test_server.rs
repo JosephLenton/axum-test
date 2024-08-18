@@ -16,6 +16,12 @@ use url::Url;
 #[cfg(feature = "typed-routing")]
 use axum_extra::routing::TypedPath;
 
+#[cfg(feature = "reqwest")]
+use ::reqwest::Client;
+
+#[cfg(feature = "reqwest")]
+use ::reqwest::ClientBuilder;
+
 use crate::internals::ExpectedState;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
@@ -29,6 +35,7 @@ mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
 use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
+use reqwest::dns::Resolve;
 
 const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 
@@ -628,6 +635,24 @@ impl TestServer {
             query_params,
             headers,
         })
+    }
+
+    #[cfg(feature = "reqwest")]
+    pub fn reqwest_client_builder(&self) -> ClientBuilder {
+        Client::builder().dns_resolver(std::sync::Arc::new(MyResolver))
+    }
+}
+
+struct MyResolver;
+impl Resolve for MyResolver {
+    fn resolve(&self, name: reqwest::dns::Name) -> reqwest::dns::Resolving {
+        println!("the request is ... {name:?}");
+        let the_future = async {
+            unimplemented!("todo")
+            // Err(anyhow!("todo"))
+        };
+
+        Box::pin(the_future)
     }
 }
 
@@ -2401,5 +2426,33 @@ mod test_sync {
         });
 
         server.get("/test").await.assert_text("it works");
+    }
+}
+
+#[cfg(test)]
+mod test_reqwest_client_builder {
+    use super::*;
+    use axum::Router;
+    use axum::routing::get;
+
+    #[tokio::test]
+    async fn it_should_print_name_used() {
+        async fn route_get() -> &'static str {
+            "it works"
+        }
+
+        let router = Router::new().route("/test", get(route_get));
+        let server = TestServer::new(router).unwrap();
+
+        println!("pre ...");
+        let result = server
+            .reqwest_client_builder()
+            .build()
+            .unwrap()
+            .get("/test")
+            .send()
+            .await;
+        result.unwrap();
+        println!("post ...");
     }
 }
