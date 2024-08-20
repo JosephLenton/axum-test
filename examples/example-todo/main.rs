@@ -169,7 +169,7 @@ fn new_test_app() -> TestServer {
         .save_cookies()
         .expect_success_by_default()
         .mock_transport()
-        .build_app(app)
+        .build_server(app)
         .unwrap()
 }
 

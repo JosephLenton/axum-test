@@ -164,7 +164,7 @@ fn new_test_app() -> TestServer {
     let app = new_app();
     TestServerConfig::builder()
         .http_transport() // Important! It must be a HTTP Transport here.
-        .build_app(app)
+        .build_server(app)
         .unwrap()
 }
 
