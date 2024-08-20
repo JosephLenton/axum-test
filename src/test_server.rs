@@ -638,6 +638,11 @@ impl TestServer {
     }
 
     #[cfg(feature = "reqwest")]
+    pub fn reqwest_client(&self) -> Result<Client> {
+        self.reqwest_client_builder().build().map_err(Into::into)
+    }
+
+    #[cfg(feature = "reqwest")]
     pub fn reqwest_client_builder(&self) -> ClientBuilder {
         Client::builder().dns_resolver(std::sync::Arc::new(MyResolver))
     }
@@ -2432,8 +2437,8 @@ mod test_sync {
 #[cfg(test)]
 mod test_reqwest_client_builder {
     use super::*;
-    use axum::Router;
     use axum::routing::get;
+    use axum::Router;
 
     #[tokio::test]
     async fn it_should_print_name_used() {

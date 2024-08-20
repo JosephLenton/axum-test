@@ -201,6 +201,11 @@ pub mod util;
 mod test_request;
 pub use self::test_request::*;
 
+#[cfg(feature = "reqwest")]
+mod test_reqwest_client;
+#[cfg(feature = "reqwest")]
+pub use self::test_reqwest_client::*;
+
 mod test_response;
 pub use self::test_response::*;
 
