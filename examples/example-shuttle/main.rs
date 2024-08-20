@@ -1,9 +1,10 @@
 //!
-//! This is an example Todo Application to show some simple tests.
+//! This is an example Todo Application, wrapped with Shuttle.
+//! To show some simple tests when using Shuttle + Axum.
 //!
 //! ```bash
 //! # To run it's tests:
-//! cargo test --example=example-todo
+//! cargo test --example=example-shuttle --features shuttle
 //! ```
 //!
 //! The app includes the end points for ...
@@ -22,7 +23,6 @@ use ::axum::extract::State;
 use ::axum::routing::get;
 use ::axum::routing::post;
 use ::axum::routing::put;
-use ::axum::serve::serve;
 use ::axum::Router;
 use ::axum_extra::extract::cookie::Cookie;
 use ::axum_extra::extract::cookie::CookieJar;
@@ -31,41 +31,51 @@ use ::serde::Deserialize;
 use ::serde::Serialize;
 use ::serde_email::Email;
 use ::std::collections::HashMap;
-use ::std::net::IpAddr;
-use ::std::net::Ipv4Addr;
-use ::std::net::SocketAddr;
 use ::std::result::Result as StdResult;
 use ::std::sync::Arc;
 use ::std::sync::RwLock;
-use ::tokio::net::TcpListener;
 
 #[cfg(test)]
 use ::axum_test::TestServer;
 #[cfg(test)]
 use ::axum_test::TestServerConfig;
 
-const PORT: u16 = 8080;
-const USER_ID_COOKIE_NAME: &'static str = &"example-todo-user-id";
-
-#[tokio::main]
-async fn main() {
-    let result: Result<()> = {
-        let app = new_app();
-
-        // Start!
-        let ip_address = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
-        let address = SocketAddr::new(ip_address, PORT);
-        let listener = TcpListener::bind(address).await.unwrap();
-        serve(listener, app.into_make_service()).await.unwrap();
-
-        Ok(())
-    };
-
-    match &result {
-        Err(err) => eprintln!("{}", err),
-        _ => {}
-    };
+/// Main to start Shuttle application
+#[shuttle_runtime::main]
+async fn main() -> ::shuttle_axum::ShuttleAxum {
+    new_app()
 }
+
+/// The Shuttle application itself
+fn new_app() -> ::shuttle_axum::ShuttleAxum {
+    let state = AppState {
+        user_todos: HashMap::new(),
+    };
+    let shared_state = Arc::new(RwLock::new(state));
+
+    let app = Router::new()
+        .route(&"/login", post(route_post_user_login))
+        .route(&"/todo", get(route_get_user_todos))
+        .route(&"/todo", put(route_put_user_todos))
+        .with_state(shared_state);
+
+    Ok(app.into())
+}
+
+/// A TestServer that runs the Shuttle application
+#[cfg(test)]
+fn new_test_app() -> TestServer {
+    TestServerConfig::builder()
+        // Preserve cookies across requests
+        // for the session cookie to work.
+        .save_cookies()
+        .expect_success_by_default()
+        .mock_transport()
+        .build_server(new_app()) // <- here the application is passed in
+        .unwrap()
+}
+
+const USER_ID_COOKIE_NAME: &'static str = &"example-shuttle-user-id";
 
 type SharedAppState = Arc<RwLock<AppState>>;
 
@@ -150,32 +160,6 @@ pub async fn route_get_user_todos(
     let todos = lock.user_todos[&user_id].clone();
 
     Ok(Json(todos))
-}
-
-pub(crate) fn new_app() -> Router {
-    let state = AppState {
-        user_todos: HashMap::new(),
-    };
-    let shared_state = Arc::new(RwLock::new(state));
-
-    Router::new()
-        .route(&"/login", post(route_post_user_login))
-        .route(&"/todo", get(route_get_user_todos))
-        .route(&"/todo", put(route_put_user_todos))
-        .with_state(shared_state)
-}
-
-#[cfg(test)]
-fn new_test_app() -> TestServer {
-    let app = new_app();
-    TestServerConfig::builder()
-        // Preserve cookies across requests
-        // for the session cookie to work.
-        .save_cookies()
-        .expect_success_by_default()
-        .mock_transport()
-        .build_server(app)
-        .unwrap()
 }
 
 #[cfg(test)]

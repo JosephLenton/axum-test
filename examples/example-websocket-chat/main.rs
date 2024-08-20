@@ -3,6 +3,11 @@
 //!
 //! At the bottom of this file are a series of tests for using websockets.
 //!
+//! ```bash
+//! # To run it's tests:
+//! cargo test --example=example-websocket-chat --features ws
+//! ```
+//!
 
 use ::anyhow::Result;
 use ::axum::extract::ws::WebSocket;
