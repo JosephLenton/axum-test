@@ -3,6 +3,7 @@
 set -e
 
 cargo check
+cargo test --example=example-shuttle --features shuttle
 cargo test --example=example-todo
 cargo test --example=example-websocket-ping-pong --features ws
 cargo test --example=example-websocket-chat --features ws
