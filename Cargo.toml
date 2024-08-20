@@ -18,11 +18,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["pretty-assertions"]
-all = ["pretty-assertions", "yaml", "msgpack", "typed-routing", "ws"]
+all = ["pretty-assertions", "yaml", "msgpack", "shuttle", "typed-routing", "ws"]
 
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 msgpack = ["dep:rmp-serde"]
+shuttle = ["dep:shuttle-axum"]
 typed-routing = ["dep:axum-extra"]
 ws = ["axum/ws", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
 
@@ -50,6 +51,9 @@ url = "2.5"
 
 # Yaml
 serde_yaml = { version = "0.9", optional = true }
+
+# Shuttle
+shuttle-axum = { version = "0.47", optional = true }
 
 # MsgPack
 rmp-serde = { version = "1.3", optional = true }

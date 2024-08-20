@@ -7,6 +7,11 @@ mod into_make_service;
 mod into_make_service_with_connect_info;
 mod router;
 
+#[cfg(feature = "shuttle")]
+mod axum_service;
+#[cfg(feature = "shuttle")]
+mod shuttle_axum;
+
 ///
 /// This exists to unify how to send mock or real messages to different services.
 /// This includes differences between [`Router`](::axum::routing::Router),
