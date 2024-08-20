@@ -76,7 +76,9 @@
 //!  * `pretty-assertions` **on by default**, uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) for the output to the `assert_*` functions.
 //!  * `yaml` _off by default_, adds support for sending, receiving, and asserting, [yaml content](https://yaml.org/).
 //!  * `msgpack` _off by default_, adds support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).
-//!  * `axum-extra` _off by default_, adds support for the `TypedPath` from [axum-extra](https://crates.io/crates/axum-extra).
+//!  * `shuttle` _off by default_, adds support for building a `TestServer` from [`shuttle_axum::AxumService`](https://docs.rs/shuttle-axum/latest/shuttle_axum/struct.AxumService.html), for use with [Shuttle.rs](https://shuttle.rs).
+//!  * `typed-routing` _off by default_, adds support for the `TypedPath` from [axum-extra](https://crates.io/crates/axum-extra).
+//!  * `ws` _off by default_, adds support for WebSockets.
 //!
 //! ## Features
 //!

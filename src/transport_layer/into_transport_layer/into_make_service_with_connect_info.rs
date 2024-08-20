@@ -62,9 +62,7 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
     use ::axum::Router;
     use ::std::net::SocketAddr;
 
-    use crate::TestServer;
     use crate::TestServerConfig;
-    use crate::Transport;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -78,11 +76,10 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
             .into_make_service_with_connect_info::<SocketAddr>();
 
         // Run the server.
-        let config = TestServerConfig {
-            transport: Some(Transport::HttpRandomPort),
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServerConfig::builder()
+            .http_transport()
+            .build_server(app)
+            .expect("Should create test server");
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -95,9 +92,7 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
     use ::axum::Router;
     use ::std::net::SocketAddr;
 
-    use crate::TestServer;
     use crate::TestServerConfig;
-    use crate::Transport;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -111,11 +106,9 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
             .into_make_service_with_connect_info::<SocketAddr>();
 
         // Build the server.
-        let config = TestServerConfig {
-            transport: Some(Transport::MockHttp),
-            ..TestServerConfig::default()
-        };
-        let result = TestServer::new_with_config(app, config);
+        let result = TestServerConfig::builder()
+            .mock_transport()
+            .build_server(app);
         let err = result.unwrap_err();
         let err_msg = format!("{}", err);
 
