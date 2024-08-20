@@ -71,11 +71,10 @@ pub(crate) fn new_app() -> Router {
 #[cfg(test)]
 fn new_test_app() -> TestServer {
     let app = new_app();
-    let config = TestServerConfig::builder()
+    TestServerConfig::builder()
         .http_transport() // Important! It must be a HTTP Transport here.
-        .build();
-
-    TestServer::new_with_config(app, config).unwrap()
+        .build_app(app)
+        .unwrap()
 }
 
 #[cfg(test)]

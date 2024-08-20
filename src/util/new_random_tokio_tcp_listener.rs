@@ -22,7 +22,7 @@ pub fn new_random_tokio_tcp_listener_with_socket_addr() -> Result<(TokioTcpListe
     let (tcp_listener, random_socket) =
         ReservedPort::random_permanently_reserved_tcp(DEFAULT_IP_ADDRESS)?;
 
-    tcp_listener.set_nonblocking(true);
+    tcp_listener.set_nonblocking(true)?;
     let tokio_tcp_listener = TokioTcpListener::from_std(tcp_listener)?;
 
     Ok((tokio_tcp_listener, random_socket))
