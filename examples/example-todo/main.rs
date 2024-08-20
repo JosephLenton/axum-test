@@ -163,15 +163,14 @@ pub(crate) fn new_app() -> Router {
 #[cfg(test)]
 fn new_test_app() -> TestServer {
     let app = new_app();
-    let config = TestServerConfig::builder()
+    TestServerConfig::builder()
         // Preserve cookies across requests
         // for the session cookie to work.
         .save_cookies()
         .expect_success_by_default()
         .mock_transport()
-        .build();
-
-    TestServer::new_with_config(app, config).unwrap()
+        .build_app(app)
+        .unwrap()
 }
 
 #[cfg(test)]

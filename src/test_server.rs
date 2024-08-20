@@ -402,12 +402,17 @@ impl TestServer {
             anyhow!("Failed to lock InternalTestServer, for building server_url, received {err:?}",)
         })?;
         let mut query_params = server_locked.query_params().clone();
-        let full_server_url = build_url(
+        let mut full_server_url = build_url(
             server_url,
             path,
             &mut query_params,
             self.is_http_path_restricted,
         )?;
+
+        // Ensure the query params are present
+        if query_params.has_content() {
+            full_server_url.set_query(Some(&query_params.to_string()));
+        }
 
         Ok(full_server_url)
     }
@@ -1077,17 +1082,11 @@ mod test_server_address {
         let ip = local_ip().unwrap();
         let port = reserved_port.port();
 
-        let config = TestServerConfig {
-            transport: Some(Transport::HttpIpPort {
-                ip: Some(ip),
-                port: Some(port),
-            }),
-            ..TestServerConfig::default()
-        };
-
         // Build an application with a route.
         let app = Router::new();
-        let server = TestServer::new_with_config(app, config)
+        let server = TestServerConfig::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .build_server(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1101,15 +1100,168 @@ mod test_server_address {
     #[tokio::test]
     async fn it_should_return_default_address_without_ending_slash() {
         let app = Router::new();
-        let config = TestServerConfig {
-            transport: Some(Transport::HttpRandomPort),
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServerConfig::builder()
+            .http_transport()
+            .build_server(app)
+            .expect("Should create test server");
 
         let address_regex = Regex::new("^http://127\\.0\\.0\\.1:[0-9]+/$").unwrap();
         let is_match = address_regex.is_match(&server.server_address().unwrap().to_string());
         assert!(is_match);
+    }
+
+    #[tokio::test]
+    async fn it_should_return_none_on_mock_transport() {
+        let app = Router::new();
+        let server = TestServerConfig::builder()
+            .mock_transport()
+            .build_server(app)
+            .expect("Should create test server");
+
+        assert!(server.server_address().is_none());
+    }
+}
+
+#[cfg(test)]
+mod test_server_url {
+    use super::*;
+
+    use ::axum::Router;
+    use ::local_ip_address::local_ip;
+    use ::regex::Regex;
+    use ::reserve_port::ReservedPort;
+
+    #[tokio::test]
+    async fn it_should_return_address_with_url_on_http_ip_port() {
+        let reserved_port = ReservedPort::random().unwrap();
+        let ip = local_ip().unwrap();
+        let port = reserved_port.port();
+
+        // Build an application with a route.
+        let app = Router::new();
+        let server = TestServerConfig::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .build_server(app)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        let expected_ip_port_url = format!("http://{}:{}/users", ip, reserved_port.port());
+        let absolute_url = server.server_url("/users").unwrap().to_string();
+        assert_eq!(absolute_url, expected_ip_port_url);
+    }
+
+    #[tokio::test]
+    async fn it_should_return_address_with_url_on_random_http() {
+        let app = Router::new();
+        let server = TestServerConfig::builder()
+            .http_transport()
+            .build_server(app)
+            .expect("Should create test server");
+
+        let address_regex =
+            Regex::new("^http://127\\.0\\.0\\.1:[0-9]+/users/123\\?filter=enabled$").unwrap();
+        let absolute_url = &server
+            .server_url(&"/users/123?filter=enabled")
+            .unwrap()
+            .to_string();
+
+        let is_match = address_regex.is_match(absolute_url);
+        assert!(is_match);
+    }
+
+    #[tokio::test]
+    async fn it_should_error_on_mock_transport() {
+        // Build an application with a route.
+        let app = Router::new();
+        let server = TestServerConfig::builder()
+            .mock_transport()
+            .build_server(app)
+            .expect("Should create test server");
+
+        let result = server.server_url("/users");
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn it_should_include_path_query_params() {
+        let reserved_port = ReservedPort::random().unwrap();
+        let ip = local_ip().unwrap();
+        let port = reserved_port.port();
+
+        // Build an application with a route.
+        let app = Router::new();
+        let server = TestServerConfig::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .build_server(app)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        let expected_url = format!(
+            "http://{}:{}/users?filter=enabled",
+            ip,
+            reserved_port.port()
+        );
+        let received_url = server
+            .server_url("/users?filter=enabled")
+            .unwrap()
+            .to_string();
+
+        assert_eq!(received_url, expected_url);
+    }
+
+    #[tokio::test]
+    async fn it_should_include_server_query_params() {
+        let reserved_port = ReservedPort::random().unwrap();
+        let ip = local_ip().unwrap();
+        let port = reserved_port.port();
+
+        // Build an application with a route.
+        let app = Router::new();
+        let mut server = TestServerConfig::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .build_server(app)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        server.add_query_param("filter", "enabled");
+
+        let expected_url = format!(
+            "http://{}:{}/users?filter=enabled",
+            ip,
+            reserved_port.port()
+        );
+        let received_url = server.server_url("/users").unwrap().to_string();
+
+        assert_eq!(received_url, expected_url);
+    }
+
+    #[tokio::test]
+    async fn it_should_include_server_and_path_query_params() {
+        let reserved_port = ReservedPort::random().unwrap();
+        let ip = local_ip().unwrap();
+        let port = reserved_port.port();
+
+        // Build an application with a route.
+        let app = Router::new();
+        let mut server = TestServerConfig::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .build_server(app)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        server.add_query_param("filter", "enabled");
+
+        let expected_url = format!(
+            "http://{}:{}/users?filter=enabled&animal=donkeys",
+            ip,
+            reserved_port.port()
+        );
+        let received_url = server
+            .server_url("/users?animal=donkeys")
+            .unwrap()
+            .to_string();
+
+        assert_eq!(received_url, expected_url);
     }
 }
 
