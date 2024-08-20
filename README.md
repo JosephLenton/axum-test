@@ -77,7 +77,8 @@ Here are a list of all features so far that can be enabled:
 You can find examples of writing tests in the [/examples folder](/examples/).
 These include tests for:
 
- * [a REST Todo application](/examples/example-todo)
+ * [a simple REST Todo application](/examples/example-todo)
+ * [the REST Todo application using Shuttle](/examples/example-shuttle)
  * [a WebSocket ping pong application](/examples/example-websocket-ping-pong) which sends requests up and down
  * [a simple WebSocket chat application](/examples/example-websocket-chat)
 
