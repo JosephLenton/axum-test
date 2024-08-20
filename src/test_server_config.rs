@@ -1,3 +1,7 @@
+use ::anyhow::Result;
+
+use crate::transport_layer::IntoTransportLayer;
+use crate::TestServer;
 use crate::TestServerConfigBuilder;
 use crate::Transport;
 
@@ -106,9 +110,28 @@ impl TestServerConfig {
     ///     .default_content_type(&"application/json")
     ///     .build();
     /// ```
-    ///
     pub fn builder() -> TestServerConfigBuilder {
         TestServerConfigBuilder::default()
+    }
+
+    /// This is shorthand for calling [`crate::TestServer::new_with_config`].
+    ///
+    /// ```rust
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServerConfig;
+    ///
+    /// let app = Router::new();
+    /// let config = TestServerConfig::builder()
+    ///     .save_cookies()
+    ///     .default_content_type(&"application/json")
+    ///     .build();
+    /// let server = config.build_server(app);
+    /// ```
+    pub fn build_server<A>(self, app: A) -> Result<TestServer>
+    where
+        A: IntoTransportLayer,
+    {
+        TestServer::new_with_config(app, self)
     }
 }
 

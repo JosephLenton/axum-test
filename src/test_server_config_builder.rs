@@ -1,5 +1,8 @@
+use ::anyhow::Result;
 use ::std::net::IpAddr;
 
+use crate::transport_layer::IntoTransportLayer;
+use crate::TestServer;
 use crate::TestServerConfig;
 use crate::Transport;
 
@@ -92,6 +95,25 @@ impl TestServerConfigBuilder {
 
     pub fn build(self) -> TestServerConfig {
         self.config
+    }
+
+    /// This is shorthand for calling [`crate::TestServer::new_with_config`].
+    ///
+    /// ```rust
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServerConfig;
+    ///
+    /// let app = Router::new();
+    /// let server = TestServerConfig::builder()
+    ///     .save_cookies()
+    ///     .default_content_type(&"application/json")
+    ///     .build_server(app);
+    /// ```
+    pub fn build_server<A>(self, app: A) -> Result<TestServer>
+    where
+        A: IntoTransportLayer,
+    {
+        self.build().build_server(app)
     }
 }
 
