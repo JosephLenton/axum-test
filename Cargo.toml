@@ -77,5 +77,6 @@ futures-util = "0.3"
 local-ip-address = "0.6"
 regex = "1.10"
 serde-email = { version = "3.0", features = ["serde"] }
+shuttle-axum = "0.47"
 shuttle-runtime = "0.47"
 tokio = { version = "1.39", features = ["rt", "rt-multi-thread", "time", "macros"] }
