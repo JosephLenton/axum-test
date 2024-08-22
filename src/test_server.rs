@@ -83,6 +83,9 @@ pub struct TestServer {
     expected_state: ExpectedState,
     default_content_type: Option<String>,
     is_http_path_restricted: bool,
+
+    #[cfg(feature = "reqwest")]
+    reqwest_client: Option<Client>,
 }
 
 impl TestServer {
@@ -143,16 +146,17 @@ impl TestServer {
             false => ExpectedState::None,
         };
 
-        let this = Self {
+        Ok(Self {
             state,
             transport,
             save_cookies: config.save_cookies,
             expected_state,
             default_content_type: config.default_content_type,
             is_http_path_restricted: config.restrict_requests_with_http_schema,
-        };
 
-        Ok(this)
+            #[cfg(feature = "reqwest")]
+            reqwest_client: None,
+        })
     }
 
     /// Creates a HTTP GET request to the path.
@@ -182,6 +186,16 @@ impl TestServer {
 
     /// Creates a HTTP request, to the method and path provided.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
+        let maybe_config = self.build_test_request_config(method.clone(), path);
+        let config = maybe_config
+            .with_context(|| format!("Failed to build, for request {method} {path}"))
+            .unwrap();
+
+        TestRequest::new(self.state.clone(), self.transport.clone(), config)
+    }
+
+    /// Creates a HTTP request, to the method and path provided.
+    pub fn reqwest_method(&self, method: Method, path: &str) -> TestRequest {
         let maybe_config = self.build_test_request_config(method.clone(), path);
         let config = maybe_config
             .with_context(|| format!("Failed to build, for request {method} {path}"))
