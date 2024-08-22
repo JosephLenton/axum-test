@@ -709,6 +709,26 @@ impl TestResponse {
         self.assert_status(StatusCode::FORBIDDEN)
     }
 
+    /// Assert the response status code is 413.
+    ///
+    /// The payload is too large.
+    #[track_caller]
+    pub fn assert_status_payload_too_large(&self) {
+        self.assert_status(StatusCode::PAYLOAD_TOO_LARGE)
+    }
+
+    /// Assert the response status code is 422.
+    #[track_caller]
+    pub fn assert_status_unprocessable_entity(&self) {
+        self.assert_status(StatusCode::UNPROCESSABLE_ENTITY)
+    }
+
+    /// Assert the response status code is 429.
+    #[track_caller]
+    pub fn assert_status_too_many_requests(&self) {
+        self.assert_status(StatusCode::TOO_MANY_REQUESTS)
+    }
+
     /// Assert the response status code is 200.
     #[track_caller]
     pub fn assert_status_ok(&self) {
@@ -728,6 +748,12 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status_switching_protocols(&self) {
         self.assert_status(StatusCode::SWITCHING_PROTOCOLS)
+    }
+
+    /// Assert the response status code is 503.
+    #[track_caller]
+    pub fn assert_status_service_unavailable(&self) {
+        self.assert_status(StatusCode::SERVICE_UNAVAILABLE)
     }
 
     /// Assert the response status code matches the one given.
