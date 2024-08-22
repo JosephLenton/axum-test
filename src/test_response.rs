@@ -504,6 +504,28 @@ impl TestResponse {
         self.headers.get_all(header_name).iter()
     }
 
+    #[must_use]
+    pub fn contains_header<N>(&self, header_name: N) -> bool
+    where
+        N: AsHeaderName + Display + Clone,
+    {
+        self.headers.contains_key(header_name)
+    }
+
+    /// Asserts the header named is present in the response.
+    ///
+    /// If the header is not present, then the assertion fails.
+    pub fn assert_contains_header<N>(&self, header_name: N)
+    where
+        N: AsHeaderName + Display + Clone,
+    {
+        let debug_header_name = header_name.clone();
+        let debug_request_format = self.debug_request_format();
+        let has_header = self.contains_header(header_name);
+
+        assert!(has_header, "Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}");
+    }
+
     /// Finds a [`Cookie`] with the given name.
     /// If there are multiple matching cookies,
     /// then only the first will be returned.
@@ -849,6 +871,46 @@ impl TestResponse {
 impl From<TestResponse> for Bytes {
     fn from(response: TestResponse) -> Self {
         response.into_bytes()
+    }
+}
+
+#[cfg(test)]
+mod test_assert_contains_header {
+    use ::axum::http::HeaderMap;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+
+    use crate::TestServer;
+
+    async fn route_get_header() -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-my-custom-header", "content".parse().unwrap());
+        headers
+    }
+
+    #[tokio::test]
+    async fn it_should_not_panic_if_contains_header() {
+        let router = Router::new().route(&"/header", get(route_get_header));
+
+        let server = TestServer::new(router).unwrap();
+
+        server
+            .get(&"/header")
+            .await
+            .assert_contains_header("x-my-custom-header");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_not_contains_header() {
+        let router = Router::new().route(&"/header", get(route_get_header));
+
+        let server = TestServer::new(router).unwrap();
+
+        server
+            .get(&"/header")
+            .await
+            .assert_contains_header("x-custom-header-not-found");
     }
 }
 
