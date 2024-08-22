@@ -515,6 +515,7 @@ impl TestResponse {
     /// Asserts the header named is present in the response.
     ///
     /// If the header is not present, then the assertion fails.
+    #[track_caller]
     pub fn assert_contains_header<N>(&self, header_name: N)
     where
         N: AsHeaderName + Display + Clone,
@@ -802,6 +803,12 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_status_not_ok(&self) {
         self.assert_not_status(StatusCode::OK)
+    }
+
+    /// Assert the response status code is 303.
+    #[track_caller]
+    pub fn assert_status_see_other(&self) {
+        self.assert_status(StatusCode::SEE_OTHER)
     }
 
     /// Assert the response status code is 400.
