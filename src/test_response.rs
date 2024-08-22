@@ -527,6 +527,30 @@ impl TestResponse {
         assert!(has_header, "Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}");
     }
 
+    #[track_caller]
+    pub fn assert_header<N, V>(&self, header_name: N, header_value: V)
+    where
+        N: AsHeaderName + Display + Clone,
+        V: TryInto<HeaderValue>,
+        V::Error: Debug,
+    {
+        let debug_header_name = header_name.clone();
+        let expected_header_value = header_value
+            .try_into()
+            .expect("Could not turn given value into HeaderValue");
+        let debug_request_format = self.debug_request_format();
+        let maybe_found_header_value = self.maybe_header(header_name);
+
+        match maybe_found_header_value {
+            None => {
+                panic!("Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}")
+            }
+            Some(found_header_value) => {
+                assert_eq!(expected_header_value, found_header_value,)
+            }
+        }
+    }
+
     /// Finds a [`Cookie`] with the given name.
     /// If there are multiple matching cookies,
     /// then only the first will be returned.
@@ -878,6 +902,59 @@ impl TestResponse {
 impl From<TestResponse> for Bytes {
     fn from(response: TestResponse) -> Self {
         response.into_bytes()
+    }
+}
+
+#[cfg(test)]
+mod test_assert_header {
+    use ::axum::http::HeaderMap;
+    use ::axum::routing::get;
+    use ::axum::routing::Router;
+
+    use crate::TestServer;
+
+    async fn route_get_header() -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-my-custom-header", "content".parse().unwrap());
+        headers
+    }
+
+    #[tokio::test]
+    async fn it_should_not_panic_if_contains_header_and_content_matches() {
+        let router = Router::new().route(&"/header", get(route_get_header));
+
+        let server = TestServer::new(router).unwrap();
+
+        server
+            .get(&"/header")
+            .await
+            .assert_header("x-my-custom-header", "content");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_contains_header_and_content_does_not_match() {
+        let router = Router::new().route(&"/header", get(route_get_header));
+
+        let server = TestServer::new(router).unwrap();
+
+        server
+            .get(&"/header")
+            .await
+            .assert_header("x-my-custom-header", "different-content");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_not_contains_header() {
+        let router = Router::new().route(&"/header", get(route_get_header));
+
+        let server = TestServer::new(router).unwrap();
+
+        server
+            .get(&"/header")
+            .await
+            .assert_header("x-custom-header-not-found", "content");
     }
 }
 
