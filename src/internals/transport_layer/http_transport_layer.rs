@@ -3,6 +3,7 @@ use ::axum::body::Body;
 use ::http::Request;
 use ::http::Response;
 use ::hyper_util::client::legacy::Client;
+use ::reserve_port::ReservedPort;
 use ::std::future::Future;
 use ::std::pin::Pin;
 use ::url::Url;
@@ -10,7 +11,6 @@ use ::url::Url;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerType;
 use crate::util::ServeHandle;
-use reserve_port::ReservedPort;
 
 #[derive(Debug)]
 pub struct HttpTransportLayer {
