@@ -2,7 +2,6 @@ use ::anyhow::Context;
 use ::bytes::Bytes;
 use ::cookie::Cookie;
 use ::cookie::CookieJar;
-use ::http::header::AsHeaderName;
 use ::http::header::HeaderName;
 use ::http::header::SET_COOKIE;
 use ::http::response::Parts;
@@ -453,10 +452,14 @@ impl TestResponse {
     ///
     /// `None` is returned when no header was found.
     #[must_use]
-    pub fn maybe_header<N>(&self, header_name: N) -> Option<HeaderValue>
+    pub fn maybe_header<N>(&self, name: N) -> Option<HeaderValue>
     where
-        N: AsHeaderName,
+        N: TryInto<HeaderName>,
+        N::Error: Debug,
     {
+        let header_name = name
+            .try_into()
+            .expect("Failed to build HeaderName from name given");
         self.headers.get(header_name).map(|h| h.to_owned())
     }
 
@@ -472,11 +475,15 @@ impl TestResponse {
     ///
     /// If no header is found, then this will panic.
     #[must_use]
-    pub fn header<N>(&self, header_name: N) -> HeaderValue
+    pub fn header<N>(&self, name: N) -> HeaderValue
     where
-        N: AsHeaderName + Display + Clone,
+        N: TryInto<HeaderName> + Display + Clone,
+        N::Error: Debug,
     {
-        let debug_header = header_name.clone();
+        let debug_header = name.clone();
+        let header_name = name
+            .try_into()
+            .expect("Failed to build HeaderName from name given, '{debug_header}'");
         self.headers
             .get(header_name)
             .map(|h| h.to_owned())
@@ -494,21 +501,26 @@ impl TestResponse {
     }
 
     /// Iterates over all of the headers for a specific name, contained in the response.
-    pub fn iter_headers_by_name<'a, N>(
-        &'a self,
-        header_name: N,
-    ) -> impl Iterator<Item = &'a HeaderValue>
+    pub fn iter_headers_by_name<'a, N>(&'a self, name: N) -> impl Iterator<Item = &'a HeaderValue>
     where
-        N: AsHeaderName,
+        N: TryInto<HeaderName>,
+        N::Error: Debug,
     {
+        let header_name = name
+            .try_into()
+            .expect("Failed to build HeaderName from name given");
         self.headers.get_all(header_name).iter()
     }
 
     #[must_use]
-    pub fn contains_header<N>(&self, header_name: N) -> bool
+    pub fn contains_header<N>(&self, name: N) -> bool
     where
-        N: AsHeaderName + Display + Clone,
+        N: TryInto<HeaderName>,
+        N::Error: Debug,
     {
+        let header_name = name
+            .try_into()
+            .expect("Failed to build HeaderName from name given");
         self.headers.contains_key(header_name)
     }
 
@@ -516,26 +528,31 @@ impl TestResponse {
     ///
     /// If the header is not present, then the assertion fails.
     #[track_caller]
-    pub fn assert_contains_header<N>(&self, header_name: N)
+    pub fn assert_contains_header<N>(&self, name: N)
     where
-        N: AsHeaderName + Display + Clone,
+        N: TryInto<HeaderName> + Display + Clone,
+        N::Error: Debug,
     {
-        let debug_header_name = header_name.clone();
+        let debug_header_name = name.clone();
         let debug_request_format = self.debug_request_format();
-        let has_header = self.contains_header(header_name);
+        let has_header = self.contains_header(name);
 
         assert!(has_header, "Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}");
     }
 
     #[track_caller]
-    pub fn assert_header<N, V>(&self, header_name: N, header_value: V)
+    pub fn assert_header<N, V>(&self, name: N, value: V)
     where
-        N: AsHeaderName + Display + Clone,
+        N: TryInto<HeaderName> + Display + Clone,
+        N::Error: Debug,
         V: TryInto<HeaderValue>,
         V::Error: Debug,
     {
-        let debug_header_name = header_name.clone();
-        let expected_header_value = header_value
+        let debug_header_name = name.clone();
+        let header_name = name
+            .try_into()
+            .expect("Failed to build HeaderName from name given");
+        let expected_header_value = value
             .try_into()
             .expect("Could not turn given value into HeaderValue");
         let debug_request_format = self.debug_request_format();

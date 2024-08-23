@@ -8,6 +8,7 @@ use ::http::HeaderValue;
 use ::http::Method;
 use ::http::Uri;
 use ::serde::Serialize;
+use ::std::fmt::Debug;
 use ::std::sync::Arc;
 use ::std::sync::Mutex;
 use ::url::Url;
@@ -221,12 +222,12 @@ impl TestServer {
         use ::http::header;
 
         self.get(path)
-            .add_header(header::CONNECTION, "upgrade".parse().unwrap())
-            .add_header(header::UPGRADE, "websocket".parse().unwrap())
-            .add_header(header::SEC_WEBSOCKET_VERSION, "13".parse().unwrap())
+            .add_header(header::CONNECTION, "upgrade")
+            .add_header(header::UPGRADE, "websocket")
+            .add_header(header::SEC_WEBSOCKET_VERSION, "13")
             .add_header(
                 header::SEC_WEBSOCKET_KEY,
-                crate::internals::generate_ws_key().parse().unwrap(),
+                crate::internals::generate_ws_key(),
             )
     }
 
@@ -508,8 +509,40 @@ impl TestServer {
     }
 
     /// Adds a header to be sent with all future requests built from this `TestServer`.
-    pub fn add_header<'c>(&mut self, name: HeaderName, value: HeaderValue) {
-        ServerSharedState::add_header(&self.state, name, value)
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let mut server = TestServer::new(app)?;
+    ///
+    /// server.add_header("x-custom-header", "custom-value");
+    /// server.add_header(http::header::CONTENT_LENGTH, 12345);
+    /// server.add_header(http::header::HOST, "example.com");
+    ///
+    /// let response = server.get(&"/my-end-point")
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    pub fn add_header<'c, N, V>(&mut self, name: N, value: V)
+    where
+        N: TryInto<HeaderName>,
+        N::Error: Debug,
+        V: TryInto<HeaderValue>,
+        V::Error: Debug,
+    {
+        let header_name: HeaderName = name
+            .try_into()
+            .expect("Failed to convert header name to HeaderName");
+        let header_value: HeaderValue = value
+            .try_into()
+            .expect("Failed to convert header vlue to HeaderValue");
+
+        ServerSharedState::add_header(&self.state, header_name, header_value)
             .with_context(|| format!("Trying to call add_header"))
             .unwrap()
     }

@@ -58,9 +58,23 @@ mod test_request_config;
 ///
 /// Once fully configured you send the request by awaiting the request object.
 ///
-/// ```rust,ignore
-/// let request = server.get(&"/user");
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// # use ::axum::Router;
+/// # use ::axum_test::TestServer;
+/// #
+/// # let server = TestServer::new(Router::new())?;
+/// #
+/// // Build your request
+/// let request = server.get(&"/user")
+///     .add_header("x-custom-header", "example.com")
+///     .content_type("application/yaml");
+///
+/// // await request to execute
 /// let response = request.await;
+/// #
+/// # Ok(()) }
 /// ```
 ///
 /// You will receive a `TestResponse`.
@@ -443,8 +457,39 @@ impl TestRequest {
     }
 
     /// Adds a header to be sent with this request.
-    pub fn add_header<'c>(mut self, name: HeaderName, value: HeaderValue) -> Self {
-        self.config.headers.push((name, value));
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let server = TestServer::new(app)?;
+    ///
+    /// let response = server.get(&"/my-end-point")
+    ///     .add_header("x-custom-header", "custom-value")
+    ///     .add_header(http::header::CONTENT_LENGTH, 12345)
+    ///     .add_header(http::header::HOST, "example.com")
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    pub fn add_header<N, V>(mut self, name: N, value: V) -> Self
+    where
+        N: TryInto<HeaderName>,
+        N::Error: Debug,
+        V: TryInto<HeaderValue>,
+        V::Error: Debug,
+    {
+        let header_name: HeaderName = name
+            .try_into()
+            .expect("Failed to convert header name to HeaderName");
+        let header_value: HeaderValue = value
+            .try_into()
+            .expect("Failed to convert header vlue to HeaderValue");
+
+        self.config.headers.push((header_name, header_value));
         self
     }
 
