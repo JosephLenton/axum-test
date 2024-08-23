@@ -6,20 +6,17 @@ use ::hyper_util::client::legacy::Client;
 use ::reserve_port::ReservedPort;
 use ::std::future::Future;
 use ::std::pin::Pin;
-use ::tokio::task::JoinHandle;
 use ::url::Url;
 
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerType;
+use crate::util::ServeHandle;
 
 #[derive(Debug)]
 pub struct HttpTransportLayer {
-    server_handle: JoinHandle<()>,
+    #[allow(dead_code)]
+    serve_handle: ServeHandle,
 
-    /// If this has reserved a port for the test,
-    /// then it is stored here.
-    ///
-    /// It's stored here until we `Drop` (as it's reserved).
     #[allow(dead_code)]
     maybe_reserved_port: Option<ReservedPort>,
 
@@ -28,12 +25,12 @@ pub struct HttpTransportLayer {
 
 impl HttpTransportLayer {
     pub(crate) fn new(
-        server_handle: JoinHandle<()>,
+        serve_handle: ServeHandle,
         maybe_reserved_port: Option<ReservedPort>,
         url: Url,
     ) -> Self {
         Self {
-            server_handle,
+            serve_handle,
             maybe_reserved_port,
             url,
         }
@@ -63,11 +60,5 @@ impl TransportLayer for HttpTransportLayer {
 
     fn get_type(&self) -> TransportLayerType {
         TransportLayerType::Http
-    }
-}
-
-impl Drop for HttpTransportLayer {
-    fn drop(&mut self) {
-        self.server_handle.abort()
     }
 }

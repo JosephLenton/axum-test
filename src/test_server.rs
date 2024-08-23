@@ -218,7 +218,7 @@ impl TestServer {
     ///
     #[cfg(feature = "ws")]
     pub fn get_websocket(&self, path: &str) -> TestRequest {
-        use http::header;
+        use ::http::header;
 
         self.get(path)
             .add_header(header::CONNECTION, "upgrade".parse().unwrap())
@@ -2047,9 +2047,9 @@ mod test_expect_failure {
 
 #[cfg(test)]
 mod test_scheme {
-    use axum::extract::Request;
-    use axum::routing::get;
-    use axum::Router;
+    use ::axum::extract::Request;
+    use ::axum::routing::get;
+    use ::axum::Router;
 
     use crate::TestServer;
     use crate::TestServerConfig;
@@ -2350,9 +2350,9 @@ mod test_typed_method {
 #[cfg(test)]
 mod test_sync {
     use super::*;
-    use axum::routing::get;
-    use axum::Router;
-    use std::cell::OnceCell;
+    use ::axum::routing::get;
+    use ::axum::Router;
+    use ::std::cell::OnceCell;
 
     #[tokio::test]
     async fn it_should_be_able_to_be_in_one_cell() {

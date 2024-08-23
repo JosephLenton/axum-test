@@ -1,7 +1,7 @@
 use ::anyhow::Result;
 use ::shuttle_axum::ShuttleAxum;
 
-use super::IntoTransportLayer;
+use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 

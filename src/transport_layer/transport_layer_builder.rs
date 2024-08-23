@@ -3,7 +3,7 @@ use ::anyhow::Result;
 use ::reserve_port::ReservedPort;
 use ::std::net::IpAddr;
 use ::std::net::SocketAddr;
-use ::std::net::TcpListener;
+use ::tokio::net::TcpListener;
 
 use crate::internals::StartingTcpSetup;
 

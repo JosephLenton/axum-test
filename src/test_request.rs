@@ -2240,9 +2240,9 @@ mod test_clear_query_params {
 
 #[cfg(test)]
 mod test_scheme {
-    use axum::extract::Request;
-    use axum::routing::get;
-    use axum::Router;
+    use ::axum::extract::Request;
+    use ::axum::routing::get;
+    use ::axum::Router;
 
     use crate::TestServer;
     use crate::TestServerConfig;

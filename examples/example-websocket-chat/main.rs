@@ -10,17 +10,25 @@
 //!
 
 use ::anyhow::Result;
+use ::axum::extract::ws::Message;
 use ::axum::extract::ws::WebSocket;
+use ::axum::extract::Path;
 use ::axum::extract::State;
 use ::axum::extract::WebSocketUpgrade;
 use ::axum::response::Response;
 use ::axum::routing::get;
 use ::axum::serve::serve;
 use ::axum::Router;
+use ::futures_util::SinkExt;
+use ::futures_util::StreamExt;
+use ::serde::Deserialize;
+use ::serde::Serialize;
+use ::std::collections::HashMap;
 use ::std::net::IpAddr;
 use ::std::net::Ipv4Addr;
 use ::std::net::SocketAddr;
 use ::std::sync::Arc;
+use ::std::time::Duration;
 use ::tokio::net::TcpListener;
 use ::tokio::sync::RwLock;
 
@@ -28,14 +36,6 @@ use ::tokio::sync::RwLock;
 use ::axum_test::TestServer;
 #[cfg(test)]
 use ::axum_test::TestServerConfig;
-use axum::extract::ws::Message;
-use axum::extract::Path;
-use futures_util::SinkExt;
-use futures_util::StreamExt;
-use serde::Deserialize;
-use serde::Serialize;
-use std::collections::HashMap;
-use std::time::Duration;
 
 const PORT: u16 = 8080;
 

@@ -2,7 +2,7 @@ use ::anyhow::Result;
 use ::axum::Router;
 use ::shuttle_axum::AxumService;
 
-use super::IntoTransportLayer;
+use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 
