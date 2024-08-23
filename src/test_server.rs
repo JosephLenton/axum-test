@@ -509,6 +509,25 @@ impl TestServer {
     }
 
     /// Adds a header to be sent with all future requests built from this `TestServer`.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use ::axum::Router;
+    /// use ::axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let mut server = TestServer::new(app)?;
+    ///
+    /// server.add_header("x-custom-header", "custom-value");
+    /// server.add_header(http::header::CONTENT_LENGTH, 12345);
+    /// server.add_header(http::header::HOST, "example.com");
+    ///
+    /// let response = server.get(&"/my-end-point")
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
     pub fn add_header<'c, N, V>(&mut self, name: N, value: V)
     where
         N: TryInto<HeaderName>,

@@ -58,9 +58,23 @@ mod test_request_config;
 ///
 /// Once fully configured you send the request by awaiting the request object.
 ///
-/// ```rust,ignore
-/// let request = server.get(&"/user");
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// # use ::axum::Router;
+/// # use ::axum_test::TestServer;
+/// #
+/// # let server = TestServer::new(Router::new())?;
+/// #
+/// // Build your request
+/// let request = server.get(&"/user")
+///     .add_header("x-custom-header", "example.com")
+///     .content_type("application/yaml");
+///
+/// // await request to execute
 /// let response = request.await;
+/// #
+/// # Ok(()) }
 /// ```
 ///
 /// You will receive a `TestResponse`.
