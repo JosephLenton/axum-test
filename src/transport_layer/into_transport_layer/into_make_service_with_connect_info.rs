@@ -1,18 +1,15 @@
 use ::anyhow::anyhow;
-use ::anyhow::Context;
 use ::anyhow::Result;
 use ::axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use ::axum::serve;
+use ::axum::serve::IncomingStream;
 use ::axum::Router;
-use ::tokio::net::TcpListener as TokioTcpListener;
-use ::tokio::spawn;
 use ::url::Url;
-use axum::serve::IncomingStream;
 
-use super::IntoTransportLayer;
 use crate::internals::HttpTransportLayer;
+use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
+use crate::util::spawn_serve;
 
 impl<C> IntoTransportLayer for IntoMakeServiceWithConnectInfo<Router, C>
 where
@@ -24,21 +21,13 @@ where
     ) -> Result<Box<dyn TransportLayer>> {
         let (socket_addr, tcp_listener, maybe_reserved_port) =
             builder.tcp_listener_with_reserved_port()?;
-        tcp_listener.set_nonblocking(true)?;
-        let tokio_tcp_listener = TokioTcpListener::from_std(tcp_listener)?;
 
-        let server_handle = spawn(async move {
-            serve(tokio_tcp_listener, self)
-                .await
-                .with_context(|| "Failed to create ::axum::Server for TestServer")
-                .expect("Expect server to start serving");
-        });
-
+        let serve_handle = spawn_serve(tcp_listener, self);
         let server_address = format!("http://{socket_addr}");
         let server_url: Url = server_address.parse()?;
 
         Ok(Box::new(HttpTransportLayer::new(
-            server_handle,
+            serve_handle,
             maybe_reserved_port,
             server_url,
         )))

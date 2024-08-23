@@ -62,7 +62,7 @@ impl Display for QueryParamsStore {
 
 #[cfg(test)]
 mod test_add_raw {
-    use super::QueryParamsStore;
+    use crate::internals::QueryParamsStore;
 
     #[test]
     fn it_should_add_key_value_pairs_correctly() {

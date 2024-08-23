@@ -1,7 +1,7 @@
 use ::anyhow::Result;
 
-use super::TransportLayerBuilder;
 use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerBuilder;
 
 mod into_make_service;
 mod into_make_service_with_connect_info;

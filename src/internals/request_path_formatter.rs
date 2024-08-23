@@ -1,6 +1,7 @@
-use super::QueryParamsStore;
 use ::http::Method;
 use ::std::fmt;
+
+use crate::internals::QueryParamsStore;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RequestPathFormatter<'a> {
