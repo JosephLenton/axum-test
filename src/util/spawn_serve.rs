@@ -9,12 +9,11 @@ use ::tower::Service;
 
 use crate::util::ServeHandle;
 
-/// A higher lever alternative to [`axum::serve`] for tests.
+/// A wrapper around [`axum::serve`] for tests,
+/// which spawns the service in a new thread.
 ///
-/// This spawns in a new thread, and adds a shutdown handle the service
-/// that is attached to the returned [`crate::util::ServeHandle`].
-///
-/// When the handle is dropped, the service will be terminated.
+/// The [`crate::util::ServeHandle`] returned will automatically attempt
+/// to terminate the service when dropped.
 pub fn spawn_serve<M, S>(tcp_listener: TcpListener, make_service: M) -> ServeHandle
 where
     M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
