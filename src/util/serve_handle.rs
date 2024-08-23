@@ -1,25 +1,21 @@
-use ::std::sync::Arc;
-use ::tokio::sync::Notify;
 use ::tokio::task::JoinHandle;
 
+/// A handle to a running Axum service.
+///
+/// When the handle is dropped, it will attempt to terminate the service.
 #[derive(Debug)]
 pub struct ServeHandle {
     server_handle: JoinHandle<()>,
-    shutdown_notification: Arc<Notify>,
 }
 
 impl ServeHandle {
-    pub(crate) fn new(server_handle: JoinHandle<()>, shutdown_notification: Arc<Notify>) -> Self {
-        Self {
-            server_handle,
-            shutdown_notification,
-        }
+    pub(crate) fn new(server_handle: JoinHandle<()>) -> Self {
+        Self { server_handle }
     }
 }
 
 impl Drop for ServeHandle {
     fn drop(&mut self) {
-        self.shutdown_notification.notify_waiters();
         self.server_handle.abort()
     }
 }
