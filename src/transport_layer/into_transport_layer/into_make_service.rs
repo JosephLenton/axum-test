@@ -126,7 +126,6 @@ mod test_into_mock_transport_layer_for_into_make_service {
     use axum::extract::Request;
     use axum::extract::State;
     use axum::routing::get;
-    use axum::routing::IntoMakeService;
     use axum::Router;
     use axum::ServiceExt;
     use tower::Layer;
@@ -143,7 +142,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
     #[tokio::test]
     async fn it_should_create_and_test_with_make_into_service() {
         // Build an application with a route.
-        let app: IntoMakeService<Router> = Router::new()
+        let app = Router::new()
             .route("/ping", get(get_ping))
             .into_make_service();
 
@@ -160,7 +159,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
     #[tokio::test]
     async fn it_should_create_and_test_with_make_into_service_with_state() {
         // Build an application with a route.
-        let app: IntoMakeService<Router> = Router::new()
+        let app = Router::new()
             .route("/count", get(get_state))
             .with_state(123)
             .into_make_service();
