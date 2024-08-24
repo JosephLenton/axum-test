@@ -241,7 +241,6 @@ fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
 #[cfg(test)]
 mod test_assert_receive_text {
     use crate::TestServer;
-    use crate::TestServer;
 
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
@@ -321,7 +320,6 @@ mod test_assert_receive_text {
 #[cfg(test)]
 mod test_assert_receive_text_contains {
     use crate::TestServer;
-    use crate::TestServer;
 
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
@@ -396,7 +394,6 @@ mod test_assert_receive_text_contains {
 
 #[cfg(test)]
 mod test_assert_receive_json {
-    use crate::TestServer;
     use crate::TestServer;
 
     use axum::extract::ws::Message;
@@ -483,7 +480,6 @@ mod test_assert_receive_json {
 #[cfg(test)]
 mod test_assert_receive_yaml {
     use crate::TestServer;
-    use crate::TestServer;
 
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
@@ -569,7 +565,6 @@ mod test_assert_receive_yaml {
 #[cfg(feature = "msgpack")]
 #[cfg(test)]
 mod test_assert_receive_msgpack {
-    use crate::TestServer;
     use crate::TestServer;
 
     use axum::extract::ws::Message;

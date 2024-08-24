@@ -16,7 +16,7 @@ mod shuttle_axum;
 
 ///
 /// This exists to unify how to send mock or real messages to different services.
-/// This includes differences between [`Router`](::axum::routing::Router),
+/// This includes differences between [`Router`](::axum::Router),
 /// [`IntoMakeService`](::axum::routing::IntoMakeService),
 /// and [`IntoMakeServiceWithConnectInfo`](::axum::extract::connect_info::IntoMakeServiceWithConnectInfo).
 ///

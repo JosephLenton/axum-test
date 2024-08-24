@@ -40,7 +40,7 @@ use crate::Transport;
 /// # }
 /// ```
 ///
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TestServerConfig {
     /// Which transport mode to use to process requests.
     /// For setting if the server should use mocked http (which uses [`tower::util::Oneshot`](tower::util::Oneshot)),
@@ -106,7 +106,7 @@ impl TestServerConfig {
     }
 
     /// This is shorthand for calling [`crate::TestServer::new_with_config`],
-    /// and passing it's self in.
+    /// and passing this config.
     ///
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {

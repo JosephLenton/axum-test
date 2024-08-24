@@ -560,7 +560,7 @@ impl TestRequest {
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
     /// use axum::Json;
-    /// use axum::routing::Router;
+    /// use axum::Router;
     /// use axum::routing::put;
     /// use serde_json::json;
     ///

@@ -44,33 +44,95 @@ const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 /// The `TestServer` runs your Axum application,
 /// allowing you to make HTTP requests against it.
 ///
-/// You can make a request by calling [`TestServer::get()`](crate::TestServer::get()),
-/// [`TestServer::post()`](crate::TestServer::post()), [`TestServer::put()`](crate::TestServer::put()),
-/// [`TestServer::delete()`](crate::TestServer::delete()), and [`TestServer::patch()`](crate::TestServer::patch()) methods.
-/// They will return a [`TestRequest`](crate::TestRequest) for building the request.
+/// # Building
+///
+/// A `TestServer` can be used to run an [`axum::Router`], an [`::axum::routing::IntoMakeService`],
+/// a [`shuttle_axum::ShuttleAxum`], and others.
+///
+/// The most straight forward approach is to call [`crate::TestServer::new`],
+/// and pass in your application:
 ///
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 /// #
-/// use axum::Json;
-/// use axum::routing::Router;
+/// use axum::Router;
 /// use axum::routing::get;
-/// use serde::Deserialize;
-/// use serde::Serialize;
 ///
 /// use axum_test::TestServer;
 ///
 /// let app = Router::new()
-///     .route(&"/todo", get(|| async { "hello!" }));
+///     .route(&"/hello", get(|| async { "hello!" }));
+///
+/// let server = TestServer::new(app)?;
+/// #
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Requests
+///
+/// Requests are built by calling [`TestServer::get()`](crate::TestServer::get()),
+/// [`TestServer::post()`](crate::TestServer::post()), [`TestServer::put()`](crate::TestServer::put()),
+/// [`TestServer::delete()`](crate::TestServer::delete()), and [`TestServer::patch()`](crate::TestServer::patch()) methods.
+/// Each returns a [`TestRequest`](crate::TestRequest), which allows for customising the request content.
+///
+/// For example:
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use axum::Router;
+/// use axum::routing::get;
+///
+/// use axum_test::TestServer;
+///
+/// let app = Router::new()
+///     .route(&"/hello", get(|| async { "hello!" }));
 ///
 /// let server = TestServer::new(app)?;
 ///
-/// // The different responses one can make:
-/// let get_response = server.get(&"/todo").await;
-/// let post_response = server.post(&"/todo").await;
-/// let put_response = server.put(&"/todo").await;
-/// let delete_response = server.delete(&"/todo").await;
-/// let patch_response = server.patch(&"/todo").await;
+/// let response = server.get(&"/hello")
+///     .authorization_bearer("password12345")
+///     .add_header("x-custom-header", "custom-value")
+///     .await;
+///
+/// response.assert_text("hello!");
+/// #
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Request methods also exist for using Axum Extra [`axum_extra::routing::TypedPath`],
+/// or for building Reqwest [`reqwest::RequestBuilder`]. See those methods for detauls.
+///
+/// # Customising
+///
+/// A `TestServer` can be built from a builder, by calling [`crate::TestServer::builder`],
+/// and customising settings. This allows one to set **mocked** (default when possible)
+/// or **real http** networking for your service.
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// use axum::Router;
+/// use axum::routing::get;
+///
+/// use axum_test::TestServer;
+///
+/// let app = Router::new()
+///     .route(&"/hello", get(|| async { "hello!" }));
+///
+/// // Customise server when building
+/// let mut server = TestServer::builder()
+///     .http_transport()
+///     .expect_success_by_default()
+///     .do_save_cookies()
+///     .build(app)?;
+///
+/// // Add items to be sent on _all_ all requests
+/// server.add_header("x-custom-for-all", "common-value");
+///
+/// let response = server.get("/hello").await;
 /// #
 /// # Ok(())
 /// # }
@@ -86,7 +148,7 @@ pub struct TestServer {
     is_http_path_restricted: bool,
 
     #[cfg(feature = "reqwest")]
-    reqwest_client: Option<Client>,
+    maybe_reqwest_client: Option<Client>,
 }
 
 impl TestServer {
@@ -99,7 +161,30 @@ impl TestServer {
     /// allowing you to make requests against it.
     ///
     /// This is the same as creating a new `TestServer` with a configuration,
-    /// and passing `TestServerConfig::default()`.
+    /// and passing [`crate::TestServerConfig::default()`].
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use axum::Router;
+    /// use axum::routing::get;
+    /// use axum_test::TestServer;
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/hello", get(|| async { "hello!" }));
+    ///
+    /// let server = TestServer::new(app)?;
+    /// #
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Types of applications that can be passed in include:
+    ///
+    ///  - [`axum::Router`]
+    ///  - [`axum::routin::IntoMakeService`]
+    ///  - [`axum::extract::connect_info::IntoMakeServiceWithConnectInfo`]
+    ///  - [`shuttle_axum::ShuttleAxum`]
     ///
     pub fn new<A>(app: A) -> Result<Self>
     where
@@ -108,11 +193,12 @@ impl TestServer {
         Self::new_with_config(app, TestServerConfig::default())
     }
 
-    /// This very similar to [`TestServer::new()`],
-    /// however you can customise some of the configuration.
-    /// This includes which port to run on, or default settings.
+    /// Similar to [`TestServer::new()`], with a customised configuration.
+    /// This includes type of transport in use (i.e. specify a specific port),
+    /// or change default settings (like the default content type for requests).
     ///
-    /// See the [`TestServerConfig`](crate::TestServerConfig) for more information on each configuration setting.
+    /// This can take a [`crate::TestServerConfig`] or a [`crate::TestServerBuilder`].
+    /// See those for more information on configuration settings.
     pub fn new_with_config<A, C>(app: A, config: C) -> Result<Self>
     where
         A: IntoTransportLayer,
@@ -155,15 +241,15 @@ impl TestServer {
         };
 
         #[cfg(feature = "reqwest")]
-        let reqwest_client = match transport.transport_layer_type() {
+        let maybe_reqwest_client = match transport.transport_layer_type() {
             TransportLayerType::Http => {
-                let client = reqwest::Client::builder()
+                let reqwest_client = reqwest::Client::builder()
                     .redirect(reqwest::redirect::Policy::none())
                     .cookie_store(config.save_cookies)
                     .build()
                     .expect("Failed to build Reqwest Client");
 
-                Some(client)
+                Some(reqwest_client)
             }
             TransportLayerType::Mock => None,
         };
@@ -177,7 +263,7 @@ impl TestServer {
             is_http_path_restricted: config.restrict_requests_with_http_schema,
 
             #[cfg(feature = "reqwest")]
-            reqwest_client,
+            maybe_reqwest_client,
         })
     }
 
@@ -218,7 +304,9 @@ impl TestServer {
 
     #[cfg(feature = "reqwest")]
     fn reqwest_client(&self) -> &Client {
-        self.reqwest_client.as_ref().expect("Reqwest client is not available, TestServer must be build with HTTP transport for Reqwest to be available")
+        self.maybe_reqwest_client
+            .as_ref()
+            .expect("Reqwest client is not available, TestServer must be build with HTTP transport for Reqwest to be available")
     }
 
     #[cfg(feature = "reqwest")]
@@ -344,7 +432,7 @@ impl TestServer {
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
     /// use axum::Json;
-    /// use axum::routing::Router;
+    /// use axum::Router;
     /// use axum::routing::get;
     /// use axum_extra::routing::RouterExt;
     /// use axum_extra::routing::TypedPath;
