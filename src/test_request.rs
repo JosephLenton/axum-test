@@ -630,7 +630,7 @@ impl TestRequest {
             let maybe_on_upgrade = http_response
                 .extensions_mut()
                 .remove::<hyper::upgrade::OnUpgrade>();
-            let transport_type = self.transport.get_type();
+            let transport_type = self.transport.transport_layer_type();
 
             crate::internals::TestResponseWebSocket {
                 maybe_on_upgrade,
@@ -782,7 +782,6 @@ fn build_content_type_header(
 #[cfg(test)]
 mod test_content_type {
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     use axum::routing::get;
     use axum::Router;
@@ -816,11 +815,10 @@ mod test_content_type {
         let app = Router::new().route("/content_type", get(get_content_type));
 
         // Run the server.
-        let config = TestServerConfig {
-            default_content_type: Some("text/plain".to_string()),
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServer::builder()
+            .default_content_type("text/plain")
+            .build(app)
+            .expect("Should create test server");
 
         // Get the request.
         let text = server
@@ -2290,7 +2288,6 @@ mod test_scheme {
     use axum::Router;
 
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     async fn route_get_scheme(request: Request) -> String {
         request.uri().scheme_str().unwrap().to_string()
@@ -2299,9 +2296,7 @@ mod test_scheme {
     #[tokio::test]
     async fn it_should_return_http_by_default() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let config = TestServerConfig::builder().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder().build(router).unwrap();
 
         server.get("/scheme").await.assert_text("http");
     }
@@ -2309,9 +2304,7 @@ mod test_scheme {
     #[tokio::test]
     async fn it_should_return_http_when_set() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let config = TestServerConfig::builder().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder().build(router).unwrap();
 
         server
             .get("/scheme")
@@ -2323,9 +2316,7 @@ mod test_scheme {
     #[tokio::test]
     async fn it_should_return_https_when_set() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let config = TestServerConfig::builder().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder().build(router).unwrap();
 
         server
             .get("/scheme")
@@ -2338,8 +2329,7 @@ mod test_scheme {
     async fn it_should_override_test_server_when_set() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
 
-        let config = TestServerConfig::builder().build();
-        let mut server = TestServer::new_with_config(router, config).unwrap();
+        let mut server = TestServer::builder().build(router).unwrap();
         server.scheme(&"https");
 
         server
@@ -2360,7 +2350,6 @@ mod test_multipart {
     use crate::multipart::MultipartForm;
     use crate::multipart::Part;
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     async fn route_post_multipart(mut multipart: Multipart) -> Json<Vec<String>> {
         let mut fields = vec![];
@@ -2384,9 +2373,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_get_multipart_stats_on_mock_transport() {
         // Run the server.
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new()
             .add_text("penguins?", "lots")
@@ -2408,9 +2398,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_get_multipart_stats_on_http_transport() {
         // Run the server.
-        let config = TestServerConfig::builder().http_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .http_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new()
             .add_text("penguins?", "lots")
@@ -2432,9 +2423,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_send_text_parts_as_text() {
         // Run the server.
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new().add_part("animals", Part::text("🦊🦊🦊"));
 
@@ -2449,9 +2441,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_send_custom_mime_type() {
         // Run the server.
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new().add_part(
             "animals",
@@ -2469,9 +2462,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_send_using_include_bytes() {
         // Run the server.
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new().add_part(
             "file",

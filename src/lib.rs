@@ -95,14 +95,11 @@
 //! #
 //! use axum::Router;
 //! use axum_test::TestServer;
-//! use axum_test::TestServerConfig;
 //!
 //! let my_app = Router::new();
-//! let config = TestServerConfig::builder()
+//! let server = TestServer::builder()
 //!     .save_cookies()
-//!     .build();
-//!
-//! let server = TestServer::new_with_config(my_app, config)?;
+//!     .build(my_app)?;
 //! #
 //! # Ok(())
 //! # }
@@ -127,14 +124,11 @@
 //! #
 //! use axum::Router;
 //! use axum_test::TestServer;
-//! use axum_test::TestServerConfig;
 //!
 //! let my_app = Router::new();
-//! let config = TestServerConfig::builder()
+//! let server = TestServer::builder()
 //!     .default_content_type("application/json")
-//!     .build();
-//!
-//! let server = TestServer::new_with_config(my_app, config)?;
+//!     .build(my_app)?;
 //! #
 //! # Ok(())
 //! # }
@@ -201,16 +195,11 @@ pub mod util;
 mod test_request;
 pub use self::test_request::*;
 
-#[cfg(feature = "reqwest")]
-mod test_reqwest_client;
-#[cfg(feature = "reqwest")]
-pub use self::test_reqwest_client::*;
-
 mod test_response;
 pub use self::test_response::*;
 
-mod test_server_config_builder;
-pub use self::test_server_config_builder::*;
+mod test_server_builder;
+pub use self::test_server_builder::*;
 
 mod test_server_config;
 pub use self::test_server_config::*;
@@ -304,9 +293,9 @@ mod integrated_test_cookie_saving {
     #[tokio::test]
     async fn it_should_not_pass_cookies_created_back_up_to_server_when_turned_off() {
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .do_not_save_cookies()
-            .build_server(new_test_router())
+            .build(new_test_router())
             .expect("Should create test server");
 
         // Create a cookie.
@@ -321,9 +310,9 @@ mod integrated_test_cookie_saving {
     #[tokio::test]
     async fn it_should_pass_cookies_created_back_up_to_server_automatically() {
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .save_cookies()
-            .build_server(new_test_router())
+            .build(new_test_router())
             .expect("Should create test server");
 
         // Create a cookie.
@@ -338,9 +327,9 @@ mod integrated_test_cookie_saving {
     #[tokio::test]
     async fn it_should_pass_cookies_created_back_up_to_server_when_turned_on_for_request() {
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .do_not_save_cookies() // it's off by default!
-            .build_server(new_test_router())
+            .build(new_test_router())
             .expect("Should create test server");
 
         // Create a cookie.
@@ -359,9 +348,9 @@ mod integrated_test_cookie_saving {
     #[tokio::test]
     async fn it_should_wipe_cookies_cleared_by_request() {
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .do_not_save_cookies() // it's off by default!
-            .build_server(new_test_router())
+            .build(new_test_router())
             .expect("Should create test server");
 
         // Create a cookie.
@@ -380,9 +369,9 @@ mod integrated_test_cookie_saving {
     #[tokio::test]
     async fn it_should_wipe_cookies_cleared_by_test_server() {
         // Run the server.
-        let mut server = TestServerConfig::builder()
+        let mut server = TestServer::builder()
             .do_not_save_cookies() // it's off by default!
-            .build_server(new_test_router())
+            .build(new_test_router())
             .expect("Should create test server");
 
         // Create a cookie.
@@ -403,9 +392,9 @@ mod integrated_test_cookie_saving {
     #[tokio::test]
     async fn it_should_send_cookies_added_to_request() {
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .do_not_save_cookies() // it's off by default!
-            .build_server(new_test_router())
+            .build(new_test_router())
             .expect("Should create test server");
 
         // Check it comes back.
@@ -419,9 +408,9 @@ mod integrated_test_cookie_saving {
     #[tokio::test]
     async fn it_should_send_cookies_added_to_test_server() {
         // Run the server.
-        let mut server = TestServerConfig::builder()
+        let mut server = TestServer::builder()
             .do_not_save_cookies() // it's off by default!
-            .build_server(new_test_router())
+            .build(new_test_router())
             .expect("Should create test server");
 
         // Check it comes back.

@@ -19,7 +19,7 @@ pub trait TransportLayer: Debug + Send + Sync + 'static {
         None
     }
 
-    fn get_type(&self) -> TransportLayerType;
+    fn transport_layer_type(&self) -> TransportLayerType;
 }
 
 #[cfg(test)]

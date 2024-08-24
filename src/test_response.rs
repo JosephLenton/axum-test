@@ -656,11 +656,11 @@ impl TestResponse {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
-    /// use axum_test::TestServerConfig;
     ///
     /// let app = Router::new();
-    /// let config = TestServerConfig::builder().http_transport().build();
-    /// let server = TestServer::new_with_config(app, config)?;
+    /// let server = TestServer::builder()
+    ///     .http_transport()
+    ///     .build(app)?;
     ///
     /// let mut websocket = server
     ///     .get_websocket(&"/my-web-socket-end-point")
@@ -1925,7 +1925,7 @@ mod test_text {
 #[cfg(test)]
 mod test_into_websocket {
     use crate::TestServer;
-    use crate::TestServerConfig;
+    use crate::TestServer;
 
     use axum::extract::ws::WebSocket;
     use axum::extract::WebSocketUpgrade;
@@ -1952,8 +1952,10 @@ mod test_into_websocket {
     #[tokio::test]
     async fn it_should_upgrade_on_http_transport() {
         let router = new_test_router();
-        let config = TestServerConfig::builder().http_transport().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder()
+            .http_transport()
+            .build(router)
+            .unwrap();
 
         let _ = server.get_websocket(&"/ws").await.into_websocket().await;
 
@@ -1964,8 +1966,10 @@ mod test_into_websocket {
     #[should_panic]
     async fn it_should_fail_to_upgrade_on_mock_transport() {
         let router = new_test_router();
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(router)
+            .unwrap();
 
         let _ = server.get_websocket(&"/ws").await.into_websocket().await;
     }

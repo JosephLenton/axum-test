@@ -41,8 +41,6 @@ use tokio::net::TcpListener;
 
 #[cfg(test)]
 use axum_test::TestServer;
-#[cfg(test)]
-use axum_test::TestServerConfig;
 
 const PORT: u16 = 8080;
 const USER_ID_COOKIE_NAME: &'static str = &"example-todo-user-id";
@@ -168,13 +166,13 @@ pub(crate) fn new_app() -> Router {
 #[cfg(test)]
 fn new_test_app() -> TestServer {
     let app = new_app();
-    TestServerConfig::builder()
+    TestServer::builder()
         // Preserve cookies across requests
         // for the session cookie to work.
         .save_cookies()
         .expect_success_by_default()
         .mock_transport()
-        .build_server(app)
+        .build(app)
         .unwrap()
 }
 

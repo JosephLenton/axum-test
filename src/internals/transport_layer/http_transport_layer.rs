@@ -58,7 +58,7 @@ impl TransportLayer for HttpTransportLayer {
         Some(&self.url)
     }
 
-    fn get_type(&self) -> TransportLayerType {
+    fn transport_layer_type(&self) -> TransportLayerType {
         TransportLayerType::Http
     }
 }

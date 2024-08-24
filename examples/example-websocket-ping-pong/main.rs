@@ -24,8 +24,6 @@ use tokio::net::TcpListener;
 
 #[cfg(test)]
 use axum_test::TestServer;
-#[cfg(test)]
-use axum_test::TestServerConfig;
 
 const PORT: u16 = 8080;
 
@@ -76,9 +74,9 @@ pub(crate) fn new_app() -> Router {
 #[cfg(test)]
 fn new_test_app() -> TestServer {
     let app = new_app();
-    TestServerConfig::builder()
+    TestServer::builder()
         .http_transport() // Important! It must be a HTTP Transport here.
-        .build_server(app)
+        .build(app)
         .unwrap()
 }
 

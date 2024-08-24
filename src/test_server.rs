@@ -17,25 +17,26 @@ use url::Url;
 use axum_extra::routing::TypedPath;
 
 #[cfg(feature = "reqwest")]
-use ::reqwest::Client;
-
+use crate::transport_layer::TransportLayerType;
 #[cfg(feature = "reqwest")]
-use ::reqwest::ClientBuilder;
+use reqwest::Client;
+#[cfg(feature = "reqwest")]
+use reqwest::RequestBuilder;
 
 use crate::internals::ExpectedState;
+use crate::internals::QueryParamsStore;
+use crate::internals::RequestPathFormatter;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 use crate::TestRequest;
 use crate::TestRequestConfig;
+use crate::TestServerBuilder;
 use crate::TestServerConfig;
 use crate::Transport;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-use crate::internals::QueryParamsStore;
-use crate::internals::RequestPathFormatter;
-use reqwest::dns::Resolve;
 
 const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 
@@ -89,6 +90,11 @@ pub struct TestServer {
 }
 
 impl TestServer {
+    /// A helper function to create a builder for creating a [`TestServer`].
+    pub fn builder() -> TestServerBuilder {
+        TestServerBuilder::default()
+    }
+
     /// This will run the given Axum app,
     /// allowing you to make requests against it.
     ///
@@ -107,10 +113,12 @@ impl TestServer {
     /// This includes which port to run on, or default settings.
     ///
     /// See the [`TestServerConfig`](crate::TestServerConfig) for more information on each configuration setting.
-    pub fn new_with_config<A>(app: A, config: TestServerConfig) -> Result<Self>
+    pub fn new_with_config<A, C>(app: A, config: C) -> Result<Self>
     where
         A: IntoTransportLayer,
+        C: Into<TestServerConfig>,
     {
+        let config = config.into();
         let mut shared_state = ServerSharedState::new();
         if let Some(scheme) = config.default_scheme {
             shared_state.set_scheme_unlocked(scheme);
@@ -146,6 +154,20 @@ impl TestServer {
             false => ExpectedState::None,
         };
 
+        #[cfg(feature = "reqwest")]
+        let reqwest_client = match transport.transport_layer_type() {
+            TransportLayerType::Http => {
+                let client = reqwest::Client::builder()
+                    .redirect(reqwest::redirect::Policy::none())
+                    .cookie_store(config.save_cookies)
+                    .build()
+                    .expect("Failed to build Reqwest Client");
+
+                Some(client)
+            }
+            TransportLayerType::Mock => None,
+        };
+
         Ok(Self {
             state,
             transport,
@@ -155,7 +177,7 @@ impl TestServer {
             is_http_path_restricted: config.restrict_requests_with_http_schema,
 
             #[cfg(feature = "reqwest")]
-            reqwest_client: None,
+            reqwest_client,
         })
     }
 
@@ -194,14 +216,72 @@ impl TestServer {
         TestRequest::new(self.state.clone(), self.transport.clone(), config)
     }
 
-    /// Creates a HTTP request, to the method and path provided.
-    pub fn reqwest_method(&self, method: Method, path: &str) -> TestRequest {
-        let maybe_config = self.build_test_request_config(method.clone(), path);
-        let config = maybe_config
-            .with_context(|| format!("Failed to build, for request {method} {path}"))
-            .unwrap();
+    #[cfg(feature = "reqwest")]
+    fn reqwest_client(&self) -> &Client {
+        self.reqwest_client.as_ref().expect("Reqwest client is not available, TestServer must be build with HTTP transport for Reqwest to be available")
+    }
 
-        TestRequest::new(self.state.clone(), self.transport.clone(), config)
+    #[cfg(feature = "reqwest")]
+    pub fn reqwest_get(&self, path: &str) -> RequestBuilder {
+        self.reqwest_method(Method::GET, path)
+    }
+
+    #[cfg(feature = "reqwest")]
+    pub fn reqwest_post(&self, path: &str) -> RequestBuilder {
+        self.reqwest_method(Method::POST, path)
+    }
+
+    #[cfg(feature = "reqwest")]
+    pub fn reqwest_put(&self, path: &str) -> RequestBuilder {
+        self.reqwest_method(Method::PUT, path)
+    }
+
+    #[cfg(feature = "reqwest")]
+    pub fn reqwest_patch(&self, path: &str) -> RequestBuilder {
+        self.reqwest_method(Method::PATCH, path)
+    }
+
+    #[cfg(feature = "reqwest")]
+    pub fn reqwest_delete(&self, path: &str) -> RequestBuilder {
+        self.reqwest_method(Method::DELETE, path)
+    }
+
+    #[cfg(feature = "reqwest")]
+    pub fn reqwest_head(&self, path: &str) -> RequestBuilder {
+        self.reqwest_method(Method::HEAD, path)
+    }
+
+    /// Creates a HTTP request, using Reqwest, using the method + path described.
+    /// This expects a relative url to the `TestServer`.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use axum::Router;
+    /// use axum_test::TestServer;
+    ///
+    /// let my_app = Router::new();
+    /// let server = TestServer::builder()
+    ///     .http_transport() // Important, must be HTTP!
+    ///     .build(my_app)?;
+    ///
+    /// // Build your request
+    /// let request = server.get(&"/user")
+    ///     .add_header("x-custom-header", "example.com")
+    ///     .content_type("application/yaml");
+    ///
+    /// // await request to execute
+    /// let response = request.await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    #[cfg(feature = "reqwest")]
+    pub fn reqwest_method(&self, method: Method, path: &str) -> RequestBuilder {
+        let request_url = self
+            .server_url(path)
+            .expect("Failed to generate server url for request {method} {path}");
+
+        self.reqwest_client().request(method, request_url)
     }
 
     /// Creates a request to the server, to start a Websocket connection,
@@ -221,11 +301,11 @@ impl TestServer {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
-    /// use axum_test::TestServerConfig;
     ///
     /// let app = Router::new();
-    /// let config = TestServerConfig::builder().http_transport().build();
-    /// let server = TestServer::new_with_config(app, config)?;
+    /// let server = TestServer::builder()
+    ///     .http_transport()
+    ///     .build(app)?;
     ///
     /// let mut websocket = server
     ///     .get_websocket(&"/my-web-socket-end-point")
@@ -385,12 +465,11 @@ impl TestServer {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
-    /// use axum_test::TestServerConfig;
     ///
     /// let app = Router::new();
-    /// let server = TestServerConfig::builder()
+    /// let server = TestServer::builder()
     ///         .http_transport()
-    ///         .build_server(app)?;
+    ///         .build(app)?;
     ///
     /// let full_url = server.server_url(&"/users/123?filter=enabled")?;
     ///
@@ -649,29 +728,6 @@ impl TestServer {
             query_params,
             headers,
         })
-    }
-
-    #[cfg(feature = "reqwest")]
-    pub fn reqwest_client(&self) -> Result<Client> {
-        self.reqwest_client_builder().build().map_err(Into::into)
-    }
-
-    #[cfg(feature = "reqwest")]
-    pub fn reqwest_client_builder(&self) -> ClientBuilder {
-        Client::builder().dns_resolver(std::sync::Arc::new(MyResolver))
-    }
-}
-
-struct MyResolver;
-impl Resolve for MyResolver {
-    fn resolve(&self, name: reqwest::dns::Name) -> reqwest::dns::Resolving {
-        println!("the request is ... {name:?}");
-        let the_future = async {
-            unimplemented!("todo")
-            // Err(anyhow!("todo"))
-        };
-
-        Box::pin(the_future)
     }
 }
 
@@ -1030,14 +1086,9 @@ mod test_get {
         let port = reserved_address.port();
 
         // Run the server.
-        let test_config = TestServerConfig {
-            transport: Some(Transport::HttpIpPort {
-                ip: Some(ip),
-                port: Some(port),
-            }),
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, test_config)
+        let server = TestServer::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1061,15 +1112,10 @@ mod test_get {
         let port = reserved_address.port();
 
         // Run the server.
-        let test_config = TestServerConfig {
-            transport: Some(Transport::HttpIpPort {
-                ip: Some(ip),
-                port: Some(port),
-            }),
-            restrict_requests_with_http_schema: true, // Key part of the test!
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, test_config)
+        let server = TestServer::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .restrict_requests_with_http_schema() // Key part of the test!
+            .build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1094,15 +1140,10 @@ mod test_get {
         let mut port = reserved_address.port();
 
         // Run the server.
-        let test_config = TestServerConfig {
-            transport: Some(Transport::HttpIpPort {
-                ip: Some(ip),
-                port: Some(port),
-            }),
-            restrict_requests_with_http_schema: true, // Key part of the test!
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, test_config)
+        let server = TestServer::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .restrict_requests_with_http_schema() // Key part of the test!
+            .build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1161,9 +1202,9 @@ mod test_server_address {
 
         // Build an application with a route.
         let app = Router::new();
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
-            .build_server(app)
+            .build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1177,9 +1218,9 @@ mod test_server_address {
     #[tokio::test]
     async fn it_should_return_default_address_without_ending_slash() {
         let app = Router::new();
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         let address_regex = Regex::new("^http://127\\.0\\.0\\.1:[0-9]+/$").unwrap();
@@ -1190,9 +1231,9 @@ mod test_server_address {
     #[tokio::test]
     async fn it_should_return_none_on_mock_transport() {
         let app = Router::new();
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .mock_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         assert!(server.server_address().is_none());
@@ -1216,9 +1257,9 @@ mod test_server_url {
 
         // Build an application with a route.
         let app = Router::new();
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
-            .build_server(app)
+            .build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1230,9 +1271,9 @@ mod test_server_url {
     #[tokio::test]
     async fn it_should_return_address_with_url_on_random_http() {
         let app = Router::new();
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         let address_regex =
@@ -1250,9 +1291,9 @@ mod test_server_url {
     async fn it_should_error_on_mock_transport() {
         // Build an application with a route.
         let app = Router::new();
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .mock_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         let result = server.server_url("/users");
@@ -1267,9 +1308,9 @@ mod test_server_url {
 
         // Build an application with a route.
         let app = Router::new();
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
-            .build_server(app)
+            .build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1294,9 +1335,9 @@ mod test_server_url {
 
         // Build an application with a route.
         let app = Router::new();
-        let mut server = TestServerConfig::builder()
+        let mut server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
-            .build_server(app)
+            .build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1320,9 +1361,9 @@ mod test_server_url {
 
         // Build an application with a route.
         let app = Router::new();
-        let mut server = TestServerConfig::builder()
+        let mut server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
-            .build_server(app)
+            .build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
 
@@ -1946,14 +1987,10 @@ mod test_expect_success_by_default {
     #[should_panic]
     async fn it_should_panic_by_default_if_accessing_404_route_and_expect_success_on() {
         let app = Router::new();
-        let server = TestServer::new_with_config(
-            app,
-            TestServerConfig {
-                expect_success_by_default: true,
-                ..TestServerConfig::default()
-            },
-        )
-        .expect("Should create test server");
+        let server = TestServer::builder()
+            .expect_success_by_default()
+            .build(app)
+            .expect("Should create test server");
 
         server.get(&"/some_unknown_route").await;
     }
@@ -1961,14 +1998,10 @@ mod test_expect_success_by_default {
     #[tokio::test]
     async fn it_should_not_panic_by_default_if_accessing_200_route_and_expect_success_on() {
         let app = Router::new().route("/known_route", get(|| async { "🦊🦊🦊" }));
-        let server = TestServer::new_with_config(
-            app,
-            TestServerConfig {
-                expect_success_by_default: true,
-                ..TestServerConfig::default()
-            },
-        )
-        .expect("Should create test server");
+        let server = TestServer::builder()
+            .expect_success_by_default()
+            .build(app)
+            .expect("Should create test server");
 
         server.get(&"/known_route").await;
     }
@@ -1996,11 +2029,10 @@ mod test_content_type {
         let app = Router::new().route("/content_type", get(get_content_type));
 
         // Run the server.
-        let config = TestServerConfig {
-            default_content_type: Some("text/plain".to_string()),
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServer::builder()
+            .default_content_type("text/plain")
+            .build(app)
+            .expect("Should create test server");
 
         // Get the request.
         let text = server.get(&"/content_type").await.text();
@@ -2129,7 +2161,6 @@ mod test_scheme {
     use axum::Router;
 
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     async fn route_get_scheme(request: Request) -> String {
         request.uri().scheme_str().unwrap().to_string()
@@ -2138,9 +2169,7 @@ mod test_scheme {
     #[tokio::test]
     async fn it_should_return_http_by_default() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let config = TestServerConfig::builder().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder().build(router).unwrap();
 
         server.get("/scheme").await.assert_text("http");
     }
@@ -2148,12 +2177,8 @@ mod test_scheme {
     #[tokio::test]
     async fn it_should_return_https_across_multiple_requests_when_set() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let config = TestServerConfig::builder().build();
-        let mut server = TestServer::new_with_config(router, config).unwrap();
+        let mut server = TestServer::builder().build(router).unwrap();
         server.scheme(&"https");
-
-        server.get("/scheme").await.assert_text("https");
 
         server.get("/scheme").await.assert_text("https");
     }
@@ -2445,33 +2470,5 @@ mod test_sync {
         });
 
         server.get("/test").await.assert_text("it works");
-    }
-}
-
-#[cfg(test)]
-mod test_reqwest_client_builder {
-    use super::*;
-    use axum::routing::get;
-    use axum::Router;
-
-    #[tokio::test]
-    async fn it_should_print_name_used() {
-        async fn route_get() -> &'static str {
-            "it works"
-        }
-
-        let router = Router::new().route("/test", get(route_get));
-        let server = TestServer::new(router).unwrap();
-
-        println!("pre ...");
-        let result = server
-            .reqwest_client_builder()
-            .build()
-            .unwrap()
-            .get("/test")
-            .send()
-            .await;
-        result.unwrap();
-        println!("post ...");
     }
 }

@@ -27,7 +27,7 @@ mod test_into_http_transport_layer_for_axum_service {
     use axum::routing::get;
     use axum::Router;
 
-    use crate::TestServerConfig;
+    use crate::TestServer;
 
     async fn get_state(State(count): State<u32>) -> String {
         format!("count is {}", count)
@@ -42,9 +42,9 @@ mod test_into_http_transport_layer_for_axum_service {
             .into();
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -60,7 +60,7 @@ mod test_into_mock_transport_layer_for_axum_service {
     use axum::routing::get;
     use axum::Router;
 
-    use crate::TestServerConfig;
+    use crate::TestServer;
 
     async fn get_state(State(count): State<u32>) -> String {
         format!("count is {}", count)
@@ -75,9 +75,9 @@ mod test_into_mock_transport_layer_for_axum_service {
             .into();
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .mock_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.

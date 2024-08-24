@@ -37,8 +37,6 @@ use std::sync::RwLock;
 
 #[cfg(test)]
 use axum_test::TestServer;
-#[cfg(test)]
-use axum_test::TestServerConfig;
 
 /// Main to start Shuttle application
 #[shuttle_runtime::main]
@@ -65,13 +63,13 @@ fn new_app() -> ::shuttle_axum::ShuttleAxum {
 /// A TestServer that runs the Shuttle application
 #[cfg(test)]
 fn new_test_app() -> TestServer {
-    TestServerConfig::builder()
+    TestServer::builder()
         // Preserve cookies across requests
         // for the session cookie to work.
         .save_cookies()
         .expect_success_by_default()
         .mock_transport()
-        .build_server(new_app()) // <- here the application is passed in
+        .build(new_app()) // <- here the application is passed in
         .unwrap()
 }
 

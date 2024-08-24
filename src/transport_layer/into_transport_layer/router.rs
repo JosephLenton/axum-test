@@ -24,7 +24,7 @@ mod test_into_http_transport_layer {
     use axum::routing::get;
     use axum::Router;
 
-    use crate::TestServerConfig;
+    use crate::TestServer;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -40,9 +40,9 @@ mod test_into_http_transport_layer {
         let app: Router = Router::new().route("/ping", get(get_ping));
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -57,9 +57,9 @@ mod test_into_http_transport_layer {
             .with_state(123);
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -73,7 +73,7 @@ mod test_into_mock_transport_layer_for_router {
     use axum::routing::get;
     use axum::Router;
 
-    use crate::TestServerConfig;
+    use crate::TestServer;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -89,9 +89,9 @@ mod test_into_mock_transport_layer_for_router {
         let app: Router = Router::new().route("/ping", get(get_ping));
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .mock_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -106,9 +106,9 @@ mod test_into_mock_transport_layer_for_router {
             .with_state(123);
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .mock_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
