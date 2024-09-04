@@ -1,8 +1,11 @@
 use ::anyhow::anyhow;
 use ::anyhow::Result;
 use ::axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
+use ::axum::extract::Request as AxumRequest;
+use ::axum::response::Response as AxumResponse;
 use ::axum::serve::IncomingStream;
-use ::axum::Router;
+use ::std::convert::Infallible;
+use ::tower::Service;
 use ::url::Url;
 
 use crate::internals::HttpTransportLayer;
@@ -11,9 +14,11 @@ use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 use crate::util::spawn_serve;
 
-impl<C> IntoTransportLayer for IntoMakeServiceWithConnectInfo<Router, C>
+impl<S, C> IntoTransportLayer for IntoMakeServiceWithConnectInfo<S, C>
 where
     for<'a> C: axum::extract::connect_info::Connected<IncomingStream<'a>>,
+    S: Service<AxumRequest, Response = AxumResponse, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
 {
     fn into_http_transport_layer(
         self,
@@ -47,11 +52,14 @@ where
 
 #[cfg(test)]
 mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
+    use crate::TestServerConfig;
+    use ::axum::extract::Request;
     use ::axum::routing::get;
     use ::axum::Router;
+    use ::axum::ServiceExt;
     use ::std::net::SocketAddr;
-
-    use crate::TestServerConfig;
+    use ::tower::Layer;
+    use ::tower_http::normalize_path::NormalizePathLayer;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -63,6 +71,25 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
         let app = Router::new()
             .route("/ping", get(get_ping))
             .into_make_service_with_connect_info::<SocketAddr>();
+
+        // Run the server.
+        let server = TestServerConfig::builder()
+            .http_transport()
+            .build_server(app)
+            .expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/ping").await.assert_text(&"pong!");
+    }
+
+    #[tokio::test]
+    async fn it_should_create_and_run_with_router_wrapped_service() {
+        // Build an application with a route.
+        let router = Router::new().route("/ping", get(get_ping));
+        let normalized_router = NormalizePathLayer::trim_trailing_slash().layer(router);
+        let app = ServiceExt::<Request>::into_make_service_with_connect_info::<SocketAddr>(
+            normalized_router,
+        );
 
         // Run the server.
         let server = TestServerConfig::builder()
