@@ -9,7 +9,7 @@ use ::tower::Service;
 
 use crate::util::ServeHandle;
 
-/// A wrapper around [`axum::serve`] for tests,
+/// A wrapper around [`axum::serve()`] for tests,
 /// which spawns the service in a new thread.
 ///
 /// The [`crate::util::ServeHandle`] returned will automatically attempt

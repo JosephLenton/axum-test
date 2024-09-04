@@ -1,6 +1,9 @@
 use ::anyhow::Result;
+use ::axum::extract::Request as AxumRequest;
+use ::axum::response::Response as AxumResponse;
 use ::axum::routing::IntoMakeService;
-use ::axum::Router;
+use ::std::convert::Infallible;
+use ::tower::Service;
 use ::url::Url;
 
 use crate::internals::HttpTransportLayer;
@@ -10,7 +13,11 @@ use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 use crate::util::spawn_serve;
 
-impl IntoTransportLayer for IntoMakeService<Router> {
+impl<S> IntoTransportLayer for IntoMakeService<S>
+where
+    S: Service<AxumRequest, Response = AxumResponse, Error = Infallible> + Clone + Send + 'static,
+    S::Future: Send,
+{
     fn into_http_transport_layer(
         self,
         builder: TransportLayerBuilder,
@@ -37,12 +44,14 @@ impl IntoTransportLayer for IntoMakeService<Router> {
 
 #[cfg(test)]
 mod test_into_http_transport_layer_for_into_make_service {
+    use crate::TestServerConfig;
+    use ::axum::extract::Request;
     use ::axum::extract::State;
     use ::axum::routing::get;
-    use ::axum::routing::IntoMakeService;
     use ::axum::Router;
-
-    use crate::TestServerConfig;
+    use ::axum::ServiceExt;
+    use ::tower::Layer;
+    use ::tower_http::normalize_path::NormalizePathLayer;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -55,7 +64,7 @@ mod test_into_http_transport_layer_for_into_make_service {
     #[tokio::test]
     async fn it_should_create_and_test_with_make_into_service() {
         // Build an application with a route.
-        let app: IntoMakeService<Router> = Router::new()
+        let app = Router::new()
             .route("/ping", get(get_ping))
             .into_make_service();
 
@@ -72,10 +81,29 @@ mod test_into_http_transport_layer_for_into_make_service {
     #[tokio::test]
     async fn it_should_create_and_test_with_make_into_service_with_state() {
         // Build an application with a route.
-        let app: IntoMakeService<Router> = Router::new()
+        let app = Router::new()
             .route("/count", get(get_state))
             .with_state(123)
             .into_make_service();
+
+        // Run the server.
+        let server = TestServerConfig::builder()
+            .http_transport()
+            .build_server(app)
+            .expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/count").await.assert_text(&"count is 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_create_and_run_with_router_wrapped_service() {
+        // Build an application with a route.
+        let router = Router::new()
+            .route("/count", get(get_state))
+            .with_state(123);
+        let normalized_router = NormalizePathLayer::trim_trailing_slash().layer(router);
+        let app = ServiceExt::<Request>::into_make_service(normalized_router);
 
         // Run the server.
         let server = TestServerConfig::builder()
@@ -90,12 +118,15 @@ mod test_into_http_transport_layer_for_into_make_service {
 
 #[cfg(test)]
 mod test_into_mock_transport_layer_for_into_make_service {
+    use crate::TestServerConfig;
+    use ::axum::extract::Request;
     use ::axum::extract::State;
     use ::axum::routing::get;
     use ::axum::routing::IntoMakeService;
     use ::axum::Router;
-
-    use crate::TestServerConfig;
+    use ::axum::ServiceExt;
+    use ::tower::Layer;
+    use ::tower_http::normalize_path::NormalizePathLayer;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -129,6 +160,25 @@ mod test_into_mock_transport_layer_for_into_make_service {
             .route("/count", get(get_state))
             .with_state(123)
             .into_make_service();
+
+        // Run the server.
+        let server = TestServerConfig::builder()
+            .mock_transport()
+            .build_server(app)
+            .expect("Should create test server");
+
+        // Get the request.
+        server.get(&"/count").await.assert_text(&"count is 123");
+    }
+
+    #[tokio::test]
+    async fn it_should_create_and_run_with_router_wrapped_service() {
+        // Build an application with a route.
+        let router = Router::new()
+            .route("/count", get(get_state))
+            .with_state(123);
+        let normalized_router = NormalizePathLayer::trim_trailing_slash().layer(router);
+        let app = ServiceExt::<Request>::into_make_service(normalized_router);
 
         // Run the server.
         let server = TestServerConfig::builder()

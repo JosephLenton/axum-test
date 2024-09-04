@@ -9,7 +9,7 @@ use ::url::Url;
 
 use crate::transport_layer::TransportLayerType;
 
-pub trait TransportLayer: Debug + Send + Sync {
+pub trait TransportLayer: Debug + Send {
     fn send<'a>(
         &'a self,
         request: Request<Body>,

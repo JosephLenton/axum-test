@@ -1,7 +1,7 @@
 use ::anyhow::Error as AnyhowError;
 use ::anyhow::Result;
 use ::axum::body::Body;
-use ::axum::Router;
+use ::axum::response::Response as AxumResponse;
 use ::bytes::Bytes;
 use ::http::Request;
 use ::http::Response;
@@ -18,22 +18,25 @@ pub struct MockTransportLayer<S> {
     service: S,
 }
 
-impl<S> MockTransportLayer<S>
+impl<S, RouterService> MockTransportLayer<S>
 where
-    S: Service<Request<Body>, Response = Router> + Clone + Send + Sync,
+    S: Service<Request<Body>, Response = RouterService> + Clone + Send,
     AnyhowError: From<S::Error>,
     S::Future: Send,
+    RouterService: Service<Request<Body>, Response = AxumResponse>,
 {
     pub(crate) fn new(service: S) -> Self {
         Self { service }
     }
 }
 
-impl<S> TransportLayer for MockTransportLayer<S>
+impl<S, RouterService> TransportLayer for MockTransportLayer<S>
 where
-    S: Service<Request<Body>, Response = Router> + Clone + Send + Sync,
+    S: Service<Request<Body>, Response = RouterService> + Clone + Send,
     AnyhowError: From<S::Error>,
     S::Future: Send,
+    RouterService: Service<Request<Body>, Response = AxumResponse>,
+    AnyhowError: From<RouterService::Error>,
 {
     fn send<'a>(
         &'a self,
@@ -49,7 +52,6 @@ where
             let router = service.oneshot(empty_request).await?;
 
             let response = router.oneshot(request).await?;
-
             Ok(response)
         })
     }
