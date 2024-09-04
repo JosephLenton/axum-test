@@ -1,6 +1,6 @@
-use ::base64::engine::general_purpose::STANDARD;
-use ::base64::Engine;
-use ::uuid::Uuid;
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
+use uuid::Uuid;
 
 /// Generates a random key for use, that is base 64 encoded for use over HTTP.
 pub fn generate_ws_key() -> String {

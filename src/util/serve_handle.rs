@@ -1,4 +1,4 @@
-use ::tokio::task::JoinHandle;
+use tokio::task::JoinHandle;
 
 /// A handle to a running Axum service.
 ///

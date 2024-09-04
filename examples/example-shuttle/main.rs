@@ -16,29 +16,29 @@
 //! At the bottom of this file are a series of tests for these endpoints.
 //!
 
-use ::anyhow::anyhow;
-use ::anyhow::Result;
-use ::axum::extract::Json;
-use ::axum::extract::State;
-use ::axum::routing::get;
-use ::axum::routing::post;
-use ::axum::routing::put;
-use ::axum::Router;
-use ::axum_extra::extract::cookie::Cookie;
-use ::axum_extra::extract::cookie::CookieJar;
-use ::http::StatusCode;
-use ::serde::Deserialize;
-use ::serde::Serialize;
-use ::serde_email::Email;
-use ::std::collections::HashMap;
-use ::std::result::Result as StdResult;
-use ::std::sync::Arc;
-use ::std::sync::RwLock;
+use anyhow::anyhow;
+use anyhow::Result;
+use axum::extract::Json;
+use axum::extract::State;
+use axum::routing::get;
+use axum::routing::post;
+use axum::routing::put;
+use axum::Router;
+use axum_extra::extract::cookie::Cookie;
+use axum_extra::extract::cookie::CookieJar;
+use http::StatusCode;
+use serde::Deserialize;
+use serde::Serialize;
+use serde_email::Email;
+use std::collections::HashMap;
+use std::result::Result as StdResult;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 #[cfg(test)]
-use ::axum_test::TestServer;
+use axum_test::TestServer;
 #[cfg(test)]
-use ::axum_test::TestServerConfig;
+use axum_test::TestServerConfig;
 
 /// Main to start Shuttle application
 #[shuttle_runtime::main]
@@ -166,7 +166,7 @@ pub async fn route_get_user_todos(
 mod test_post_login {
     use super::*;
 
-    use ::serde_json::json;
+    use serde_json::json;
 
     #[tokio::test]
     async fn it_should_create_session_on_login() {
@@ -205,7 +205,7 @@ mod test_post_login {
 mod test_route_put_user_todos {
     use super::*;
 
-    use ::serde_json::json;
+    use serde_json::json;
 
     #[tokio::test]
     async fn it_should_not_store_todos_without_login() {
@@ -260,7 +260,7 @@ mod test_route_put_user_todos {
 mod test_route_get_user_todos {
     use super::*;
 
-    use ::serde_json::json;
+    use serde_json::json;
 
     #[tokio::test]
     async fn it_should_not_return_todos_if_logged_out() {

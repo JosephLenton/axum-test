@@ -1,4 +1,4 @@
-use ::anyhow::Result;
+use anyhow::Result;
 
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;

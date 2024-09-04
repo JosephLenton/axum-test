@@ -1,12 +1,12 @@
-use ::anyhow::Context;
-use ::anyhow::Result;
-use ::cookie::Cookie;
-use ::cookie::CookieJar;
-use ::http::HeaderName;
-use ::http::HeaderValue;
-use ::serde::Serialize;
-use ::std::sync::Arc;
-use ::std::sync::Mutex;
+use anyhow::Context;
+use anyhow::Result;
+use cookie::Cookie;
+use cookie::CookieJar;
+use http::HeaderName;
+use http::HeaderValue;
+use serde::Serialize;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use crate::internals::with_this_mut;
 use crate::internals::QueryParamsStore;

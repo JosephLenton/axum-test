@@ -19,12 +19,12 @@
 //! ```rust
 //! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 //! #
-//! use ::axum::Router;
-//! use ::axum::extract::Json;
-//! use ::axum::routing::put;
-//! use ::axum_test::TestServer;
-//! use ::serde_json::json;
-//! use ::serde_json::Value;
+//! use axum::Router;
+//! use axum::extract::Json;
+//! use axum::routing::put;
+//! use axum_test::TestServer;
+//! use serde_json::json;
+//! use serde_json::Value;
 //!
 //! async fn route_put_user(Json(user): Json<Value>) -> () {
 //!     // todo
@@ -44,12 +44,12 @@
 //! ```rust
 //! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 //! #
-//! # use ::axum::Router;
-//! # use ::axum::extract::Json;
-//! # use ::axum::routing::put;
-//! # use ::axum_test::TestServer;
-//! # use ::serde_json::json;
-//! # use ::serde_json::Value;
+//! # use axum::Router;
+//! # use axum::extract::Json;
+//! # use axum::routing::put;
+//! # use axum_test::TestServer;
+//! # use serde_json::json;
+//! # use serde_json::Value;
 //! #
 //! # async fn put_user(Json(user): Json<Value>) -> () {}
 //! #
@@ -93,9 +93,9 @@
 //! ```rust
 //! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 //! #
-//! use ::axum::Router;
-//! use ::axum_test::TestServer;
-//! use ::axum_test::TestServerConfig;
+//! use axum::Router;
+//! use axum_test::TestServer;
+//! use axum_test::TestServerConfig;
 //!
 //! let my_app = Router::new();
 //! let config = TestServerConfig::builder()
@@ -125,9 +125,9 @@
 //! ```rust
 //! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 //! #
-//! use ::axum::Router;
-//! use ::axum_test::TestServer;
-//! use ::axum_test::TestServerConfig;
+//! use axum::Router;
+//! use axum_test::TestServer;
+//! use axum_test::TestServerConfig;
 //!
 //! let my_app = Router::new();
 //! let config = TestServerConfig::builder()
@@ -151,12 +151,12 @@
 //! ```rust
 //! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 //! #
-//! use ::axum::Router;
-//! use ::axum::extract::Json;
-//! use ::axum::routing::put;
-//! use ::axum_test::TestServer;
-//! use ::serde_json::json;
-//! use ::serde_json::Value;
+//! use axum::Router;
+//! use axum::extract::Json;
+//! use axum::routing::put;
+//! use axum_test::TestServer;
+//! use serde_json::json;
+//! use serde_json::Value;
 //!
 //! async fn put_user(Json(user): Json<Value>) -> () {
 //!     // todo
@@ -218,28 +218,28 @@ mod test_web_socket;
 #[cfg(feature = "ws")]
 pub use self::test_web_socket::*;
 #[cfg(feature = "ws")]
-pub use ::tokio_tungstenite::tungstenite::Message as WsMessage;
+pub use tokio_tungstenite::tungstenite::Message as WsMessage;
 
 mod transport;
 pub use self::transport::*;
 
-pub use ::http;
+pub use http;
 
 #[cfg(test)]
 mod integrated_test_cookie_saving {
     use super::*;
 
-    use ::axum::extract::Request;
-    use ::axum::routing::get;
-    use ::axum::routing::post;
-    use ::axum::routing::put;
-    use ::axum::Router;
-    use ::axum_extra::extract::cookie::Cookie as AxumCookie;
-    use ::axum_extra::extract::cookie::CookieJar;
-    use ::cookie::time::OffsetDateTime;
-    use ::cookie::Cookie;
-    use ::http_body_util::BodyExt;
-    use ::std::time::Duration;
+    use axum::extract::Request;
+    use axum::routing::get;
+    use axum::routing::post;
+    use axum::routing::put;
+    use axum::Router;
+    use axum_extra::extract::cookie::Cookie as AxumCookie;
+    use axum_extra::extract::cookie::CookieJar;
+    use cookie::time::OffsetDateTime;
+    use cookie::Cookie;
+    use http_body_util::BodyExt;
+    use std::time::Duration;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
 
@@ -458,12 +458,12 @@ mod integrated_test_cookie_saving {
 mod integrated_test_typed_routing_and_query {
     use super::*;
 
-    use ::axum::extract::Query;
-    use ::axum::Router;
-    use ::axum_extra::routing::RouterExt;
-    use ::axum_extra::routing::TypedPath;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::extract::Query;
+    use axum::Router;
+    use axum_extra::routing::RouterExt;
+    use axum_extra::routing::TypedPath;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[derive(TypedPath, Deserialize)]
     #[typed_path("/path-query/:id")]

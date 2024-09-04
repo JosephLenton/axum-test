@@ -1,6 +1,6 @@
-use ::anyhow::Result;
-use ::axum::Router;
-use ::shuttle_axum::AxumService;
+use anyhow::Result;
+use axum::Router;
+use shuttle_axum::AxumService;
 
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
@@ -23,9 +23,9 @@ impl IntoTransportLayer for AxumService {
 mod test_into_http_transport_layer_for_axum_service {
     use super::*;
 
-    use ::axum::extract::State;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::State;
+    use axum::routing::get;
+    use axum::Router;
 
     use crate::TestServerConfig;
 
@@ -56,9 +56,9 @@ mod test_into_http_transport_layer_for_axum_service {
 mod test_into_mock_transport_layer_for_axum_service {
     use super::*;
 
-    use ::axum::extract::State;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::State;
+    use axum::routing::get;
+    use axum::Router;
 
     use crate::TestServerConfig;
 

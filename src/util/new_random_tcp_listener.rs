@@ -1,9 +1,9 @@
-use ::anyhow::Result;
-use ::reserve_port::ReservedPort;
-use ::std::net::IpAddr;
-use ::std::net::Ipv4Addr;
-use ::std::net::SocketAddr;
-use ::std::net::TcpListener;
+use anyhow::Result;
+use reserve_port::ReservedPort;
+use std::net::IpAddr;
+use std::net::Ipv4Addr;
+use std::net::SocketAddr;
+use std::net::TcpListener;
 
 pub(crate) const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 

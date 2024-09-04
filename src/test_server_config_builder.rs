@@ -1,5 +1,5 @@
-use ::anyhow::Result;
-use ::std::net::IpAddr;
+use anyhow::Result;
+use std::net::IpAddr;
 
 use crate::transport_layer::IntoTransportLayer;
 use crate::TestServer;
@@ -11,7 +11,7 @@ use crate::Transport;
 /// For full documentation see there.
 ///
 /// ```rust
-/// use ::axum_test::TestServerConfig;
+/// use axum_test::TestServerConfig;
 ///
 /// let config = TestServerConfig::builder()
 ///     .save_cookies()
@@ -24,9 +24,9 @@ use crate::Transport;
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 /// #
-/// use ::axum::Router;
-/// use ::axum_test::TestServer;
-/// use ::axum_test::TestServerConfig;
+/// use axum::Router;
+/// use axum_test::TestServer;
+/// use axum_test::TestServerConfig;
 ///
 /// let my_app = Router::new();
 /// let config = TestServerConfig::builder()
@@ -100,8 +100,8 @@ impl TestServerConfigBuilder {
     /// This is shorthand for calling [`crate::TestServer::new_with_config`].
     ///
     /// ```rust
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServerConfig;
+    /// use axum::Router;
+    /// use axum_test::TestServerConfig;
     ///
     /// let app = Router::new();
     /// let server = TestServerConfig::builder()
@@ -128,7 +128,7 @@ impl Default for TestServerConfigBuilder {
 #[cfg(test)]
 mod test_build {
     use super::*;
-    use ::std::net::Ipv4Addr;
+    use std::net::Ipv4Addr;
 
     #[test]
     fn it_should_build_default_config_by_default() {
