@@ -1,22 +1,22 @@
-use ::anyhow::Context;
-use ::bytes::Bytes;
-use ::cookie::Cookie;
-use ::cookie::CookieJar;
-use ::http::header::HeaderName;
-use ::http::header::SET_COOKIE;
-use ::http::response::Parts;
-use ::http::HeaderMap;
-use ::http::HeaderValue;
-use ::http::Method;
-use ::http::StatusCode;
-use ::serde::de::DeserializeOwned;
-use ::std::convert::AsRef;
-use ::std::fmt::Debug;
-use ::std::fmt::Display;
-use ::url::Url;
+use anyhow::Context;
+use bytes::Bytes;
+use cookie::Cookie;
+use cookie::CookieJar;
+use http::header::HeaderName;
+use http::header::SET_COOKIE;
+use http::response::Parts;
+use http::HeaderMap;
+use http::HeaderValue;
+use http::Method;
+use http::StatusCode;
+use serde::de::DeserializeOwned;
+use std::convert::AsRef;
+use std::fmt::Debug;
+use std::fmt::Display;
+use url::Url;
 
 #[cfg(feature = "pretty-assertions")]
-use ::pretty_assertions::{assert_eq, assert_ne};
+use pretty_assertions::{assert_eq, assert_ne};
 
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
@@ -34,13 +34,13 @@ use crate::TestWebSocket;
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 /// #
-/// use ::axum::Json;
-/// use ::axum::routing::Router;
-/// use ::axum::routing::get;
-/// use ::serde::Deserialize;
-/// use ::serde::Serialize;
+/// use axum::Json;
+/// use axum::routing::Router;
+/// use axum::routing::get;
+/// use serde::Deserialize;
+/// use serde::Serialize;
 ///
-/// use ::axum_test::TestServer;
+/// use axum_test::TestServer;
 ///
 /// let app = Router::new()
 ///     .route(&"/test", get(|| async { "hello!" }));
@@ -63,12 +63,12 @@ use crate::TestWebSocket;
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 /// #
-/// # use ::axum::Json;
-/// # use ::axum::routing::Router;
-/// # use ::axum::routing::get;
-/// # use ::serde::Deserialize;
-/// # use ::serde::Serialize;
-/// # use ::axum_test::TestServer;
+/// # use axum::Json;
+/// # use axum::routing::Router;
+/// # use axum::routing::get;
+/// # use serde::Deserialize;
+/// # use serde::Serialize;
+/// # use axum_test::TestServer;
 /// #
 /// # #[derive(Serialize, Deserialize, Debug)]
 /// # struct Todo {}
@@ -101,13 +101,13 @@ use crate::TestWebSocket;
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 /// #
-/// use ::axum::Json;
-/// use ::axum::routing::Router;
-/// use ::axum::routing::get;
-/// use ::serde::Deserialize;
-/// use ::serde::Serialize;
+/// use axum::Json;
+/// use axum::routing::Router;
+/// use axum::routing::get;
+/// use serde::Deserialize;
+/// use serde::Serialize;
 ///
-/// use ::axum_test::TestServer;
+/// use axum_test::TestServer;
 ///
 /// let app = Router::new()
 ///     .route(&"/test", get(|| async { "hello!" }));
@@ -166,13 +166,13 @@ impl TestResponse {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Json;
-    /// use ::axum::routing::Router;
-    /// use ::axum::routing::get;
-    /// use ::serde_json::json;
-    /// use ::serde_json::Value;
+    /// use axum::Json;
+    /// use axum::routing::Router;
+    /// use axum::routing::get;
+    /// use serde_json::json;
+    /// use serde_json::Value;
     ///
-    /// use ::axum_test::TestServer;
+    /// use axum_test::TestServer;
     ///
     /// async fn route_get_todo() -> Json<Value> {
     ///     Json(json!({
@@ -206,13 +206,13 @@ impl TestResponse {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Json;
-    /// use ::axum::routing::Router;
-    /// use ::axum::routing::get;
-    /// use ::serde::Deserialize;
-    /// use ::serde::Serialize;
+    /// use axum::Json;
+    /// use axum::routing::Router;
+    /// use axum::routing::get;
+    /// use serde::Deserialize;
+    /// use serde::Serialize;
     ///
-    /// use ::axum_test::TestServer;
+    /// use axum_test::TestServer;
     ///
     /// #[derive(Serialize, Deserialize, Debug)]
     /// struct Todo {
@@ -260,13 +260,13 @@ impl TestResponse {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::routing::Router;
-    /// use ::axum::routing::get;
-    /// use ::axum_yaml::Yaml;
-    /// use ::serde::Deserialize;
-    /// use ::serde::Serialize;
+    /// use axum::routing::Router;
+    /// use axum::routing::get;
+    /// use axum_yaml::Yaml;
+    /// use serde::Deserialize;
+    /// use serde::Serialize;
     ///
-    /// use ::axum_test::TestServer;
+    /// use axum_test::TestServer;
     ///
     /// #[derive(Serialize, Deserialize, Debug)]
     /// struct Todo {
@@ -315,13 +315,13 @@ impl TestResponse {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::routing::Router;
-    /// use ::axum::routing::get;
-    /// use ::axum_msgpack::MsgPack;
-    /// use ::serde::Deserialize;
-    /// use ::serde::Serialize;
+    /// use axum::routing::Router;
+    /// use axum::routing::get;
+    /// use axum_msgpack::MsgPack;
+    /// use serde::Deserialize;
+    /// use serde::Serialize;
     ///
-    /// use ::axum_test::TestServer;
+    /// use axum_test::TestServer;
     ///
     /// #[derive(Serialize, Deserialize, Debug)]
     /// struct Todo {
@@ -370,13 +370,13 @@ impl TestResponse {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Form;
-    /// use ::axum::routing::Router;
-    /// use ::axum::routing::get;
-    /// use ::serde::Deserialize;
-    /// use ::serde::Serialize;
+    /// use axum::Form;
+    /// use axum::routing::Router;
+    /// use axum::routing::get;
+    /// use serde::Deserialize;
+    /// use serde::Serialize;
     ///
-    /// use ::axum_test::TestServer;
+    /// use axum_test::TestServer;
     ///
     /// #[derive(Serialize, Deserialize, Debug)]
     /// struct Todo {
@@ -652,9 +652,9 @@ impl TestResponse {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
-    /// use ::axum_test::TestServerConfig;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
+    /// use axum_test::TestServerConfig;
     ///
     /// let app = Router::new();
     /// let config = TestServerConfig::builder().http_transport().build();
@@ -924,9 +924,9 @@ impl From<TestResponse> for Bytes {
 
 #[cfg(test)]
 mod test_assert_header {
-    use ::axum::http::HeaderMap;
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
+    use axum::http::HeaderMap;
+    use axum::routing::get;
+    use axum::routing::Router;
 
     use crate::TestServer;
 
@@ -977,9 +977,9 @@ mod test_assert_header {
 
 #[cfg(test)]
 mod test_assert_contains_header {
-    use ::axum::http::HeaderMap;
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
+    use axum::http::HeaderMap;
+    use axum::routing::get;
+    use axum::routing::Router;
 
     use crate::TestServer;
 
@@ -1017,9 +1017,9 @@ mod test_assert_contains_header {
 
 #[cfg(test)]
 mod test_assert_success {
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::http::StatusCode;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use http::StatusCode;
 
     use crate::TestServer;
 
@@ -1061,9 +1061,9 @@ mod test_assert_success {
 
 #[cfg(test)]
 mod test_assert_failure {
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::http::StatusCode;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use http::StatusCode;
 
     use crate::TestServer;
 
@@ -1103,9 +1103,9 @@ mod test_assert_failure {
 
 #[cfg(test)]
 mod test_assert_status {
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::http::StatusCode;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use http::StatusCode;
 
     use crate::TestServer;
 
@@ -1133,9 +1133,9 @@ mod test_assert_status {
 
 #[cfg(test)]
 mod test_assert_not_status {
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::http::StatusCode;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use http::StatusCode;
 
     use crate::TestServer;
 
@@ -1167,11 +1167,11 @@ mod test_assert_not_status {
 #[cfg(test)]
 mod test_into_bytes {
     use crate::TestServer;
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::axum::Json;
-    use ::serde_json::json;
-    use ::serde_json::Value;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum::Json;
+    use serde_json::json;
+    use serde_json::Value;
 
     async fn route_get_json() -> Json<Value> {
         Json(json!({
@@ -1195,11 +1195,11 @@ mod test_into_bytes {
 #[cfg(test)]
 mod test_json {
     use crate::TestServer;
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::axum::Json;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum::Json;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -1236,11 +1236,11 @@ mod test_json {
 #[cfg(test)]
 mod test_yaml {
     use crate::TestServer;
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::axum_yaml::Yaml;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum_yaml::Yaml;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -1277,11 +1277,11 @@ mod test_yaml {
 #[cfg(test)]
 mod test_msgpack {
     use crate::TestServer;
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::axum_msgpack::MsgPack;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum_msgpack::MsgPack;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -1317,11 +1317,11 @@ mod test_msgpack {
 #[cfg(test)]
 mod test_form {
     use crate::TestServer;
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::axum::Form;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum::Form;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -1358,8 +1358,8 @@ mod test_form {
 mod test_assert_text {
     use crate::TestServer;
 
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
+    use axum::routing::get;
+    use axum::routing::Router;
 
     fn new_test_server() -> TestServer {
         async fn route_get_text() -> &'static str {
@@ -1401,8 +1401,8 @@ mod test_assert_text {
 mod test_assert_text_contains {
     use crate::TestServer;
 
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
+    use axum::routing::get;
+    use axum::routing::Router;
 
     fn new_test_server() -> TestServer {
         async fn route_get_text() -> &'static str {
@@ -1446,12 +1446,12 @@ mod test_assert_text_contains {
 mod test_assert_json {
     use crate::TestServer;
 
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::axum::Form;
-    use ::axum::Json;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum::Form;
+    use axum::Json;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -1517,12 +1517,12 @@ mod test_assert_json {
 mod test_assert_yaml {
     use crate::TestServer;
 
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::axum::Form;
-    use ::axum_yaml::Yaml;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum::Form;
+    use axum_yaml::Yaml;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -1587,12 +1587,12 @@ mod test_assert_yaml {
 mod test_assert_form {
     use crate::TestServer;
 
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
-    use ::axum::Form;
-    use ::axum::Json;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum::Form;
+    use axum::Json;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -1656,8 +1656,8 @@ mod test_assert_form {
 #[cfg(test)]
 mod test_text {
     use crate::TestServer;
-    use ::axum::routing::get;
-    use ::axum::routing::Router;
+    use axum::routing::get;
+    use axum::routing::Router;
 
     #[tokio::test]
     async fn it_should_deserialize_into_text() {
@@ -1681,11 +1681,11 @@ mod test_into_websocket {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::extract::ws::WebSocket;
-    use ::axum::extract::WebSocketUpgrade;
-    use ::axum::response::Response;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::ws::WebSocket;
+    use axum::extract::WebSocketUpgrade;
+    use axum::response::Response;
+    use axum::routing::get;
+    use axum::Router;
 
     fn new_test_router() -> Router {
         pub async fn route_get_websocket(ws: WebSocketUpgrade) -> Response {

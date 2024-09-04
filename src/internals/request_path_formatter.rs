@@ -1,5 +1,5 @@
-use ::http::Method;
-use ::std::fmt;
+use http::Method;
+use std::fmt;
 
 use crate::internals::QueryParamsStore;
 

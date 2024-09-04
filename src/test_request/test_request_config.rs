@@ -1,8 +1,8 @@
-use ::cookie::CookieJar;
-use ::http::HeaderName;
-use ::http::HeaderValue;
-use ::http::Method;
-use ::url::Url;
+use cookie::CookieJar;
+use http::HeaderName;
+use http::HeaderValue;
+use http::Method;
+use url::Url;
 
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;

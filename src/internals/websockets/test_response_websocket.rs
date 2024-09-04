@@ -1,4 +1,4 @@
-use ::hyper::upgrade::OnUpgrade;
+use hyper::upgrade::OnUpgrade;
 
 use crate::transport_layer::TransportLayerType;
 

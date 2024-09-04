@@ -1,4 +1,4 @@
-use ::anyhow::Result;
+use anyhow::Result;
 
 use crate::transport_layer::IntoTransportLayer;
 use crate::TestServer;
@@ -10,7 +10,7 @@ use crate::Transport;
 /// It implements [`Default`] to ease building configurations:
 ///
 /// ```rust
-/// use ::axum_test::TestServerConfig;
+/// use axum_test::TestServerConfig;
 ///
 /// let config = TestServerConfig {
 ///     save_cookies: true,
@@ -23,9 +23,9 @@ use crate::Transport;
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 /// #
-/// use ::axum::Router;
-/// use ::axum_test::TestServer;
-/// use ::axum_test::TestServerConfig;
+/// use axum::Router;
+/// use axum_test::TestServer;
+/// use axum_test::TestServerConfig;
 ///
 /// let my_app = Router::new();
 ///
@@ -103,7 +103,7 @@ impl TestServerConfig {
     /// Creates a builder for making it simpler to creating configs.
     ///
     /// ```rust
-    /// use ::axum_test::TestServerConfig;
+    /// use axum_test::TestServerConfig;
     ///
     /// let config = TestServerConfig::builder()
     ///     .save_cookies()
@@ -117,8 +117,8 @@ impl TestServerConfig {
     /// This is shorthand for calling [`crate::TestServer::new_with_config`].
     ///
     /// ```rust
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServerConfig;
+    /// use axum::Router;
+    /// use axum_test::TestServerConfig;
     ///
     /// let app = Router::new();
     /// let config = TestServerConfig::builder()

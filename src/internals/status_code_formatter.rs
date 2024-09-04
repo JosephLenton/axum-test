@@ -1,5 +1,5 @@
-use ::http::StatusCode;
-use ::std::fmt;
+use http::StatusCode;
+use std::fmt;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StatusCodeFormatter(pub StatusCode);

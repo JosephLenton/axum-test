@@ -1,22 +1,22 @@
-use ::anyhow::anyhow;
-use ::anyhow::Context;
-use ::anyhow::Result;
-use ::bytes::Bytes;
-use ::futures_util::sink::SinkExt;
-use ::futures_util::stream::StreamExt;
-use ::hyper::upgrade::Upgraded;
-use ::hyper_util::rt::TokioIo;
-use ::serde::de::DeserializeOwned;
-use ::serde::Serialize;
-use ::std::fmt::Debug;
-use ::std::fmt::Display;
-use ::tokio_tungstenite::tungstenite::protocol::Role;
-use ::tokio_tungstenite::WebSocketStream;
+use anyhow::anyhow;
+use anyhow::Context;
+use anyhow::Result;
+use bytes::Bytes;
+use futures_util::sink::SinkExt;
+use futures_util::stream::StreamExt;
+use hyper::upgrade::Upgraded;
+use hyper_util::rt::TokioIo;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use std::fmt::Debug;
+use std::fmt::Display;
+use tokio_tungstenite::tungstenite::protocol::Role;
+use tokio_tungstenite::WebSocketStream;
 
 use crate::WsMessage;
 
 #[cfg(feature = "pretty-assertions")]
-use ::pretty_assertions::assert_eq;
+use pretty_assertions::assert_eq;
 
 pub struct TestWebSocket {
     stream: WebSocketStream<TokioIo<Upgraded>>,
@@ -243,12 +243,12 @@ mod test_assert_receive_text {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::extract::ws::Message;
-    use ::axum::extract::ws::WebSocket;
-    use ::axum::extract::WebSocketUpgrade;
-    use ::axum::response::Response;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::extract::WebSocketUpgrade;
+    use axum::response::Response;
+    use axum::routing::get;
+    use axum::Router;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -325,12 +325,12 @@ mod test_assert_receive_text_contains {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::extract::ws::Message;
-    use ::axum::extract::ws::WebSocket;
-    use ::axum::extract::WebSocketUpgrade;
-    use ::axum::response::Response;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::extract::WebSocketUpgrade;
+    use axum::response::Response;
+    use axum::routing::get;
+    use axum::Router;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -403,14 +403,14 @@ mod test_assert_receive_json {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::extract::ws::Message;
-    use ::axum::extract::ws::WebSocket;
-    use ::axum::extract::WebSocketUpgrade;
-    use ::axum::response::Response;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::serde_json::json;
-    use ::serde_json::Value;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::extract::WebSocketUpgrade;
+    use axum::response::Response;
+    use axum::routing::get;
+    use axum::Router;
+    use serde_json::json;
+    use serde_json::Value;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -491,14 +491,14 @@ mod test_assert_receive_yaml {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::extract::ws::Message;
-    use ::axum::extract::ws::WebSocket;
-    use ::axum::extract::WebSocketUpgrade;
-    use ::axum::response::Response;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::serde_json::json;
-    use ::serde_json::Value;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::extract::WebSocketUpgrade;
+    use axum::response::Response;
+    use axum::routing::get;
+    use axum::Router;
+    use serde_json::json;
+    use serde_json::Value;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -580,14 +580,14 @@ mod test_assert_receive_msgpack {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::extract::ws::Message;
-    use ::axum::extract::ws::WebSocket;
-    use ::axum::extract::WebSocketUpgrade;
-    use ::axum::response::Response;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::serde_json::json;
-    use ::serde_json::Value;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::extract::WebSocketUpgrade;
+    use axum::response::Response;
+    use axum::routing::get;
+    use axum::Router;
+    use serde_json::json;
+    use serde_json::Value;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {

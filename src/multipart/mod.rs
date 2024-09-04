@@ -9,9 +9,9 @@
 //! ```rust
 //! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 //! #
-//! use ::axum::Router;
-//! use ::axum_test::TestServer;
-//! use ::axum_test::multipart::MultipartForm;
+//! use axum::Router;
+//! use axum_test::TestServer;
+//! use axum_test::multipart::MultipartForm;
 //!
 //! let app = Router::new();
 //! let server = TestServer::new(app)?;
@@ -32,10 +32,10 @@
 //! ```rust
 //! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 //! #
-//! use ::axum::Router;
-//! use ::axum_test::TestServer;
-//! use ::axum_test::multipart::MultipartForm;
-//! use ::axum_test::multipart::Part;
+//! use axum::Router;
+//! use axum_test::TestServer;
+//! use axum_test::multipart::MultipartForm;
+//! use axum_test::multipart::Part;
 //!
 //! let app = Router::new();
 //! let server = TestServer::new(app)?;

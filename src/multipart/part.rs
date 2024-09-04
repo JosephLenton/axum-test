@@ -1,7 +1,7 @@
-use ::anyhow::Context;
-use ::bytes::Bytes;
-use ::mime::Mime;
-use ::std::fmt::Display;
+use anyhow::Context;
+use bytes::Bytes;
+use mime::Mime;
+use std::fmt::Display;
 
 ///
 /// For creating a section of a MultipartForm.

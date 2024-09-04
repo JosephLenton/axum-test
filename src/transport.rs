@@ -1,4 +1,4 @@
-use ::std::net::IpAddr;
+use std::net::IpAddr;
 
 /// Transport is for setting which transport mode for the `TestServer`
 /// to use when making requests.

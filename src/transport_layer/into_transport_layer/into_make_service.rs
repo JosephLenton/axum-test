@@ -1,10 +1,10 @@
-use ::anyhow::Result;
-use ::axum::extract::Request as AxumRequest;
-use ::axum::response::Response as AxumResponse;
-use ::axum::routing::IntoMakeService;
-use ::std::convert::Infallible;
-use ::tower::Service;
-use ::url::Url;
+use anyhow::Result;
+use axum::extract::Request as AxumRequest;
+use axum::response::Response as AxumResponse;
+use axum::routing::IntoMakeService;
+use std::convert::Infallible;
+use tower::Service;
+use url::Url;
 
 use crate::internals::HttpTransportLayer;
 use crate::internals::MockTransportLayer;
@@ -45,13 +45,13 @@ where
 #[cfg(test)]
 mod test_into_http_transport_layer_for_into_make_service {
     use crate::TestServerConfig;
-    use ::axum::extract::Request;
-    use ::axum::extract::State;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::axum::ServiceExt;
-    use ::tower::Layer;
-    use ::tower_http::normalize_path::NormalizePathLayer;
+    use axum::extract::Request;
+    use axum::extract::State;
+    use axum::routing::get;
+    use axum::Router;
+    use axum::ServiceExt;
+    use tower::Layer;
+    use tower_http::normalize_path::NormalizePathLayer;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -119,14 +119,14 @@ mod test_into_http_transport_layer_for_into_make_service {
 #[cfg(test)]
 mod test_into_mock_transport_layer_for_into_make_service {
     use crate::TestServerConfig;
-    use ::axum::extract::Request;
-    use ::axum::extract::State;
-    use ::axum::routing::get;
-    use ::axum::routing::IntoMakeService;
-    use ::axum::Router;
-    use ::axum::ServiceExt;
-    use ::tower::Layer;
-    use ::tower_http::normalize_path::NormalizePathLayer;
+    use axum::extract::Request;
+    use axum::extract::State;
+    use axum::routing::get;
+    use axum::routing::IntoMakeService;
+    use axum::Router;
+    use axum::ServiceExt;
+    use tower::Layer;
+    use tower_http::normalize_path::NormalizePathLayer;
 
     async fn get_ping() -> &'static str {
         "pong!"

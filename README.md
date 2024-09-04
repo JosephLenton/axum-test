@@ -18,10 +18,10 @@ Using this library, you can host your application and query against it with requ
 Then decode the responses, and assert what is returned.
 
 ```rust
-  use ::axum::Router;
-  use ::axum::routing::get;
+  use axum::Router;
+  use axum::routing::get;
 
-  use ::axum_test::TestServer;
+  use axum_test::TestServer;
 
   async fn get_ping() -> &'static str {
       "pong!"

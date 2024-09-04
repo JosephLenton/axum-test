@@ -1,27 +1,27 @@
-use ::anyhow::anyhow;
-use ::anyhow::Context;
-use ::anyhow::Error as AnyhowError;
-use ::anyhow::Result;
-use ::auto_future::AutoFuture;
-use ::axum::body::Body;
-use ::bytes::Bytes;
-use ::cookie::time::OffsetDateTime;
-use ::cookie::Cookie;
-use ::cookie::CookieJar;
-use ::http::header;
-use ::http::header::SET_COOKIE;
-use ::http::HeaderName;
-use ::http::HeaderValue;
-use ::http::Method;
-use ::http::Request;
-use ::http_body_util::BodyExt;
-use ::serde::Serialize;
-use ::std::fmt::Debug;
-use ::std::fmt::Display;
-use ::std::future::IntoFuture;
-use ::std::sync::Arc;
-use ::std::sync::Mutex;
-use ::url::Url;
+use anyhow::anyhow;
+use anyhow::Context;
+use anyhow::Error as AnyhowError;
+use anyhow::Result;
+use auto_future::AutoFuture;
+use axum::body::Body;
+use bytes::Bytes;
+use cookie::time::OffsetDateTime;
+use cookie::Cookie;
+use cookie::CookieJar;
+use http::header;
+use http::header::SET_COOKIE;
+use http::HeaderName;
+use http::HeaderValue;
+use http::Method;
+use http::Request;
+use http_body_util::BodyExt;
+use serde::Serialize;
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::future::IntoFuture;
+use std::sync::Arc;
+use std::sync::Mutex;
+use url::Url;
 
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
@@ -61,8 +61,8 @@ mod test_request_config;
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 /// #
-/// # use ::axum::Router;
-/// # use ::axum_test::TestServer;
+/// # use axum::Router;
+/// # use axum_test::TestServer;
 /// #
 /// # let server = TestServer::new(Router::new())?;
 /// #
@@ -196,9 +196,9 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
-    /// use ::axum_test::multipart::MultipartForm;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
+    /// use axum_test::multipart::MultipartForm;
     ///
     /// let app = Router::new();
     /// let server = TestServer::new(app)?;
@@ -219,10 +219,10 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
-    /// use ::axum_test::multipart::MultipartForm;
-    /// use ::axum_test::multipart::Part;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
+    /// use axum_test::multipart::MultipartForm;
+    /// use axum_test::multipart::Part;
     ///
     /// let app = Router::new();
     /// let server = TestServer::new(app)?;
@@ -334,9 +334,9 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
-    /// use ::serde_json::json;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
+    /// use serde_json::json;
     ///
     /// let app = Router::new();
     /// let server = TestServer::new(app)?;
@@ -356,10 +356,10 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
-    /// use ::serde::Deserialize;
-    /// use ::serde::Serialize;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
+    /// use serde::Deserialize;
+    /// use serde::Serialize;
     ///
     /// #[derive(Serialize, Deserialize)]
     /// struct UserQueryParams {
@@ -385,8 +385,8 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
     ///
     /// let app = Router::new();
     /// let server = TestServer::new(app)?;
@@ -428,8 +428,8 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
     ///
     /// let app = Router::new();
     /// let server = TestServer::new(app)?;
@@ -461,8 +461,8 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
     ///
     /// let app = Router::new();
     /// let server = TestServer::new(app)?;
@@ -527,8 +527,8 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Router;
-    /// use ::axum_test::TestServer;
+    /// use axum::Router;
+    /// use axum_test::TestServer;
     ///
     /// let app = Router::new();
     /// let server = TestServer::new(app)?;
@@ -559,12 +559,12 @@ impl TestRequest {
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
-    /// use ::axum::Json;
-    /// use ::axum::routing::Router;
-    /// use ::axum::routing::put;
-    /// use ::serde_json::json;
+    /// use axum::Json;
+    /// use axum::routing::Router;
+    /// use axum::routing::put;
+    /// use serde_json::json;
     ///
-    /// use ::axum_test::TestServer;
+    /// use axum_test::TestServer;
     ///
     /// let app = Router::new()
     ///     .route(&"/todo", put(|| async { unimplemented!() }));
@@ -784,10 +784,10 @@ mod test_content_type {
     use crate::TestServer;
     use crate::TestServerConfig;
 
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::http::header::CONTENT_TYPE;
-    use ::http::HeaderMap;
+    use axum::routing::get;
+    use axum::Router;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
 
     async fn get_content_type(headers: HeaderMap) -> String {
         headers
@@ -855,14 +855,14 @@ mod test_content_type {
 mod test_json {
     use crate::TestServer;
 
-    use ::axum::routing::post;
-    use ::axum::Json;
-    use ::axum::Router;
-    use ::http::header::CONTENT_TYPE;
-    use ::http::HeaderMap;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
-    use ::serde_json::json;
+    use axum::routing::post;
+    use axum::Json;
+    use axum::Router;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
 
     #[tokio::test]
     async fn it_should_pass_json_up_to_be_read() {
@@ -929,14 +929,14 @@ mod test_json {
 mod test_yaml {
     use crate::TestServer;
 
-    use ::axum::routing::post;
-    use ::axum::Router;
-    use ::axum_yaml::Yaml;
-    use ::http::header::CONTENT_TYPE;
-    use ::http::HeaderMap;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
-    use ::serde_json::json;
+    use axum::routing::post;
+    use axum::Router;
+    use axum_yaml::Yaml;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
 
     #[tokio::test]
     async fn it_should_pass_yaml_up_to_be_read() {
@@ -1003,14 +1003,14 @@ mod test_yaml {
 mod test_msgpack {
     use crate::TestServer;
 
-    use ::axum::routing::post;
-    use ::axum::Router;
-    use ::axum_msgpack::MsgPack;
-    use ::http::header::CONTENT_TYPE;
-    use ::http::HeaderMap;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
-    use ::serde_json::json;
+    use axum::routing::post;
+    use axum::Router;
+    use axum_msgpack::MsgPack;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
 
     #[tokio::test]
     async fn it_should_pass_msgpack_up_to_be_read() {
@@ -1080,13 +1080,13 @@ mod test_msgpack {
 mod test_form {
     use crate::TestServer;
 
-    use ::axum::routing::post;
-    use ::axum::Form;
-    use ::axum::Router;
-    use ::http::header::CONTENT_TYPE;
-    use ::http::HeaderMap;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use axum::routing::post;
+    use axum::Form;
+    use axum::Router;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     #[tokio::test]
     async fn it_should_pass_form_up_to_be_read() {
@@ -1159,12 +1159,12 @@ mod test_form {
 mod test_text {
     use crate::TestServer;
 
-    use ::axum::extract::Request;
-    use ::axum::routing::post;
-    use ::axum::Router;
-    use ::http::header::CONTENT_TYPE;
-    use ::http::HeaderMap;
-    use ::http_body_util::BodyExt;
+    use axum::extract::Request;
+    use axum::routing::post;
+    use axum::Router;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use http_body_util::BodyExt;
 
     #[tokio::test]
     async fn it_should_pass_text_up_to_be_read() {
@@ -1217,9 +1217,9 @@ mod test_text {
 #[cfg(test)]
 mod test_expect_success {
     use crate::TestServer;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::http::StatusCode;
+    use axum::routing::get;
+    use axum::Router;
+    use http::StatusCode;
 
     #[tokio::test]
     async fn it_should_not_panic_if_success_is_returned() {
@@ -1287,9 +1287,9 @@ mod test_expect_success {
 #[cfg(test)]
 mod test_expect_failure {
     use crate::TestServer;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::http::StatusCode;
+    use axum::routing::get;
+    use axum::Router;
+    use http::StatusCode;
 
     #[tokio::test]
     async fn it_should_not_panic_if_expect_failure_on_404() {
@@ -1355,12 +1355,12 @@ mod test_expect_failure {
 mod test_add_cookie {
     use crate::TestServer;
 
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::axum_extra::extract::cookie::CookieJar;
-    use ::cookie::time::Duration;
-    use ::cookie::time::OffsetDateTime;
-    use ::cookie::Cookie;
+    use axum::routing::get;
+    use axum::Router;
+    use axum_extra::extract::cookie::CookieJar;
+    use cookie::time::Duration;
+    use cookie::time::OffsetDateTime;
+    use cookie::Cookie;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
 
@@ -1414,13 +1414,13 @@ mod test_add_cookie {
 mod test_add_cookies {
     use crate::TestServer;
 
-    use ::axum::http::header::HeaderMap;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
-    use ::cookie::Cookie;
-    use ::cookie::CookieJar;
-    use ::cookie::SameSite;
+    use axum::http::header::HeaderMap;
+    use axum::routing::get;
+    use axum::Router;
+    use axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use cookie::Cookie;
+    use cookie::CookieJar;
+    use cookie::SameSite;
 
     async fn route_get_cookies(cookies: AxumCookieJar) -> String {
         let mut all_cookies = cookies
@@ -1492,15 +1492,15 @@ mod test_add_cookies {
 mod test_do_save_cookies {
     use crate::TestServer;
 
-    use ::axum::extract::Request;
-    use ::axum::http::header::HeaderMap;
-    use ::axum::routing::get;
-    use ::axum::routing::put;
-    use ::axum::Router;
-    use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
-    use ::cookie::Cookie;
-    use ::cookie::SameSite;
-    use ::http_body_util::BodyExt;
+    use axum::extract::Request;
+    use axum::http::header::HeaderMap;
+    use axum::routing::get;
+    use axum::routing::put;
+    use axum::Router;
+    use axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use cookie::Cookie;
+    use cookie::SameSite;
+    use http_body_util::BodyExt;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
 
@@ -1563,15 +1563,15 @@ mod test_do_save_cookies {
 mod test_clear_cookies {
     use crate::TestServer;
 
-    use ::axum::extract::Request;
-    use ::axum::routing::get;
-    use ::axum::routing::put;
-    use ::axum::Router;
-    use ::axum_extra::extract::cookie::Cookie as AxumCookie;
-    use ::axum_extra::extract::cookie::CookieJar as AxumCookieJar;
-    use ::cookie::Cookie;
-    use ::cookie::CookieJar;
-    use ::http_body_util::BodyExt;
+    use axum::extract::Request;
+    use axum::routing::get;
+    use axum::routing::put;
+    use axum::Router;
+    use axum_extra::extract::cookie::Cookie as AxumCookie;
+    use axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use cookie::Cookie;
+    use cookie::CookieJar;
+    use http_body_util::BodyExt;
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
 
@@ -1678,15 +1678,15 @@ mod test_clear_cookies {
 mod test_add_header {
     use super::*;
 
-    use ::axum::async_trait;
-    use ::axum::extract::FromRequestParts;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::http::request::Parts;
-    use ::http::HeaderName;
-    use ::http::HeaderValue;
-    use ::hyper::StatusCode;
-    use ::std::marker::Sync;
+    use axum::async_trait;
+    use axum::extract::FromRequestParts;
+    use axum::routing::get;
+    use axum::Router;
+    use http::request::Parts;
+    use http::HeaderName;
+    use http::HeaderValue;
+    use hyper::StatusCode;
+    use std::marker::Sync;
 
     use crate::TestServer;
 
@@ -1741,13 +1741,13 @@ mod test_add_header {
 mod test_authorization {
     use super::*;
 
-    use ::axum::async_trait;
-    use ::axum::extract::FromRequestParts;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::http::request::Parts;
-    use ::hyper::StatusCode;
-    use ::std::marker::Sync;
+    use axum::async_trait;
+    use axum::extract::FromRequestParts;
+    use axum::routing::get;
+    use axum::Router;
+    use http::request::Parts;
+    use hyper::StatusCode;
+    use std::marker::Sync;
 
     use crate::TestServer;
 
@@ -1803,13 +1803,13 @@ mod test_authorization {
 mod test_authorization_bearer {
     use super::*;
 
-    use ::axum::async_trait;
-    use ::axum::extract::FromRequestParts;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::http::request::Parts;
-    use ::hyper::StatusCode;
-    use ::std::marker::Sync;
+    use axum::async_trait;
+    use axum::extract::FromRequestParts;
+    use axum::routing::get;
+    use axum::Router;
+    use http::request::Parts;
+    use hyper::StatusCode;
+    use std::marker::Sync;
 
     use crate::TestServer;
 
@@ -1865,15 +1865,15 @@ mod test_authorization_bearer {
 mod test_clear_headers {
     use super::*;
 
-    use ::axum::async_trait;
-    use ::axum::extract::FromRequestParts;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::http::request::Parts;
-    use ::http::HeaderName;
-    use ::http::HeaderValue;
-    use ::hyper::StatusCode;
-    use ::std::marker::Sync;
+    use axum::async_trait;
+    use axum::extract::FromRequestParts;
+    use axum::routing::get;
+    use axum::Router;
+    use http::request::Parts;
+    use http::HeaderName;
+    use http::HeaderValue;
+    use hyper::StatusCode;
+    use std::marker::Sync;
 
     use crate::TestServer;
 
@@ -1948,13 +1948,13 @@ mod test_clear_headers {
 
 #[cfg(test)]
 mod test_add_query_params {
-    use ::axum::extract::Query as AxumStdQuery;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::Query as AxumStdQuery;
+    use axum::routing::get;
+    use axum::Router;
 
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
-    use ::serde_json::json;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
 
     use crate::TestServer;
 
@@ -2057,13 +2057,13 @@ mod test_add_query_params {
 
 #[cfg(test)]
 mod test_add_raw_query_param {
-    use ::axum::extract::Query as AxumStdQuery;
-    use ::axum::routing::get;
-    use ::axum::Router;
-    use ::axum_extra::extract::Query as AxumExtraQuery;
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
-    use ::std::fmt::Write;
+    use axum::extract::Query as AxumStdQuery;
+    use axum::routing::get;
+    use axum::Router;
+    use axum_extra::extract::Query as AxumExtraQuery;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use std::fmt::Write;
 
     use crate::TestServer;
 
@@ -2151,12 +2151,12 @@ mod test_add_raw_query_param {
 
 #[cfg(test)]
 mod test_add_query_param {
-    use ::axum::extract::Query;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::Query;
+    use axum::routing::get;
+    use axum::Router;
 
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     use crate::TestServer;
 
@@ -2215,12 +2215,12 @@ mod test_add_query_param {
 
 #[cfg(test)]
 mod test_clear_query_params {
-    use ::axum::extract::Query;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::Query;
+    use axum::routing::get;
+    use axum::Router;
 
-    use ::serde::Deserialize;
-    use ::serde::Serialize;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     use crate::TestServer;
 
@@ -2285,9 +2285,9 @@ mod test_clear_query_params {
 
 #[cfg(test)]
 mod test_scheme {
-    use ::axum::extract::Request;
-    use ::axum::routing::get;
-    use ::axum::Router;
+    use axum::extract::Request;
+    use axum::routing::get;
+    use axum::Router;
 
     use crate::TestServer;
     use crate::TestServerConfig;
@@ -2352,10 +2352,10 @@ mod test_scheme {
 
 #[cfg(test)]
 mod test_multipart {
-    use ::axum::extract::Multipart;
-    use ::axum::routing::post;
-    use ::axum::Json;
-    use ::axum::Router;
+    use axum::extract::Multipart;
+    use axum::routing::post;
+    use axum::Json;
+    use axum::Router;
 
     use crate::multipart::MultipartForm;
     use crate::multipart::Part;

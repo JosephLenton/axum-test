@@ -1,7 +1,7 @@
-use ::anyhow::anyhow;
-use ::anyhow::Result;
-use ::std::sync::Arc;
-use ::std::sync::Mutex;
+use anyhow::anyhow;
+use anyhow::Result;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 pub fn with_this_mut<T, F, R>(this: &Arc<Mutex<T>>, name: &str, some_action: F) -> Result<R>
 where

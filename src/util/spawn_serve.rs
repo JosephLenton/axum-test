@@ -1,11 +1,11 @@
-use ::axum::extract::Request;
-use ::axum::response::Response;
-use ::axum::serve;
-use ::axum::serve::IncomingStream;
-use ::std::convert::Infallible;
-use ::tokio::net::TcpListener;
-use ::tokio::spawn;
-use ::tower::Service;
+use axum::extract::Request;
+use axum::response::Response;
+use axum::serve;
+use axum::serve::IncomingStream;
+use std::convert::Infallible;
+use tokio::net::TcpListener;
+use tokio::spawn;
+use tower::Service;
 
 use crate::util::ServeHandle;
 

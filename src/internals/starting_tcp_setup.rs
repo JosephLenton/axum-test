@@ -1,11 +1,11 @@
-use ::anyhow::Context;
-use ::anyhow::Result;
-use ::reserve_port::ReservedPort;
-use ::std::net::IpAddr;
-use ::std::net::Ipv4Addr;
-use ::std::net::SocketAddr;
-use ::std::net::TcpListener as StdTcpListener;
-use ::tokio::net::TcpListener as TokioTcpListener;
+use anyhow::Context;
+use anyhow::Result;
+use reserve_port::ReservedPort;
+use std::net::IpAddr;
+use std::net::Ipv4Addr;
+use std::net::SocketAddr;
+use std::net::TcpListener as StdTcpListener;
+use tokio::net::TcpListener as TokioTcpListener;
 
 pub const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
@@ -56,8 +56,8 @@ impl StartingTcpSetup {
 #[cfg(test)]
 mod test_new {
     use super::*;
-    use ::regex::Regex;
-    use ::std::net::Ipv4Addr;
+    use regex::Regex;
+    use std::net::Ipv4Addr;
 
     #[tokio::test]
     async fn it_should_create_default_ip_with_random_port_when_none() {
