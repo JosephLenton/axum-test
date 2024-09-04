@@ -979,10 +979,10 @@ impl From<TestResponse> for Bytes {
 
 #[cfg(test)]
 mod test_assert_header {
+    use crate::TestServer;
     use axum::http::HeaderMap;
     use axum::routing::get;
     use axum::Router;
-    use crate::TestServer;
 
     async fn route_get_header() -> HeaderMap {
         let mut headers = HeaderMap::new();
@@ -1031,10 +1031,10 @@ mod test_assert_header {
 
 #[cfg(test)]
 mod test_assert_contains_header {
+    use crate::TestServer;
     use axum::http::HeaderMap;
     use axum::routing::get;
     use axum::Router;
-    use crate::TestServer;
 
     async fn route_get_header() -> HeaderMap {
         let mut headers = HeaderMap::new();
@@ -1070,10 +1070,10 @@ mod test_assert_contains_header {
 
 #[cfg(test)]
 mod test_assert_success {
+    use crate::TestServer;
     use axum::routing::get;
     use axum::Router;
     use http::StatusCode;
-    use crate::TestServer;
 
     pub async fn route_get_pass() -> StatusCode {
         StatusCode::OK
@@ -1113,10 +1113,10 @@ mod test_assert_success {
 
 #[cfg(test)]
 mod test_assert_failure {
+    use crate::TestServer;
     use axum::routing::get;
     use axum::Router;
     use http::StatusCode;
-    use crate::TestServer;
 
     pub async fn route_get_pass() -> StatusCode {
         StatusCode::OK
@@ -1154,10 +1154,10 @@ mod test_assert_failure {
 
 #[cfg(test)]
 mod test_assert_status {
+    use crate::TestServer;
     use axum::routing::get;
     use axum::Router;
     use http::StatusCode;
-    use crate::TestServer;
 
     pub async fn route_get_ok() -> StatusCode {
         StatusCode::OK
@@ -1183,10 +1183,10 @@ mod test_assert_status {
 
 #[cfg(test)]
 mod test_assert_not_status {
+    use crate::TestServer;
     use axum::routing::get;
     use axum::Router;
     use http::StatusCode;
-    use crate::TestServer;
 
     pub async fn route_get_ok() -> StatusCode {
         StatusCode::OK

@@ -104,10 +104,10 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
 
 #[cfg(test)]
 mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
+    use crate::TestServer;
     use axum::routing::get;
     use axum::Router;
     use std::net::SocketAddr;
-    use crate::TestServer;
 
     async fn get_ping() -> &'static str {
         "pong!"
