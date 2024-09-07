@@ -9,7 +9,7 @@ use url::Url;
 
 use crate::transport_layer::TransportLayerType;
 
-pub trait TransportLayer: Debug + Send + std::marker::Sync {
+pub trait TransportLayer: Debug + Send + Sync + 'static {
     fn send<'a>(
         &'a self,
         request: Request<Body>,
@@ -20,4 +20,21 @@ pub trait TransportLayer: Debug + Send + std::marker::Sync {
     }
 
     fn get_type(&self) -> TransportLayerType;
+}
+
+#[cfg(test)]
+mod test_sync {
+    use super::*;
+    use tokio::sync::OnceCell;
+
+    #[test]
+    fn it_should_compile_with_tokyo_once_cell() {
+        // if it compiles, it works!
+        fn _take_tokio_once_cell<T>(layer: T) -> OnceCell<Box<dyn TransportLayer>>
+        where
+            T: TransportLayer,
+        {
+            OnceCell::new_with(Some(Box::new(layer)))
+        }
+    }
 }
