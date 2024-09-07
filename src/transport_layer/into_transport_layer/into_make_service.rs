@@ -18,8 +18,8 @@ where
     S: Service<AxumRequest, Response = AxumResponse, Error = Infallible>
         + Clone
         + Send
-        + 'static
-        + std::marker::Sync,
+        + Sync
+        + 'static,
     S::Future: Send,
 {
     fn into_http_transport_layer(

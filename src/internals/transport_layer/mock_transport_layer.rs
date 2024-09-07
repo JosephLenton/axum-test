@@ -32,9 +32,9 @@ where
 
 impl<S, RouterService> TransportLayer for MockTransportLayer<S>
 where
-    S: Service<Request<Body>, Response = RouterService> + Clone + Send + std::marker::Sync,
+    S: Service<Request<Body>, Response = RouterService> + Clone + Send + Sync + 'static,
     AnyhowError: From<S::Error>,
-    S::Future: Send + std::marker::Sync,
+    S::Future: Send + Sync,
     RouterService: Service<Request<Body>, Response = AxumResponse>,
     AnyhowError: From<RouterService::Error>,
 {
