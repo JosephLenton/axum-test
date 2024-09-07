@@ -20,7 +20,7 @@ pub struct MockTransportLayer<S> {
 
 impl<S, RouterService> MockTransportLayer<S>
 where
-    S: Service<Request<Body>, Response = RouterService> + Clone + Send,
+    S: Service<Request<Body>, Response = RouterService> + Clone + Send + Sync,
     AnyhowError: From<S::Error>,
     S::Future: Send,
     RouterService: Service<Request<Body>, Response = AxumResponse>,
@@ -32,9 +32,9 @@ where
 
 impl<S, RouterService> TransportLayer for MockTransportLayer<S>
 where
-    S: Service<Request<Body>, Response = RouterService> + Clone + Send,
+    S: Service<Request<Body>, Response = RouterService> + Clone + Send + std::marker::Sync,
     AnyhowError: From<S::Error>,
-    S::Future: Send,
+    S::Future: Send + std::marker::Sync,
     RouterService: Service<Request<Body>, Response = AxumResponse>,
     AnyhowError: From<RouterService::Error>,
 {

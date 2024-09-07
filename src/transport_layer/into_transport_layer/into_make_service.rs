@@ -15,7 +15,11 @@ use crate::util::spawn_serve;
 
 impl<S> IntoTransportLayer for IntoMakeService<S>
 where
-    S: Service<AxumRequest, Response = AxumResponse, Error = Infallible> + Clone + Send + 'static,
+    S: Service<AxumRequest, Response = AxumResponse, Error = Infallible>
+        + Clone
+        + Send
+        + 'static
+        + std::marker::Sync,
     S::Future: Send,
 {
     fn into_http_transport_layer(
