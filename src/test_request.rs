@@ -81,7 +81,7 @@ mod test_request_config;
 ///
 /// ## Cookie Saving
 ///
-/// [`TestRequest::do_save_cookies()`](crate::TestRequest::do_save_cookies()) and [`TestRequest::do_not_save_cookies()`](crate::TestRequest::do_not_save_cookies())
+/// [`TestRequest::save_cookies()`](crate::TestRequest::save_cookies()) and [`TestRequest::do_not_save_cookies()`](crate::TestRequest::do_not_save_cookies())
 /// methods allow you to set the request to save cookies to the `TestServer`,
 /// for reuse on any future requests.
 ///
@@ -301,7 +301,7 @@ impl TestRequest {
 
     /// Any cookies returned will be saved to the [`TestServer`](crate::TestServer) that created this,
     /// which will continue to use those cookies on future requests.
-    pub fn do_save_cookies(mut self) -> Self {
+    pub fn save_cookies(mut self) -> Self {
         self.config.is_saving_cookies = true;
         self
     }
@@ -1487,7 +1487,7 @@ mod test_add_cookies {
 }
 
 #[cfg(test)]
-mod test_do_save_cookies {
+mod test_save_cookies {
     use crate::TestServer;
 
     use axum::extract::Request;
@@ -1547,7 +1547,7 @@ mod test_do_save_cookies {
         server
             .put(&"/cookie")
             .text(&"cookie-found!")
-            .do_save_cookies()
+            .save_cookies()
             .await;
 
         // Check, only the cookie names and their values should come back.
@@ -1646,7 +1646,7 @@ mod test_clear_cookies {
         server
             .put(&"/cookie")
             .text(&"cookie-found!")
-            .do_save_cookies()
+            .save_cookies()
             .await;
 
         // Check it comes back.

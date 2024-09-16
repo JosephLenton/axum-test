@@ -126,7 +126,7 @@ const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
 /// let mut server = TestServer::builder()
 ///     .http_transport()
 ///     .expect_success_by_default()
-///     .do_save_cookies()
+///     .save_cookies()
 ///     .build(app)?;
 ///
 /// // Add items to be sent on _all_ all requests
@@ -636,7 +636,7 @@ impl TestServer {
     /// Requests made using this `TestServer` will save their cookies for future requests to send.
     ///
     /// This behaviour is off by default.
-    pub fn do_save_cookies(&mut self) {
+    pub fn save_cookies(&mut self) {
         self.save_cookies = true;
     }
 

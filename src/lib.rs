@@ -108,7 +108,7 @@
 //! When you make a request, any cookies returned will be reused by the next request,
 //! created by that same server.
 //!
-//! You can turn this on or off per request, using `TestRequest::do_save_cookies`
+//! You can turn this on or off per request, using `TestRequest::save_cookies`
 //! and `TestRequest::do_not_save_cookies`.
 //!
 //! ### Content Type 📇
@@ -336,7 +336,7 @@ mod integrated_test_cookie_saving {
         server
             .put(&"/cookie")
             .text(&"cookie-found!")
-            .do_save_cookies()
+            .save_cookies()
             .await;
 
         // Check it comes back.
@@ -357,7 +357,7 @@ mod integrated_test_cookie_saving {
         server
             .put(&"/cookie")
             .text(&"cookie-found!")
-            .do_save_cookies()
+            .save_cookies()
             .await;
 
         // Check it comes back.
@@ -378,7 +378,7 @@ mod integrated_test_cookie_saving {
         server
             .put(&"/cookie")
             .text(&"cookie-found!")
-            .do_save_cookies()
+            .save_cookies()
             .await;
 
         server.clear_cookies();
@@ -426,7 +426,7 @@ mod integrated_test_cookie_saving {
     async fn it_should_remove_expired_cookies_from_later_requests() {
         // Run the server.
         let mut server = TestServer::new(new_test_router()).expect("Should create test server");
-        server.do_save_cookies();
+        server.save_cookies();
 
         // Create a cookie.
         server.put(&"/cookie").text(&"cookie-found!").await;
