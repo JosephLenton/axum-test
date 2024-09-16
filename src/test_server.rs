@@ -1273,6 +1273,95 @@ mod test_get {
     }
 }
 
+#[cfg(feature = "reqwest")]
+#[cfg(test)]
+mod test_reqwest_get {
+    use super::*;
+
+    use axum::routing::get;
+    use axum::Router;
+
+    async fn get_ping() -> &'static str {
+        "pong!"
+    }
+
+    #[tokio::test]
+    async fn it_should_get_using_relative_path_with_slash() {
+        let app = Router::new().route("/ping", get(get_ping));
+        let server = TestServer::builder()
+            .http_transport()
+            .build(app)
+            .expect("Should create test server");
+
+        let response = server
+            .reqwest_get(&"/ping")
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+
+        assert_eq!(response, "pong!");
+    }
+}
+
+#[cfg(feature = "reqwest")]
+#[cfg(test)]
+mod test_reqwest_post {
+    use super::*;
+
+    use axum::routing::post;
+    use axum::Json;
+    use axum::Router;
+    use serde::Deserialize;
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+    struct TestBody {
+        number: u32,
+        text: String,
+    }
+
+    async fn post_json(Json(body): Json<TestBody>) -> Json<TestBody> {
+        let response = TestBody {
+            number: body.number * 2,
+            text: format!("{}_plus_response", body.text),
+        };
+
+        Json(response)
+    }
+
+    #[tokio::test]
+    async fn it_should_post_and_receive_json() {
+        let app = Router::new().route("/json", post(post_json));
+        let server = TestServer::builder()
+            .http_transport()
+            .build(app)
+            .expect("Should create test server");
+
+        let response = server
+            .reqwest_post(&"/json")
+            .json(&TestBody {
+                number: 111,
+                text: format!("request"),
+            })
+            .send()
+            .await
+            .unwrap()
+            .json::<TestBody>()
+            .await
+            .unwrap();
+
+        assert_eq!(
+            response,
+            TestBody {
+                number: 222,
+                text: format!("request_plus_response"),
+            }
+        );
+    }
+}
+
 #[cfg(test)]
 mod test_server_address {
     use super::*;

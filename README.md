@@ -18,29 +18,29 @@ This runs your application locally, allowing you to query against it with reques
 Decode the responses, and assert what is returned.
 
 ```rust
-  use axum::Router;
-  use axum::routing::get;
+use axum::Router;
+use axum::routing::get;
 
-  use axum_test::TestServer;
+use axum_test::TestServer;
 
-  #[tokio::test]
-  async fn it_should_ping_pong() {
-      // Build an application with a route.
-      let app = Router::new()
-          .route(&"/ping", get(|| async { "pong!" }));
+#[tokio::test]
+async fn it_should_ping_pong() {
+    // Build an application with a route.
+    let app = Router::new()
+        .route(&"/ping", get(|| async { "pong!" }));
 
-      // Run the application for testing.
-      let server = TestServer::new(app).unwrap();
+    // Run the application for testing.
+    let server = TestServer::new(app).unwrap();
 
-      // Get the request.
-      let response = server
-          .get("/ping")
-          .await;
+    // Get the request.
+    let response = server
+        .get("/ping")
+        .await;
 
-      // Assertions.
-      response.assert_status_ok();
-      response.assert_text("pong!");
-  }
+    // Assertions.
+    response.assert_status_ok();
+    response.assert_text("pong!");
+}
 ```
 
 A `TestServer` enables you to run an Axum service with a mocked network,
