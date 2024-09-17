@@ -1,6 +1,7 @@
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use anyhow::Context;
+use assert_json_diff::assert_json_include;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
@@ -12,6 +13,7 @@ use http::HeaderValue;
 use http::Method;
 use http::StatusCode;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -27,6 +29,7 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::TestResponseWebSocket;
 #[cfg(feature = "ws")]
 use crate::TestWebSocket;
+use serde_json::Value;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -781,6 +784,55 @@ impl TestResponse {
         let reader = BufReader::new(file);
         let expected = serde_json::from_reader::<_, serde_json::Value>(reader).unwrap();
         self.assert_json(&expected);
+    }
+
+    /// Asserts the content is within the json returned.
+    /// This is useful for when servers return times and IDs that you
+    /// wish to ignore.
+    /// use axum::Router;
+    /// use axum::extract::Json;
+    /// use axum::routing::get;
+    /// use axum_test::TestServer;
+    /// use serde_json::json;
+    /// use serde::Deserialize;
+    /// use serde::Serialize;
+    /// use std::time::Instant;
+    ///
+    /// #[derive(Deserialize, Serialize)]
+    /// struct UserResponse {
+    ///     id: u64, // some random ID
+    ///     name: String,
+    ///     age: u32
+    /// }
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/user", get(|| async {
+    ///         Json(UserResponse {
+    ///            id: Instant::now().elapsed().as_millis() as u64,
+    ///            name: "Joe".to_string(),
+    ///            age: 20,
+    ///        })
+    ///     }));
+    /// let server = TestServer::new(app)?;
+    ///
+    /// // Checks the response contains _only_ the values listed here,
+    /// // and ignores the rest.
+    /// server.get(&"/user")
+    ///     .await
+    ///     .assert_json_includes(&json!({
+    ///         "name": "Joe",
+    ///         "age": 20,
+    ///     }));
+    /// #
+    /// # Ok(()) }
+    /// ```
+    #[track_caller]
+    pub fn assert_json_includes<T>(&self, expected: &T)
+    where
+        T: Serialize,
+    {
+        let received = self.json::<Value>();
+        assert_json_include!(actual: received, expected: expected);
     }
 
     /// Deserializes the contents of the request as Yaml,
@@ -1666,6 +1718,81 @@ mod test_assert_json_from_file {
             .get(&"/form")
             .await
             .assert_json_from_file("files/example.json");
+    }
+}
+
+#[cfg(test)]
+mod test_assert_json_includes {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::Form;
+    use axum::Json;
+    use axum::Router;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
+    use std::time::Instant;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        time: u64,
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_form() -> Form<ExampleResponse> {
+        Form(ExampleResponse {
+            time: Instant::now().elapsed().as_millis() as u64,
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    async fn route_get_json() -> Json<ExampleResponse> {
+        Json(ExampleResponse {
+            time: Instant::now().elapsed().as_millis() as u64,
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    #[tokio::test]
+    async fn it_should_match_subset_of_json_returned() {
+        let app = Router::new().route(&"/json", get(route_get_json));
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_json_includes(&json!({
+            "name": "Joe",
+            "age": 20,
+        }));
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_different() {
+        let app = Router::new().route(&"/json", get(route_get_json));
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/json")
+            .await
+            .assert_json_includes(&ExampleResponse {
+                time: 1234,
+                name: "Julia".to_string(),
+                age: 25,
+            });
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_form() {
+        let app = Router::new().route(&"/form", get(route_get_form));
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/form").await.assert_json_includes(&json!({
+            "name": "Joe",
+            "age": 20,
+        }));
     }
 }
 
