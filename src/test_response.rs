@@ -819,7 +819,7 @@ impl TestResponse {
     /// // and ignores the rest.
     /// server.get(&"/user")
     ///     .await
-    ///     .assert_json_includes(&json!({
+    ///     .assert_json_contains(&json!({
     ///         "name": "Joe",
     ///         "age": 20,
     ///     }));
@@ -827,7 +827,7 @@ impl TestResponse {
     /// # Ok(()) }
     /// ```
     #[track_caller]
-    pub fn assert_json_includes<T>(&self, expected: &T)
+    pub fn assert_json_contains<T>(&self, expected: &T)
     where
         T: Serialize,
     {
@@ -1722,7 +1722,7 @@ mod test_assert_json_from_file {
 }
 
 #[cfg(test)]
-mod test_assert_json_includes {
+mod test_assert_json_contains {
     use crate::TestServer;
     use axum::routing::get;
     use axum::Form;
@@ -1761,7 +1761,7 @@ mod test_assert_json_includes {
         let app = Router::new().route(&"/json", get(route_get_json));
         let server = TestServer::new(app).unwrap();
 
-        server.get(&"/json").await.assert_json_includes(&json!({
+        server.get(&"/json").await.assert_json_contains(&json!({
             "name": "Joe",
             "age": 20,
         }));
@@ -1776,7 +1776,7 @@ mod test_assert_json_includes {
         server
             .get(&"/json")
             .await
-            .assert_json_includes(&ExampleResponse {
+            .assert_json_contains(&ExampleResponse {
                 time: 1234,
                 name: "Julia".to_string(),
                 age: 25,
@@ -1789,7 +1789,7 @@ mod test_assert_json_includes {
         let app = Router::new().route(&"/form", get(route_get_form));
         let server = TestServer::new(app).unwrap();
 
-        server.get(&"/form").await.assert_json_includes(&json!({
+        server.get(&"/form").await.assert_json_contains(&json!({
             "name": "Joe",
             "age": 20,
         }));
