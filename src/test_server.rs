@@ -179,11 +179,13 @@ impl TestServer {
     /// # }
     /// ```
     ///
-    /// Types of applications that can be passed in include:
+    /// The of applications that can be passed in include:
     ///
     ///  - [`axum::Router`]
-    ///  - [`axum::routin::IntoMakeService`]
+    ///  - [`axum::routing::IntoMakeService`]
     ///  - [`axum::extract::connect_info::IntoMakeServiceWithConnectInfo`]
+    ///  - [`axum::serve::Serve`]
+    ///  - [`axum::serve::WithGracefulShutdown`]
     ///  - [`shuttle_axum::ShuttleAxum`]
     ///
     pub fn new<A>(app: A) -> Result<Self>
@@ -816,6 +818,15 @@ impl TestServer {
             query_params,
             headers,
         })
+    }
+
+    /// Returns true or false if the underlying service inside the `TestServer`
+    /// is still running. For many types of services this will always return `true`.
+    ///
+    /// When a `TestServer` is built using [`axum::serve::WithGracefulShutdown`],
+    /// this will return false if the service has shutdown.
+    pub fn is_running(&self) -> bool {
+        self.transport.is_running()
     }
 }
 
@@ -2647,5 +2658,51 @@ mod test_sync {
         });
 
         server.get("/test").await.assert_text("it works");
+    }
+}
+
+#[cfg(test)]
+mod test_is_running {
+    use super::*;
+    use crate::util::new_random_tokio_tcp_listener;
+    use axum::routing::get;
+    use axum::routing::IntoMakeService;
+    use axum::serve;
+    use axum::Router;
+    use std::time::Duration;
+    use tokio::sync::Notify;
+    use tokio::time::sleep;
+
+    async fn get_ping() -> &'static str {
+        "pong!"
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_run_with_mock_http() {
+        let shutdown_notification = Arc::new(Notify::new());
+        let waiting_notification = shutdown_notification.clone();
+
+        // Build an application with a route.
+        let app: IntoMakeService<Router> = Router::new()
+            .route("/ping", get(get_ping))
+            .into_make_service();
+        let port = new_random_tokio_tcp_listener().unwrap();
+        let application = serve(port, app)
+            .with_graceful_shutdown(async move { waiting_notification.notified().await });
+
+        // Run the server.
+        let server = TestServer::builder()
+            .build(application)
+            .expect("Should create test server");
+
+        server.get("/ping").await.assert_status_ok();
+        assert!(server.is_running());
+
+        shutdown_notification.notify_one();
+        sleep(Duration::from_millis(10)).await;
+
+        assert!(!server.is_running());
+        server.get("/ping").await.assert_status_ok();
     }
 }

@@ -6,11 +6,10 @@ use crate::TestServer;
 use crate::TestServerConfig;
 use crate::Transport;
 
-/// A builder for [`crate::TestServer`]. Inside this is a [`crate::TestServerConfig`],
-/// that you can customise by calling the appropriate methods,
-/// and then turn into a server by calling [`crate::TestServerBuilder::build`].
+/// A builder for [`crate::TestServer`]. Inside is a [`crate::TestServerConfig`],
+/// configured by each method, and then turn into a server by [`crate::TestServerBuilder::build`].
 ///
-/// The main way to make instances is by calling [`crate::TestServer::builder`].
+/// The recommended way to make instances is to call [`crate::TestServer::builder`].
 ///
 /// # Creating a [`crate::TestServer`]
 ///

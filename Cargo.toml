@@ -87,5 +87,5 @@ regex = "1.10"
 serde-email = { version = "3.1", features = ["serde"] }
 shuttle-axum = "0.47"
 shuttle-runtime = "0.47"
-tokio = { version = "1.40", features = ["rt", "rt-multi-thread", "time", "macros"] }
+tokio = { version = "1.40", features = ["rt", "rt-multi-thread", "sync", "time", "macros"] }
 tower-http = { version = "0.5", features = ["normalize-path"] }

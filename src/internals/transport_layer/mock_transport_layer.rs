@@ -59,6 +59,12 @@ where
     fn transport_layer_type(&self) -> TransportLayerType {
         TransportLayerType::Mock
     }
+
+    /// This will always return true.
+    #[inline(always)]
+    fn is_running(&self) -> bool {
+        true
+    }
 }
 
 impl<S> Debug for MockTransportLayer<S> {

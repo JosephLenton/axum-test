@@ -4,7 +4,7 @@
   </h1>
 
   <h3>
-    Easy E2E testing library for Axum<br/>
+    Easy E2E testing for Axum<br/>
     including REST, WebSockets, and more
   </h3>
 

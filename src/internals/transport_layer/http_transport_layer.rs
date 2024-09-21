@@ -61,4 +61,8 @@ impl TransportLayer for HttpTransportLayer {
     fn transport_layer_type(&self) -> TransportLayerType {
         TransportLayerType::Http
     }
+
+    fn is_running(&self) -> bool {
+        !self.serve_handle.is_finished()
+    }
 }
