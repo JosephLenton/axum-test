@@ -32,7 +32,7 @@ reqwest = ["dep:reqwest"]
 [dependencies]
 auto-future = "1.0"
 assert-json-diff = "2.0"
-axum = { version = "0.7", features = ["tokio"] }
+axum = { version = "0.7.6", features = ["tokio"] }
 anyhow = "1.0"
 bytes = "1.7"
 cookie = "0.18"

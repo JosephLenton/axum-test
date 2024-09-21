@@ -8,6 +8,8 @@ use crate::transport_layer::TransportLayerBuilder;
 mod into_make_service;
 mod into_make_service_with_connect_info;
 mod router;
+mod serve;
+mod with_graceful_shutdown;
 
 #[cfg(feature = "shuttle")]
 mod axum_service;
