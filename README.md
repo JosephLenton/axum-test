@@ -58,6 +58,7 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 | `shuttle`           | _off_             | Enables support for building a `TestServer` an [`shuttle_axum::AxumService`](https://docs.rs/shuttle-axum/latest/shuttle_axum/struct.AxumService.html), for use with [Shuttle.rs](https://shuttle.rs). |
 | `typed-routing`     | _off_             | Enables support for using `TypedPath` in requests. See [axum-extra](https://crates.io/crates/axum-extra) for details.             |
 | `ws`                | _off_             | Enables WebSocket support. See [TestWebSocket](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) for details. |
+| `reqwest`           | _off_             | Enables the `TestServer` being able to create [Reqwest](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) requests for querying. |
 
 ## Axum Compatability
 
