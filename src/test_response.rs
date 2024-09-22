@@ -747,7 +747,7 @@ impl TestResponse {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
         let expected: Value = serde_json::from_reader(reader).unwrap();
-        self.assert_json(&json!(expected));
+        self.assert_json(&expected);
     }
 
     /// Deserializes the contents of the request as Yaml,
