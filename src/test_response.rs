@@ -798,24 +798,17 @@ impl TestResponse {
     /// use axum::routing::get;
     /// use axum_test::TestServer;
     /// use serde_json::json;
-    /// use serde::Deserialize;
-    /// use serde::Serialize;
     /// use std::time::Instant;
-    ///
-    /// #[derive(Deserialize, Serialize)]
-    /// struct UserResponse {
-    ///     id: u64, // some random ID
-    ///     name: String,
-    ///     age: u32
-    /// }
     ///
     /// let app = Router::new()
     ///     .route(&"/user", get(|| async {
-    ///         Json(UserResponse {
-    ///            id: Instant::now().elapsed().as_millis() as u64,
-    ///            name: "Joe".to_string(),
-    ///            age: 20,
-    ///        })
+    ///         let id = Instant::now().elapsed().as_millis();
+    ///
+    ///         Json(json!({
+    ///            "id": id,
+    ///            "name": "Joe",
+    ///            "age": 20,
+    ///        }))
     ///     }));
     /// let server = TestServer::new(app)?;
     ///
