@@ -10,8 +10,6 @@ use http::HeaderValue;
 use http::Method;
 use http::StatusCode;
 use serde::de::DeserializeOwned;
-use serde_json::json;
-use serde_json::Value;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -743,10 +741,39 @@ impl TestResponse {
     }
 
     /// Read json file from given path and assert it with json response.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use axum::Json;
+    /// use axum::routing::get;
+    /// use axum::routing::Router;
+    /// use axum_test::TestServer;
+    /// use axum_test::TestServerConfig;
+    /// use serde_json::json;
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/json", get(|| async {
+    ///         Json(json!({
+    ///             "name": "Joe",
+    ///             "age": 20,
+    ///         }))
+    ///     }));
+    ///
+    /// let server = TestServer::new(app).unwrap();
+    /// server
+    ///     .get(&"/json")
+    ///     .await
+    ///     .assert_json_from_file("files/example.json");
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    #[track_caller]
     pub fn assert_json_from_file(&self, path: &str) {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
-        let expected: Value = serde_json::from_reader(reader).unwrap();
+        let expected: serde_json::Value = serde_json::from_reader(reader).unwrap();
         self.assert_json(&expected);
     }
 
