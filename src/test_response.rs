@@ -791,6 +791,16 @@ impl TestResponse {
         assert_eq!(*other, self.yaml::<T>());
     }
 
+    /// Read yaml file from given path and assert it with yaml response.
+    #[cfg(feature = "yaml")]
+    #[track_caller]
+    pub fn assert_yaml_from_file(&self, path: &str) {
+        let file = File::open(path).unwrap();
+        let reader = BufReader::new(file);
+        let expected: serde_yaml::Value = serde_yaml::from_reader(reader).unwrap();
+        self.assert_yaml(&expected);
+    }
+
     /// Deserializes the contents of the request as MsgPack,
     /// and asserts it matches the value given.
     ///
@@ -1484,7 +1494,6 @@ mod test_assert_text_contains {
 #[cfg(test)]
 mod test_assert_json {
     use crate::TestServer;
-
     use axum::routing::get;
     use axum::routing::Router;
     use axum::Form;
@@ -1549,15 +1558,84 @@ mod test_assert_json {
             age: 20,
         });
     }
+}
+
+#[cfg(test)]
+mod test_assert_json_from_file {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum::Form;
+    use axum::Json;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
 
     #[tokio::test]
     async fn it_should_match_json_from_file() {
-        let app = Router::new().route(&"/json", get(route_get_json));
-
+        let app = Router::new().route(
+            &"/json",
+            get(|| async {
+                Json(json!(
+                    {
+                        "name": "Joe",
+                        "age": 20,
+                    }
+                ))
+            }),
+        );
         let server = TestServer::new(app).unwrap();
 
         server
             .get(&"/json")
+            .await
+            .assert_json_from_file("files/example.json");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_not_match_the_file() {
+        let app = Router::new().route(
+            &"/json",
+            get(|| async {
+                Json(json!(
+                    {
+                        "name": "Julia",
+                        "age": 25,
+                    }
+                ))
+            }),
+        );
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/json")
+            .await
+            .assert_json_from_file("files/example.json");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_content_type_does_not_match() {
+        #[derive(Serialize, Deserialize, PartialEq, Debug)]
+        struct ExampleResponse {
+            name: String,
+            age: u32,
+        }
+
+        let app = Router::new().route(
+            &"/form",
+            get(|| async {
+                Form(ExampleResponse {
+                    name: "Joe".to_string(),
+                    age: 20,
+                })
+            }),
+        );
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/form")
             .await
             .assert_json_from_file("files/example.json");
     }
@@ -1567,7 +1645,6 @@ mod test_assert_json {
 #[cfg(test)]
 mod test_assert_yaml {
     use crate::TestServer;
-
     use axum::routing::get;
     use axum::routing::Router;
     use axum::Form;
@@ -1631,6 +1708,88 @@ mod test_assert_yaml {
             name: "Joe".to_string(),
             age: 20,
         });
+    }
+}
+
+#[cfg(feature = "yaml")]
+#[cfg(test)]
+mod test_assert_yaml_from_file {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use axum::Form;
+    use axum_yaml::Yaml;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn it_should_match_yaml_from_file() {
+        let app = Router::new().route(
+            &"/yaml",
+            get(|| async {
+                Yaml(json!(
+                    {
+                        "name": "Joe",
+                        "age": 20,
+                    }
+                ))
+            }),
+        );
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/yaml")
+            .await
+            .assert_yaml_from_file("files/example.yaml");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_not_match_the_file() {
+        let app = Router::new().route(
+            &"/yaml",
+            get(|| async {
+                Yaml(json!(
+                    {
+                        "name": "Julia",
+                        "age": 25,
+                    }
+                ))
+            }),
+        );
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/yaml")
+            .await
+            .assert_yaml_from_file("files/example.yaml");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_content_type_does_not_match() {
+        #[derive(Serialize, Deserialize, PartialEq, Debug)]
+        struct ExampleResponse {
+            name: String,
+            age: u32,
+        }
+
+        let app = Router::new().route(
+            &"/form",
+            get(|| async {
+                Form(ExampleResponse {
+                    name: "Joe".to_string(),
+                    age: 20,
+                })
+            }),
+        );
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/form")
+            .await
+            .assert_yaml_from_file("files/example.yaml");
     }
 }
 
