@@ -789,6 +789,10 @@ impl TestResponse {
     /// Asserts the content is within the json returned.
     /// This is useful for when servers return times and IDs that you
     /// wish to ignore.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
     /// use axum::Router;
     /// use axum::extract::Json;
     /// use axum::routing::get;
