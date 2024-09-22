@@ -10,9 +10,13 @@ use http::HeaderValue;
 use http::Method;
 use http::StatusCode;
 use serde::de::DeserializeOwned;
+use serde_json::json;
+use serde_json::Value;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::fs::File;
+use std::io::BufReader;
 use url::Url;
 
 #[cfg(feature = "pretty-assertions")]
@@ -736,6 +740,14 @@ impl TestResponse {
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*expected, self.json::<T>());
+    }
+
+    /// Read json file from given path and assert it with json response.
+    pub fn assert_json_from_file(&self, path: &str) {
+        let file = File::open(path).unwrap();
+        let reader = BufReader::new(file);
+        let expected: Value = serde_json::from_reader(reader).unwrap();
+        self.assert_json(&expected);
     }
 
     /// Deserializes the contents of the request as Yaml,
@@ -1509,6 +1521,18 @@ mod test_assert_json {
             name: "Joe".to_string(),
             age: 20,
         });
+    }
+
+    #[tokio::test]
+    async fn it_should_match_json_from_file() {
+        let app = Router::new().route(&"/json", get(route_get_json));
+
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/json")
+            .await
+            .assert_json_from_file("files/example.json");
     }
 }
 
