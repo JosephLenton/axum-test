@@ -15,7 +15,7 @@ pub trait TransportLayer: Debug + Send + Sync + 'static {
         request: Request<Body>,
     ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>>>>;
 
-    fn url<'a>(&'a self) -> Option<&'a Url> {
+    fn url(&self) -> Option<&Url> {
         None
     }
 

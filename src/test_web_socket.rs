@@ -74,8 +74,7 @@ impl TestWebSocket {
         let body_bytes =
             ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
 
-        self.send_message(WsMessage::Binary(body_bytes.into()))
-            .await;
+        self.send_message(WsMessage::Binary(body_bytes)).await;
     }
 
     pub async fn send_message(&mut self, message: WsMessage) {

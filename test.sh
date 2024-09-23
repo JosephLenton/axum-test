@@ -21,3 +21,5 @@ cargo check --features shuttle
 cargo check --features typed-routing
 cargo check --features ws
 cargo check --features reqwest
+
+cargo clippy --features all

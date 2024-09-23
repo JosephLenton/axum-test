@@ -38,7 +38,7 @@ use crate::Transport;
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
 
-const DEFAULT_URL_ADDRESS: &'static str = "http://localhost";
+const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 
 ///
 /// The `TestServer` runs your Axum application,
@@ -614,7 +614,7 @@ impl TestServer {
     /// then it will be replaced.
     pub fn add_cookie(&mut self, cookie: Cookie) {
         ServerSharedState::add_cookie(&self.state, cookie)
-            .with_context(|| format!("Trying to call add_cookie"))
+            .context("Trying to call add_cookie")
             .unwrap()
     }
 
@@ -624,14 +624,14 @@ impl TestServer {
     /// will get replaced.
     pub fn add_cookies(&mut self, cookies: CookieJar) {
         ServerSharedState::add_cookies(&self.state, cookies)
-            .with_context(|| format!("Trying to call add_cookies"))
+            .context("Trying to call add_cookies")
             .unwrap()
     }
 
     /// Clears all of the cookies stored internally.
     pub fn clear_cookies(&mut self) {
         ServerSharedState::clear_cookies(&self.state)
-            .with_context(|| format!("Trying to call clear_cookies"))
+            .context("Trying to call clear_cookies")
             .unwrap()
     }
 
@@ -669,7 +669,7 @@ impl TestServer {
         V: Serialize,
     {
         ServerSharedState::add_query_param(&self.state, key, value)
-            .with_context(|| format!("Trying to call add_query_param"))
+            .context("Trying to call add_query_param")
             .unwrap()
     }
 
@@ -679,7 +679,7 @@ impl TestServer {
         V: Serialize,
     {
         ServerSharedState::add_query_params(&self.state, query_params)
-            .with_context(|| format!("Trying to call add_query_params"))
+            .context("Trying to call add_query_params")
             .unwrap()
     }
 
@@ -687,14 +687,14 @@ impl TestServer {
     /// to be send on *all* future requests.
     pub fn add_raw_query_param(&mut self, raw_query_param: &str) {
         ServerSharedState::add_raw_query_param(&self.state, raw_query_param)
-            .with_context(|| format!("Trying to call add_raw_query_param"))
+            .context("Trying to call add_raw_query_param")
             .unwrap()
     }
 
     /// Clears all query params set.
     pub fn clear_query_params(&mut self) {
         ServerSharedState::clear_query_params(&self.state)
-            .with_context(|| format!("Trying to call clear_query_params"))
+            .context("Trying to call clear_query_params")
             .unwrap()
     }
 
@@ -718,7 +718,7 @@ impl TestServer {
     /// #
     /// # Ok(()) }
     /// ```
-    pub fn add_header<'c, N, V>(&mut self, name: N, value: V)
+    pub fn add_header<N, V>(&mut self, name: N, value: V)
     where
         N: TryInto<HeaderName>,
         N::Error: Debug,
@@ -733,14 +733,14 @@ impl TestServer {
             .expect("Failed to convert header vlue to HeaderValue");
 
         ServerSharedState::add_header(&self.state, header_name, header_value)
-            .with_context(|| format!("Trying to call add_header"))
+            .context("Trying to call add_header")
             .unwrap()
     }
 
     /// Clears all headers set so far.
     pub fn clear_headers(&mut self) {
         ServerSharedState::clear_headers(&self.state)
-            .with_context(|| format!("Trying to call clear_headers"))
+            .context("Trying to call clear_headers")
             .unwrap()
     }
 
@@ -769,12 +769,12 @@ impl TestServer {
     ///
     pub fn scheme(&mut self, scheme: &str) {
         ServerSharedState::set_scheme(&self.state, scheme.to_string())
-            .with_context(|| format!("Trying to call set_scheme"))
+            .context("Trying to call set_scheme")
             .unwrap()
     }
 
     pub(crate) fn url(&self) -> Option<Url> {
-        self.transport.url().map(|url| url.clone())
+        self.transport.url().cloned()
     }
 
     pub(crate) fn build_test_request_config(
@@ -878,7 +878,7 @@ fn build_url(
         }
     } else {
         // Grab everything up until the query parameters, or everything after that
-        let calculated_path = path.split('?').next().unwrap_or(&path);
+        let calculated_path = path.split('?').next().unwrap_or(path);
         url.set_path(calculated_path);
 
         // Move any query parameters from the url to the query params store.

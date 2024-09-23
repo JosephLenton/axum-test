@@ -54,7 +54,7 @@ impl TransportLayer for HttpTransportLayer {
         })
     }
 
-    fn url<'a>(&'a self) -> Option<&'a Url> {
+    fn url(&self) -> Option<&Url> {
         Some(&self.url)
     }
 

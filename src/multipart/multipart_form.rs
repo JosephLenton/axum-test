@@ -12,9 +12,7 @@ pub struct MultipartForm {
 
 impl MultipartForm {
     pub fn new() -> Self {
-        Self {
-            inner: Form::default(),
-        }
+        Default::default()
     }
 
     /// Creates a text part, and adds it to be sent.
@@ -44,6 +42,14 @@ impl MultipartForm {
     /// Returns the content type this form will use when it is sent.
     pub fn content_type(&self) -> String {
         self.inner.content_type()
+    }
+}
+
+impl Default for MultipartForm {
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
     }
 }
 

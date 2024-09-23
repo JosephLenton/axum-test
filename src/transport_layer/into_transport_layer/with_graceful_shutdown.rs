@@ -44,7 +44,7 @@ where
 
         let join_handle = spawn(async move {
             self.await
-                .with_context(|| format!("Failed to create ::axum::Server for TestServer"))
+                .context("Failed to create ::axum::Server for TestServer")
                 .expect("Expect server to start serving");
         });
 

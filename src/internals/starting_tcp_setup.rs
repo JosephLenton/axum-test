@@ -28,7 +28,7 @@ impl StartingTcpSetup {
         ReservedPort::reserve_port(port)?;
         let socket_addr = SocketAddr::new(ip, port);
         let std_tcp_listener = StdTcpListener::bind(socket_addr)
-            .with_context(|| "Failed to create TCPListener for TestServer")?;
+            .context("Failed to create TCPListener for TestServer")?;
         std_tcp_listener.set_nonblocking(true)?;
         let tokio_tcp_listener = TokioTcpListener::from_std(std_tcp_listener)?;
 

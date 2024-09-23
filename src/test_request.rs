@@ -278,7 +278,7 @@ impl TestRequest {
     }
 
     /// Adds a Cookie to be sent with this request.
-    pub fn add_cookie<'c>(mut self, cookie: Cookie<'c>) -> Self {
+    pub fn add_cookie(mut self, cookie: Cookie<'_>) -> Self {
         self.config.cookies.add(cookie.into_owned());
         self
     }
@@ -602,7 +602,7 @@ impl TestRequest {
         self
     }
 
-    async fn send(mut self) -> Result<TestResponse> {
+    async fn send(self) -> Result<TestResponse> {
         let debug_request_format = self.debug_request_format().to_string();
 
         let method = self.config.method;
@@ -643,7 +643,7 @@ impl TestRequest {
 
         if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
-            ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
+            ServerSharedState::add_cookies_by_header(&self.server_state, cookie_headers)?;
         }
 
         let test_response = TestResponse::new(
@@ -688,7 +688,7 @@ impl TestRequest {
         // Add all the headers we have.
         if let Some(content_type) = content_type {
             let (header_key, header_value) =
-                build_content_type_header(&content_type, &debug_request_format)?;
+                build_content_type_header(&content_type, debug_request_format)?;
             request_builder = request_builder.header(header_key, header_value);
         }
 
@@ -720,10 +720,10 @@ impl TestRequest {
         Ok(request)
     }
 
-    fn debug_request_format<'a>(&'a self) -> RequestPathFormatter<'a> {
+    fn debug_request_format(&self) -> RequestPathFormatter<'_> {
         RequestPathFormatter::new(
             &self.config.method,
-            &self.config.full_request_url.as_str(),
+            self.config.full_request_url.as_str(),
             Some(&self.config.query_params),
         )
     }
@@ -757,12 +757,7 @@ impl IntoFuture for TestRequest {
     type IntoFuture = AutoFuture<TestResponse>;
 
     fn into_future(self) -> Self::IntoFuture {
-        AutoFuture::new(async {
-            self.send()
-                .await
-                .with_context(|| format!("Sending request failed"))
-                .unwrap()
-        })
+        AutoFuture::new(async { self.send().await.context("Sending request failed").unwrap() })
     }
 }
 

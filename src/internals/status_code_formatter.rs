@@ -7,7 +7,7 @@ pub struct StatusCodeFormatter(pub StatusCode);
 impl fmt::Display for StatusCodeFormatter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let code = self.0.as_u16();
-        let reason = self.0.canonical_reason().unwrap_or(&"unknown status code");
+        let reason = self.0.canonical_reason().unwrap_or("unknown status code");
 
         write!(f, "{code} ({reason})")
     }

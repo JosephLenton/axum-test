@@ -199,7 +199,7 @@ impl TestResponse {
     /// ```
     #[must_use]
     pub fn text(&self) -> String {
-        String::from_utf8_lossy(&self.as_bytes()).to_string()
+        String::from_utf8_lossy(self.as_bytes()).to_string()
     }
 
     /// Deserializes the response, as Json, into the type given.
@@ -247,7 +247,7 @@ impl TestResponse {
     where
         T: DeserializeOwned,
     {
-        serde_json::from_slice::<T>(&self.as_bytes())
+        serde_json::from_slice::<T>(self.as_bytes())
             .with_context(|| {
                 let debug_request_format = self.debug_request_format();
 
@@ -302,7 +302,7 @@ impl TestResponse {
     where
         T: DeserializeOwned,
     {
-        serde_yaml::from_slice::<T>(&self.as_bytes())
+        serde_yaml::from_slice::<T>(self.as_bytes())
             .with_context(|| {
                 let debug_request_format = self.debug_request_format();
 
@@ -357,7 +357,7 @@ impl TestResponse {
     where
         T: DeserializeOwned,
     {
-        rmp_serde::from_slice::<T>(&self.as_bytes())
+        rmp_serde::from_slice::<T>(self.as_bytes())
             .with_context(|| {
                 let debug_request_format = self.debug_request_format();
 
@@ -411,7 +411,7 @@ impl TestResponse {
     where
         T: DeserializeOwned,
     {
-        serde_urlencoded::from_bytes::<T>(&self.as_bytes())
+        serde_urlencoded::from_bytes::<T>(self.as_bytes())
             .with_context(|| {
                 let debug_request_format = self.debug_request_format();
 
@@ -422,14 +422,14 @@ impl TestResponse {
 
     /// Returns the raw underlying response as `Bytes`.
     #[must_use]
-    pub fn as_bytes<'a>(&'a self) -> &'a Bytes {
+    pub fn as_bytes(&self) -> &Bytes {
         &self.response_body
     }
 
     /// Consumes this returning the underlying `Bytes`
     /// in the response.
     #[must_use]
-    pub fn into_bytes<'a>(self) -> Bytes {
+    pub fn into_bytes(self) -> Bytes {
         self.response_body
     }
 
@@ -470,7 +470,7 @@ impl TestResponse {
 
     /// Returns the headers returned from the response.
     #[must_use]
-    pub fn headers<'a>(&'a self) -> &'a HeaderMap<HeaderValue> {
+    pub fn headers(&self) -> &HeaderMap<HeaderValue> {
         &self.headers
     }
 
@@ -501,12 +501,12 @@ impl TestResponse {
     }
 
     /// Iterates over all of the headers contained in the response.
-    pub fn iter_headers<'a>(&'a self) -> impl Iterator<Item = (&'a HeaderName, &'a HeaderValue)> {
+    pub fn iter_headers(&self) -> impl Iterator<Item = (&'_ HeaderName, &'_ HeaderValue)> {
         self.headers.iter()
     }
 
     /// Iterates over all of the headers for a specific name, contained in the response.
-    pub fn iter_headers_by_name<'a, N>(&'a self, name: N) -> impl Iterator<Item = &'a HeaderValue>
+    pub fn iter_headers_by_name<N>(&self, name: N) -> impl Iterator<Item = &'_ HeaderValue>
     where
         N: TryInto<HeaderName>,
         N::Error: Debug,
@@ -621,8 +621,7 @@ impl TestResponse {
     }
 
     /// Iterate over all of the cookies in the response.
-    #[must_use]
-    pub fn iter_cookies<'a>(&'a self) -> impl Iterator<Item = Cookie<'a>> {
+    pub fn iter_cookies(&self) -> impl Iterator<Item = Cookie<'_>> {
         self.iter_headers_by_name(SET_COOKIE).map(|header| {
             let header_str = header
                 .to_str()
@@ -1016,8 +1015,8 @@ impl TestResponse {
         self.assert_status(StatusCode::SERVICE_UNAVAILABLE)
     }
 
-    fn debug_request_format<'a>(&'a self) -> RequestPathFormatter<'a> {
-        RequestPathFormatter::new(&self.method, &self.full_request_url.as_str(), None)
+    fn debug_request_format(&self) -> RequestPathFormatter<'_> {
+        RequestPathFormatter::new(&self.method, self.full_request_url.as_str(), None)
     }
 }
 
