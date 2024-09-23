@@ -62,12 +62,15 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 
 ## Axum Compatability
 
-Axum Test requires the latest version of Axum (0.7).
+The current version of Axum Test requires at least Axum v0.7.6.
 
-| Axum Version | Axum Test Version                                   |
-|--------------|-----------------------------------------------------|
-| 0.7 (latest) | 14, 15, 16+ (latest)                                |
-| 0.6          | [13.4.1](https://crates.io/crates/axum-test/13.4.1) |
+Here is a list of compatability with prior versions:
+
+| Axum Version   | Axum Test Version                                   |
+|----------------|-----------------------------------------------------|
+| 0.7.6 (latest) | 16+ (latest)                                        |
+| 0.7            | 14, 15                                              |
+| 0.6            | 13.4.1                                              |
 
 ## Examples
 
