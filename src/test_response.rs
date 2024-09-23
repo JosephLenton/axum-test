@@ -1,3 +1,5 @@
+use crate::internals::RequestPathFormatter;
+use crate::internals::StatusCodeFormatter;
 use anyhow::Context;
 use bytes::Bytes;
 use cookie::Cookie;
@@ -13,15 +15,13 @@ use serde::de::DeserializeOwned;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::fs::read_to_string;
 use std::fs::File;
 use std::io::BufReader;
 use url::Url;
 
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::{assert_eq, assert_ne};
-
-use crate::internals::RequestPathFormatter;
-use crate::internals::StatusCodeFormatter;
 
 #[cfg(feature = "ws")]
 use crate::internals::TestResponseWebSocket;
@@ -727,6 +727,12 @@ impl TestResponse {
         );
     }
 
+    #[track_caller]
+    pub fn assert_text_from_file(&self, path: &str) {
+        let expected = read_to_string(path).unwrap();
+        self.assert_text(expected);
+    }
+
     /// Deserializes the contents of the request as Json,
     /// and asserts it matches the value given.
     ///
@@ -773,7 +779,7 @@ impl TestResponse {
     pub fn assert_json_from_file(&self, path: &str) {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
-        let expected: serde_json::Value = serde_json::from_reader(reader).unwrap();
+        let expected = serde_json::from_reader::<_, serde_json::Value>(reader).unwrap();
         self.assert_json(&expected);
     }
 
@@ -797,7 +803,7 @@ impl TestResponse {
     pub fn assert_yaml_from_file(&self, path: &str) {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
-        let expected: serde_yaml::Value = serde_yaml::from_reader(reader).unwrap();
+        let expected = serde_yaml::from_reader::<_, serde_yaml::Value>(reader).unwrap();
         self.assert_yaml(&expected);
     }
 
@@ -1488,6 +1494,36 @@ mod test_assert_text_contains {
         let server = new_test_server();
 
         server.get(&"/text").await.assert_text_contains("🦊");
+    }
+}
+
+#[cfg(test)]
+mod test_assert_text_from_file {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::routing::Router;
+
+    #[tokio::test]
+    async fn it_should_match_from_file() {
+        let app = Router::new().route(&"/text", get(|| async { "hello!" }));
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/text")
+            .await
+            .assert_text_from_file("files/example.txt");
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_not_match_the_file() {
+        let app = Router::new().route(&"/text", get(|| async { "🦊" }));
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/text")
+            .await
+            .assert_text_from_file("files/example.txt");
     }
 }
 
