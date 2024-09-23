@@ -730,6 +730,7 @@ impl TestResponse {
         );
     }
 
+    /// Asserts the response from the server matches the contents of the file.
     #[track_caller]
     pub fn assert_text_from_file(&self, path: &str) {
         let expected = read_to_string(path).unwrap();
@@ -747,43 +748,6 @@ impl TestResponse {
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*expected, self.json::<T>());
-    }
-
-    /// Read json file from given path and assert it with json response.
-    ///
-    /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
-    /// #
-    /// use axum::Json;
-    /// use axum::routing::get;
-    /// use axum::routing::Router;
-    /// use axum_test::TestServer;
-    /// use axum_test::TestServerConfig;
-    /// use serde_json::json;
-    ///
-    /// let app = Router::new()
-    ///     .route(&"/json", get(|| async {
-    ///         Json(json!({
-    ///             "name": "Joe",
-    ///             "age": 20,
-    ///         }))
-    ///     }));
-    ///
-    /// let server = TestServer::new(app).unwrap();
-    /// server
-    ///     .get(&"/json")
-    ///     .await
-    ///     .assert_json_from_file("files/example.json");
-    /// #
-    /// # Ok(()) }
-    /// ```
-    ///
-    #[track_caller]
-    pub fn assert_json_from_file(&self, path: &str) {
-        let file = File::open(path).unwrap();
-        let reader = BufReader::new(file);
-        let expected = serde_json::from_reader::<_, serde_json::Value>(reader).unwrap();
-        self.assert_json(&expected);
     }
 
     /// Asserts the content is within the json returned.
@@ -830,6 +794,43 @@ impl TestResponse {
     {
         let received = self.json::<Value>();
         assert_json_include!(actual: received, expected: expected);
+    }
+
+    /// Read json file from given path and assert it with json response.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use axum::Json;
+    /// use axum::routing::get;
+    /// use axum::routing::Router;
+    /// use axum_test::TestServer;
+    /// use axum_test::TestServerConfig;
+    /// use serde_json::json;
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/json", get(|| async {
+    ///         Json(json!({
+    ///             "name": "Joe",
+    ///             "age": 20,
+    ///         }))
+    ///     }));
+    ///
+    /// let server = TestServer::new(app).unwrap();
+    /// server
+    ///     .get(&"/json")
+    ///     .await
+    ///     .assert_json_from_file("files/example.json");
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    #[track_caller]
+    pub fn assert_json_from_file(&self, path: &str) {
+        let file = File::open(path).unwrap();
+        let reader = BufReader::new(file);
+        let expected = serde_json::from_reader::<_, serde_json::Value>(reader).unwrap();
+        self.assert_json(&expected);
     }
 
     /// Deserializes the contents of the request as Yaml,
@@ -1638,6 +1639,81 @@ mod test_assert_json {
 }
 
 #[cfg(test)]
+mod test_assert_json_contains {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::Form;
+    use axum::Json;
+    use axum::Router;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
+    use std::time::Instant;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        time: u64,
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_form() -> Form<ExampleResponse> {
+        Form(ExampleResponse {
+            time: Instant::now().elapsed().as_millis() as u64,
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    async fn route_get_json() -> Json<ExampleResponse> {
+        Json(ExampleResponse {
+            time: Instant::now().elapsed().as_millis() as u64,
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    #[tokio::test]
+    async fn it_should_match_subset_of_json_returned() {
+        let app = Router::new().route(&"/json", get(route_get_json));
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_json_contains(&json!({
+            "name": "Joe",
+            "age": 20,
+        }));
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_different() {
+        let app = Router::new().route(&"/json", get(route_get_json));
+        let server = TestServer::new(app).unwrap();
+
+        server
+            .get(&"/json")
+            .await
+            .assert_json_contains(&ExampleResponse {
+                time: 1234,
+                name: "Julia".to_string(),
+                age: 25,
+            });
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_response_is_form() {
+        let app = Router::new().route(&"/form", get(route_get_form));
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/form").await.assert_json_contains(&json!({
+            "name": "Joe",
+            "age": 20,
+        }));
+    }
+}
+
+#[cfg(test)]
 mod test_assert_json_from_file {
     use crate::TestServer;
     use axum::routing::get;
@@ -1715,81 +1791,6 @@ mod test_assert_json_from_file {
             .get(&"/form")
             .await
             .assert_json_from_file("files/example.json");
-    }
-}
-
-#[cfg(test)]
-mod test_assert_json_contains {
-    use crate::TestServer;
-    use axum::routing::get;
-    use axum::Form;
-    use axum::Json;
-    use axum::Router;
-    use serde::Deserialize;
-    use serde::Serialize;
-    use serde_json::json;
-    use std::time::Instant;
-
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
-    struct ExampleResponse {
-        time: u64,
-        name: String,
-        age: u32,
-    }
-
-    async fn route_get_form() -> Form<ExampleResponse> {
-        Form(ExampleResponse {
-            time: Instant::now().elapsed().as_millis() as u64,
-            name: "Joe".to_string(),
-            age: 20,
-        })
-    }
-
-    async fn route_get_json() -> Json<ExampleResponse> {
-        Json(ExampleResponse {
-            time: Instant::now().elapsed().as_millis() as u64,
-            name: "Joe".to_string(),
-            age: 20,
-        })
-    }
-
-    #[tokio::test]
-    async fn it_should_match_subset_of_json_returned() {
-        let app = Router::new().route(&"/json", get(route_get_json));
-        let server = TestServer::new(app).unwrap();
-
-        server.get(&"/json").await.assert_json_contains(&json!({
-            "name": "Joe",
-            "age": 20,
-        }));
-    }
-
-    #[tokio::test]
-    #[should_panic]
-    async fn it_should_panic_if_response_is_different() {
-        let app = Router::new().route(&"/json", get(route_get_json));
-        let server = TestServer::new(app).unwrap();
-
-        server
-            .get(&"/json")
-            .await
-            .assert_json_contains(&ExampleResponse {
-                time: 1234,
-                name: "Julia".to_string(),
-                age: 25,
-            });
-    }
-
-    #[tokio::test]
-    #[should_panic]
-    async fn it_should_panic_if_response_is_form() {
-        let app = Router::new().route(&"/form", get(route_get_form));
-        let server = TestServer::new(app).unwrap();
-
-        server.get(&"/form").await.assert_json_contains(&json!({
-            "name": "Joe",
-            "age": 20,
-        }));
     }
 }
 
