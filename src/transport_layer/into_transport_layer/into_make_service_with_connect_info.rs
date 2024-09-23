@@ -52,7 +52,7 @@ where
 
 #[cfg(test)]
 mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
-    use crate::TestServerConfig;
+    use crate::TestServer;
     use axum::extract::Request;
     use axum::routing::get;
     use axum::Router;
@@ -73,9 +73,9 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
             .into_make_service_with_connect_info::<SocketAddr>();
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -92,9 +92,9 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
         );
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -104,11 +104,10 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
 
 #[cfg(test)]
 mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
+    use crate::TestServer;
     use axum::routing::get;
     use axum::Router;
     use std::net::SocketAddr;
-
-    use crate::TestServerConfig;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -122,9 +121,7 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
             .into_make_service_with_connect_info::<SocketAddr>();
 
         // Build the server.
-        let result = TestServerConfig::builder()
-            .mock_transport()
-            .build_server(app);
+        let result = TestServer::builder().mock_transport().build(app);
         let err = result.unwrap_err();
         let err_msg = format!("{}", err);
 

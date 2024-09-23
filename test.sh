@@ -16,6 +16,10 @@ cargo check --features all
 cargo check --features pretty-assertions
 cargo check --features yaml
 cargo check --features msgpack
+cargo check --features reqwest
 cargo check --features shuttle
 cargo check --features typed-routing
 cargo check --features ws
+cargo check --features reqwest
+
+cargo clippy --features all

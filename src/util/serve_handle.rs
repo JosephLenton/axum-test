@@ -12,6 +12,10 @@ impl ServeHandle {
     pub(crate) fn new(server_handle: JoinHandle<()>) -> Self {
         Self { server_handle }
     }
+
+    pub fn is_finished(&self) -> bool {
+        self.server_handle.is_finished()
+    }
 }
 
 impl Drop for ServeHandle {

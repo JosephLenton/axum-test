@@ -29,19 +29,19 @@ impl ServerSharedState {
         }
     }
 
-    pub(crate) fn scheme<'a>(&'a self) -> Option<&'a str> {
+    pub(crate) fn scheme(&self) -> Option<&str> {
         self.scheme.as_deref()
     }
 
-    pub(crate) fn cookies<'a>(&'a self) -> &'a CookieJar {
+    pub(crate) fn cookies(&self) -> &CookieJar {
         &self.cookies
     }
 
-    pub(crate) fn query_params<'a>(&'a self) -> &'a QueryParamsStore {
+    pub(crate) fn query_params(&self) -> &QueryParamsStore {
         &self.query_params
     }
 
-    pub(crate) fn headers<'a>(&'a self) -> &'a Vec<(HeaderName, HeaderValue)> {
+    pub(crate) fn headers(&self) -> &Vec<(HeaderName, HeaderValue)> {
         &self.headers
     }
 
@@ -59,7 +59,7 @@ impl ServerSharedState {
             for cookie_header in cookie_headers {
                 let cookie_header_str = cookie_header
                     .to_str()
-                    .context(&"Reading cookie header for storing in the `TestServer`")
+                    .context("Reading cookie header for storing in the `TestServer`")
                     .unwrap();
 
                 let cookie: Cookie<'static> = Cookie::parse(cookie_header_str)?.into_owned();
@@ -128,7 +128,7 @@ impl ServerSharedState {
         with_this_mut(this, "clear_headers", |this| this.headers.clear())
     }
 
-    pub(crate) fn add_header<'c>(
+    pub(crate) fn add_header(
         this: &Arc<Mutex<Self>>,
         name: HeaderName,
         value: HeaderValue,

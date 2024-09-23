@@ -48,7 +48,7 @@ where
 
 #[cfg(test)]
 mod test_into_http_transport_layer_for_into_make_service {
-    use crate::TestServerConfig;
+    use crate::TestServer;
     use axum::extract::Request;
     use axum::extract::State;
     use axum::routing::get;
@@ -73,9 +73,9 @@ mod test_into_http_transport_layer_for_into_make_service {
             .into_make_service();
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -91,9 +91,9 @@ mod test_into_http_transport_layer_for_into_make_service {
             .into_make_service();
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -110,9 +110,9 @@ mod test_into_http_transport_layer_for_into_make_service {
         let app = ServiceExt::<Request>::into_make_service(normalized_router);
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .http_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -122,11 +122,10 @@ mod test_into_http_transport_layer_for_into_make_service {
 
 #[cfg(test)]
 mod test_into_mock_transport_layer_for_into_make_service {
-    use crate::TestServerConfig;
+    use crate::TestServer;
     use axum::extract::Request;
     use axum::extract::State;
     use axum::routing::get;
-    use axum::routing::IntoMakeService;
     use axum::Router;
     use axum::ServiceExt;
     use tower::Layer;
@@ -143,14 +142,14 @@ mod test_into_mock_transport_layer_for_into_make_service {
     #[tokio::test]
     async fn it_should_create_and_test_with_make_into_service() {
         // Build an application with a route.
-        let app: IntoMakeService<Router> = Router::new()
+        let app = Router::new()
             .route("/ping", get(get_ping))
             .into_make_service();
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .mock_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -160,15 +159,15 @@ mod test_into_mock_transport_layer_for_into_make_service {
     #[tokio::test]
     async fn it_should_create_and_test_with_make_into_service_with_state() {
         // Build an application with a route.
-        let app: IntoMakeService<Router> = Router::new()
+        let app = Router::new()
             .route("/count", get(get_state))
             .with_state(123)
             .into_make_service();
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .mock_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.
@@ -185,9 +184,9 @@ mod test_into_mock_transport_layer_for_into_make_service {
         let app = ServiceExt::<Request>::into_make_service(normalized_router);
 
         // Run the server.
-        let server = TestServerConfig::builder()
+        let server = TestServer::builder()
             .mock_transport()
-            .build_server(app)
+            .build(app)
             .expect("Should create test server");
 
         // Get the request.

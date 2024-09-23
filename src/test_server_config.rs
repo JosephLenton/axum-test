@@ -2,12 +2,11 @@ use anyhow::Result;
 
 use crate::transport_layer::IntoTransportLayer;
 use crate::TestServer;
-use crate::TestServerConfigBuilder;
+use crate::TestServerBuilder;
 use crate::Transport;
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
-///
-/// It implements [`Default`] to ease building configurations:
+/// It implements [`Default`] to ease building.
 ///
 /// ```rust
 /// use axum_test::TestServerConfig;
@@ -40,7 +39,8 @@ use crate::Transport;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+///
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TestServerConfig {
     /// Which transport mode to use to process requests.
     /// For setting if the server should use mocked http (which uses [`tower::util::Oneshot`](tower::util::Oneshot)),
@@ -100,34 +100,33 @@ pub struct TestServerConfig {
 }
 
 impl TestServerConfig {
-    /// Creates a builder for making it simpler to creating configs.
-    ///
-    /// ```rust
-    /// use axum_test::TestServerConfig;
-    ///
-    /// let config = TestServerConfig::builder()
-    ///     .save_cookies()
-    ///     .default_content_type(&"application/json")
-    ///     .build();
-    /// ```
-    pub fn builder() -> TestServerConfigBuilder {
-        TestServerConfigBuilder::default()
+    /// Creates a default `TestServerConfig`.
+    pub fn new() -> Self {
+        Default::default()
     }
 
-    /// This is shorthand for calling [`crate::TestServer::new_with_config`].
+    /// This is shorthand for calling [`crate::TestServer::new_with_config`],
+    /// and passing this config.
     ///
     /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
     /// use axum::Router;
+    /// use axum_test::TestServer;
     /// use axum_test::TestServerConfig;
     ///
     /// let app = Router::new();
-    /// let config = TestServerConfig::builder()
-    ///     .save_cookies()
-    ///     .default_content_type(&"application/json")
-    ///     .build();
-    /// let server = config.build_server(app);
+    /// let config = TestServerConfig {
+    ///     save_cookies: true,
+    ///     default_content_type: Some("application/json".to_string()),
+    ///     ..Default::default()
+    /// };
+    /// let server = TestServer::new_with_config(app, config)?;
+    /// #
+    /// # Ok(())
+    /// # }
     /// ```
-    pub fn build_server<A>(self, app: A) -> Result<TestServer>
+    pub fn build<A>(self, app: A) -> Result<TestServer>
     where
         A: IntoTransportLayer,
     {
@@ -145,6 +144,12 @@ impl Default for TestServerConfig {
             default_content_type: None,
             default_scheme: None,
         }
+    }
+}
+
+impl From<TestServerBuilder> for TestServerConfig {
+    fn from(builder: TestServerBuilder) -> Self {
+        builder.into_config()
     }
 }
 

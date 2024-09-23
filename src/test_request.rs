@@ -81,7 +81,7 @@ mod test_request_config;
 ///
 /// ## Cookie Saving
 ///
-/// [`TestRequest::do_save_cookies()`](crate::TestRequest::do_save_cookies()) and [`TestRequest::do_not_save_cookies()`](crate::TestRequest::do_not_save_cookies())
+/// [`TestRequest::save_cookies()`](crate::TestRequest::save_cookies()) and [`TestRequest::do_not_save_cookies()`](crate::TestRequest::do_not_save_cookies())
 /// methods allow you to set the request to save cookies to the `TestServer`,
 /// for reuse on any future requests.
 ///
@@ -278,7 +278,7 @@ impl TestRequest {
     }
 
     /// Adds a Cookie to be sent with this request.
-    pub fn add_cookie<'c>(mut self, cookie: Cookie<'c>) -> Self {
+    pub fn add_cookie(mut self, cookie: Cookie<'_>) -> Self {
         self.config.cookies.add(cookie.into_owned());
         self
     }
@@ -301,7 +301,7 @@ impl TestRequest {
 
     /// Any cookies returned will be saved to the [`TestServer`](crate::TestServer) that created this,
     /// which will continue to use those cookies on future requests.
-    pub fn do_save_cookies(mut self) -> Self {
+    pub fn save_cookies(mut self) -> Self {
         self.config.is_saving_cookies = true;
         self
     }
@@ -560,7 +560,7 @@ impl TestRequest {
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
     /// #
     /// use axum::Json;
-    /// use axum::routing::Router;
+    /// use axum::Router;
     /// use axum::routing::put;
     /// use serde_json::json;
     ///
@@ -602,7 +602,7 @@ impl TestRequest {
         self
     }
 
-    async fn send(mut self) -> Result<TestResponse> {
+    async fn send(self) -> Result<TestResponse> {
         let debug_request_format = self.debug_request_format().to_string();
 
         let method = self.config.method;
@@ -630,7 +630,7 @@ impl TestRequest {
             let maybe_on_upgrade = http_response
                 .extensions_mut()
                 .remove::<hyper::upgrade::OnUpgrade>();
-            let transport_type = self.transport.get_type();
+            let transport_type = self.transport.transport_layer_type();
 
             crate::internals::TestResponseWebSocket {
                 maybe_on_upgrade,
@@ -643,7 +643,7 @@ impl TestRequest {
 
         if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
-            ServerSharedState::add_cookies_by_header(&mut self.server_state, cookie_headers)?;
+            ServerSharedState::add_cookies_by_header(&self.server_state, cookie_headers)?;
         }
 
         let test_response = TestResponse::new(
@@ -688,7 +688,7 @@ impl TestRequest {
         // Add all the headers we have.
         if let Some(content_type) = content_type {
             let (header_key, header_value) =
-                build_content_type_header(&content_type, &debug_request_format)?;
+                build_content_type_header(&content_type, debug_request_format)?;
             request_builder = request_builder.header(header_key, header_value);
         }
 
@@ -720,10 +720,10 @@ impl TestRequest {
         Ok(request)
     }
 
-    fn debug_request_format<'a>(&'a self) -> RequestPathFormatter<'a> {
+    fn debug_request_format(&self) -> RequestPathFormatter<'_> {
         RequestPathFormatter::new(
             &self.config.method,
-            &self.config.full_request_url.as_str(),
+            self.config.full_request_url.as_str(),
             Some(&self.config.query_params),
         )
     }
@@ -757,12 +757,7 @@ impl IntoFuture for TestRequest {
     type IntoFuture = AutoFuture<TestResponse>;
 
     fn into_future(self) -> Self::IntoFuture {
-        AutoFuture::new(async {
-            self.send()
-                .await
-                .with_context(|| format!("Sending request failed"))
-                .unwrap()
-        })
+        AutoFuture::new(async { self.send().await.context("Sending request failed").unwrap() })
     }
 }
 
@@ -782,7 +777,6 @@ fn build_content_type_header(
 #[cfg(test)]
 mod test_content_type {
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     use axum::routing::get;
     use axum::Router;
@@ -816,11 +810,10 @@ mod test_content_type {
         let app = Router::new().route("/content_type", get(get_content_type));
 
         // Run the server.
-        let config = TestServerConfig {
-            default_content_type: Some("text/plain".to_string()),
-            ..TestServerConfig::default()
-        };
-        let server = TestServer::new_with_config(app, config).expect("Should create test server");
+        let server = TestServer::builder()
+            .default_content_type("text/plain")
+            .build(app)
+            .expect("Should create test server");
 
         // Get the request.
         let text = server
@@ -1489,7 +1482,7 @@ mod test_add_cookies {
 }
 
 #[cfg(test)]
-mod test_do_save_cookies {
+mod test_save_cookies {
     use crate::TestServer;
 
     use axum::extract::Request;
@@ -1549,7 +1542,7 @@ mod test_do_save_cookies {
         server
             .put(&"/cookie")
             .text(&"cookie-found!")
-            .do_save_cookies()
+            .save_cookies()
             .await;
 
         // Check, only the cookie names and their values should come back.
@@ -1648,7 +1641,7 @@ mod test_clear_cookies {
         server
             .put(&"/cookie")
             .text(&"cookie-found!")
-            .do_save_cookies()
+            .save_cookies()
             .await;
 
         // Check it comes back.
@@ -2290,7 +2283,6 @@ mod test_scheme {
     use axum::Router;
 
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     async fn route_get_scheme(request: Request) -> String {
         request.uri().scheme_str().unwrap().to_string()
@@ -2299,9 +2291,7 @@ mod test_scheme {
     #[tokio::test]
     async fn it_should_return_http_by_default() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let config = TestServerConfig::builder().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder().build(router).unwrap();
 
         server.get("/scheme").await.assert_text("http");
     }
@@ -2309,9 +2299,7 @@ mod test_scheme {
     #[tokio::test]
     async fn it_should_return_http_when_set() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let config = TestServerConfig::builder().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder().build(router).unwrap();
 
         server
             .get("/scheme")
@@ -2323,9 +2311,7 @@ mod test_scheme {
     #[tokio::test]
     async fn it_should_return_https_when_set() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let config = TestServerConfig::builder().build();
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::builder().build(router).unwrap();
 
         server
             .get("/scheme")
@@ -2338,8 +2324,7 @@ mod test_scheme {
     async fn it_should_override_test_server_when_set() {
         let router = Router::new().route("/scheme", get(route_get_scheme));
 
-        let config = TestServerConfig::builder().build();
-        let mut server = TestServer::new_with_config(router, config).unwrap();
+        let mut server = TestServer::builder().build(router).unwrap();
         server.scheme(&"https");
 
         server
@@ -2360,7 +2345,6 @@ mod test_multipart {
     use crate::multipart::MultipartForm;
     use crate::multipart::Part;
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     async fn route_post_multipart(mut multipart: Multipart) -> Json<Vec<String>> {
         let mut fields = vec![];
@@ -2384,9 +2368,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_get_multipart_stats_on_mock_transport() {
         // Run the server.
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new()
             .add_text("penguins?", "lots")
@@ -2408,9 +2393,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_get_multipart_stats_on_http_transport() {
         // Run the server.
-        let config = TestServerConfig::builder().http_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .http_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new()
             .add_text("penguins?", "lots")
@@ -2432,9 +2418,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_send_text_parts_as_text() {
         // Run the server.
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new().add_part("animals", Part::text("🦊🦊🦊"));
 
@@ -2449,9 +2436,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_send_custom_mime_type() {
         // Run the server.
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new().add_part(
             "animals",
@@ -2469,9 +2457,10 @@ mod test_multipart {
     #[tokio::test]
     async fn it_should_send_using_include_bytes() {
         // Run the server.
-        let config = TestServerConfig::builder().mock_transport().build();
-        let server =
-            TestServer::new_with_config(test_router(), config).expect("Should create test server");
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
 
         let form = MultipartForm::new().add_part(
             "file",

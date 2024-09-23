@@ -54,11 +54,15 @@ impl TransportLayer for HttpTransportLayer {
         })
     }
 
-    fn url<'a>(&'a self) -> Option<&'a Url> {
+    fn url(&self) -> Option<&Url> {
         Some(&self.url)
     }
 
-    fn get_type(&self) -> TransportLayerType {
+    fn transport_layer_type(&self) -> TransportLayerType {
         TransportLayerType::Http
+    }
+
+    fn is_running(&self) -> bool {
+        !self.serve_handle.is_finished()
     }
 }

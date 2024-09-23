@@ -74,8 +74,7 @@ impl TestWebSocket {
         let body_bytes =
             ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
 
-        self.send_message(WsMessage::Binary(body_bytes.into()))
-            .await;
+        self.send_message(WsMessage::Binary(body_bytes)).await;
     }
 
     pub async fn send_message(&mut self, message: WsMessage) {
@@ -241,7 +240,6 @@ fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
 #[cfg(test)]
 mod test_assert_receive_text {
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
@@ -268,9 +266,7 @@ mod test_assert_receive_text {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        let config = TestServerConfig::builder().http_transport().build();
-
-        TestServer::new_with_config(app, config).unwrap()
+        TestServer::builder().http_transport().build(app).unwrap()
     }
 
     #[tokio::test]
@@ -323,7 +319,6 @@ mod test_assert_receive_text {
 #[cfg(test)]
 mod test_assert_receive_text_contains {
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
@@ -347,9 +342,7 @@ mod test_assert_receive_text_contains {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        let config = TestServerConfig::builder().http_transport().build();
-
-        TestServer::new_with_config(app, config).unwrap()
+        TestServer::builder().http_transport().build(app).unwrap()
     }
 
     #[tokio::test]
@@ -401,7 +394,6 @@ mod test_assert_receive_text_contains {
 #[cfg(test)]
 mod test_assert_receive_json {
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
@@ -439,9 +431,7 @@ mod test_assert_receive_json {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        let config = TestServerConfig::builder().http_transport().build();
-
-        TestServer::new_with_config(app, config).unwrap()
+        TestServer::builder().http_transport().build(app).unwrap()
     }
 
     #[tokio::test]
@@ -489,7 +479,6 @@ mod test_assert_receive_json {
 #[cfg(test)]
 mod test_assert_receive_yaml {
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
@@ -528,9 +517,7 @@ mod test_assert_receive_yaml {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        let config = TestServerConfig::builder().http_transport().build();
-
-        TestServer::new_with_config(app, config).unwrap()
+        TestServer::builder().http_transport().build(app).unwrap()
     }
 
     #[tokio::test]
@@ -578,7 +565,6 @@ mod test_assert_receive_yaml {
 #[cfg(test)]
 mod test_assert_receive_msgpack {
     use crate::TestServer;
-    use crate::TestServerConfig;
 
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
@@ -610,9 +596,7 @@ mod test_assert_receive_msgpack {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        let config = TestServerConfig::builder().http_transport().build();
-
-        TestServer::new_with_config(app, config).unwrap()
+        TestServer::builder().http_transport().build(app).unwrap()
     }
 
     #[tokio::test]
