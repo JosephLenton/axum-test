@@ -988,7 +988,7 @@ impl TestResponse {
 
         assert!(
             is_in_range,
-            "Expected status to not in range {}, received {status_code}",
+            "Expected status to be in range {}, received {status_code}",
             format_status_code_range(range)
         );
     }
@@ -1043,7 +1043,7 @@ impl TestResponse {
 
         assert!(
             is_not_in_range,
-            "Expected status is in range {}, received {status_code}",
+            "Expected status is not in range {}, received {status_code}",
             format_status_code_range(range)
         );
     }
@@ -1375,6 +1375,401 @@ mod test_assert_not_status {
         let server = TestServer::new(router).unwrap();
 
         server.get(&"/ok").await.assert_not_status(StatusCode::OK);
+    }
+}
+
+#[cfg(test)]
+mod test_assert_status_in_range {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use http::StatusCode;
+    use std::ops::RangeFull;
+
+    #[tokio::test]
+    async fn it_should_be_true_when_within_int_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(200..299);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_within_status_code_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(StatusCode::OK..StatusCode::IM_USED);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_outside_int_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(200..299);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_outside_status_code_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(StatusCode::OK..StatusCode::IM_USED);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_within_inclusive_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(200..=299);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_outside_inclusive_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(200..=299);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_within_to_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(..299);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_outside_to_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(..299);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_within_to_inclusive_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(..=299);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_outside_to_inclusive_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(..=299);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_within_from_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(200..);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_outside_from_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range(500..);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_for_rull_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_in_range::<RangeFull, StatusCode>(..);
+    }
+}
+
+#[cfg(test)]
+mod test_assert_status_not_in_range {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::routing::Router;
+    use http::StatusCode;
+    use std::ops::RangeFull;
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_within_int_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(200..299);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_within_status_code_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(StatusCode::OK..StatusCode::IM_USED);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_outside_int_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(200..299);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_outside_status_code_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(StatusCode::OK..StatusCode::IM_USED);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_within_inclusive_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(200..=299);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_outside_inclusive_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(200..=299);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_within_to_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(..299);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_outside_to_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(..299);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_within_to_inclusive_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(..=299);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_outside_to_inclusive_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(..=299);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_when_within_from_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(200..);
+    }
+
+    #[tokio::test]
+    async fn it_should_be_true_when_outside_from_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range(500..);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_be_false_for_rull_range() {
+        let app = Router::new().route(
+            &"/status",
+            get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
+        );
+
+        TestServer::new(app)
+            .unwrap()
+            .get(&"/status")
+            .await
+            .assert_status_not_in_range::<RangeFull, StatusCode>(..);
     }
 }
 
