@@ -9,6 +9,9 @@ pub use self::websockets::*;
 mod expected_state;
 pub use self::expected_state::*;
 
+mod format_status_code_range;
+pub use self::format_status_code_range::*;
+
 mod status_code_formatter;
 pub use self::status_code_formatter::*;
 
@@ -17,6 +20,9 @@ pub use self::request_path_formatter::*;
 
 mod query_params_store;
 pub use self::query_params_store::*;
+
+mod try_into_range_bounds;
+pub use self::try_into_range_bounds::*;
 
 mod starting_tcp_setup;
 pub use self::starting_tcp_setup::*;
