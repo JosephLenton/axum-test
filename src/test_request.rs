@@ -1553,6 +1553,100 @@ mod test_save_cookies {
 }
 
 #[cfg(test)]
+mod test_do_not_save_cookies {
+    use crate::TestServer;
+
+    use axum::extract::Request;
+    use axum::http::header::HeaderMap;
+    use axum::routing::get;
+    use axum::routing::put;
+    use axum::Router;
+    use axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use cookie::Cookie;
+    use cookie::SameSite;
+    use http_body_util::BodyExt;
+
+    const TEST_COOKIE_NAME: &'static str = &"test-cookie";
+
+    async fn put_cookie_with_attributes(
+        mut cookies: AxumCookieJar,
+        request: Request,
+    ) -> (AxumCookieJar, &'static str) {
+        let body_bytes = request
+            .into_body()
+            .collect()
+            .await
+            .expect("Should turn the body into bytes")
+            .to_bytes();
+
+        let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
+        let cookie = Cookie::build((TEST_COOKIE_NAME, body_text))
+            .http_only(true)
+            .secure(true)
+            .same_site(SameSite::Strict)
+            .path("/cookie")
+            .build();
+        cookies = cookies.add(cookie);
+
+        (cookies, &"done")
+    }
+
+    async fn get_cookie_headers_joined(headers: HeaderMap) -> String {
+        let cookies: String = headers
+            .get_all("cookie")
+            .into_iter()
+            .map(|c| c.to_str().unwrap_or("").to_string())
+            .reduce(|a, b| a + "; " + &b)
+            .unwrap_or_else(|| String::new());
+
+        cookies
+    }
+
+    #[tokio::test]
+    async fn it_should_not_save_cookies_when_set() {
+        let app = Router::new()
+            .route("/cookie", put(put_cookie_with_attributes))
+            .route("/cookie", get(get_cookie_headers_joined));
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Create a cookie.
+        server
+            .put(&"/cookie")
+            .text(&"cookie-found!")
+            .do_not_save_cookies()
+            .await;
+
+        // Check, only the cookie names and their values should come back.
+        let response_text = server.get(&"/cookie").await.text();
+
+        assert_eq!(response_text, "");
+    }
+
+    #[tokio::test]
+    async fn it_should_override_test_server_and_not_save_cookies_when_set() {
+        let app = Router::new()
+            .route("/cookie", put(put_cookie_with_attributes))
+            .route("/cookie", get(get_cookie_headers_joined));
+        let server = TestServer::builder()
+            .save_cookies()
+            .build(app)
+            .expect("Should create test server");
+
+        // Create a cookie.
+        server
+            .put(&"/cookie")
+            .text(&"cookie-found!")
+            .do_not_save_cookies()
+            .await;
+
+        // Check, only the cookie names and their values should come back.
+        let response_text = server.get(&"/cookie").await.text();
+
+        assert_eq!(response_text, "");
+    }
+}
+
+#[cfg(test)]
 mod test_clear_cookies {
     use crate::TestServer;
 

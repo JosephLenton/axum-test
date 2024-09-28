@@ -71,6 +71,85 @@ impl Part {
             .unwrap();
 
         self.mime_type = parsed_mime_type;
+
         self
+    }
+}
+
+#[cfg(test)]
+mod test_text {
+    use super::*;
+
+    #[test]
+    fn it_should_contain_text_given() {
+        let part = Part::text("some_text");
+
+        let output = String::from_utf8_lossy(&part.bytes);
+        assert_eq!(output, "some_text");
+    }
+
+    #[test]
+    fn it_should_use_mime_type_text() {
+        let part = Part::text("some_text");
+        assert_eq!(part.mime_type, mime::TEXT_PLAIN);
+    }
+}
+
+#[cfg(test)]
+mod test_byes {
+    use super::*;
+
+    #[test]
+    fn it_should_contain_bytes_given() {
+        let bytes = "some_text".as_bytes();
+        let part = Part::bytes(bytes);
+
+        let output = String::from_utf8_lossy(&part.bytes);
+        assert_eq!(output, "some_text");
+    }
+
+    #[test]
+    fn it_should_use_mime_type_octet_stream() {
+        let bytes = "some_text".as_bytes();
+        let part = Part::bytes(bytes);
+
+        assert_eq!(part.mime_type, mime::APPLICATION_OCTET_STREAM);
+    }
+}
+
+#[cfg(test)]
+mod test_file_name {
+    use super::*;
+
+    #[test]
+    fn it_should_use_file_name_given() {
+        let mut part = Part::text("some_text");
+
+        assert_eq!(part.file_name, None);
+        part = part.file_name("my-text.txt");
+        assert_eq!(part.file_name, Some("my-text.txt".to_string()));
+    }
+}
+
+#[cfg(test)]
+mod test_mime_type {
+    use super::*;
+
+    #[test]
+    fn it_should_use_mime_type_set() {
+        let mut part = Part::text("some_text");
+
+        assert_eq!(part.mime_type, mime::TEXT_PLAIN);
+        part = part.mime_type("application/json");
+        assert_eq!(part.mime_type, mime::APPLICATION_JSON);
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_should_error_if_invalid_mime_type() {
+        let part = Part::text("some_text");
+        part.mime_type("🦊");
+
+        assert!(false);
     }
 }

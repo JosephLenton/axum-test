@@ -61,6 +61,50 @@ impl Display for QueryParamsStore {
 }
 
 #[cfg(test)]
+mod test_add {
+    use super::*;
+
+    #[test]
+    fn it_should_add_multiple_key_values() {
+        let mut params = QueryParamsStore::new();
+
+        params
+            .add(&[("key", "value"), ("another", "value")])
+            .unwrap();
+
+        assert_eq!("key=value&another=value", params.to_string());
+    }
+
+    #[test]
+    fn it_should_add_multiple_calls() {
+        let mut params = QueryParamsStore::new();
+
+        params.add(&[("key", "value")]).unwrap();
+        params.add(&[("another", "value")]).unwrap();
+
+        assert_eq!("key=value&another=value", params.to_string());
+    }
+
+    #[test]
+    fn it_should_reject_raw_string() {
+        let mut params = QueryParamsStore::new();
+
+        let result = params.add("key=value");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_add_query_param_strings_deserialized() {
+        let mut params = QueryParamsStore::new();
+
+        params.add(&[("key", "value&another=value")]).unwrap();
+
+        assert_eq!("key=value%26another%3Dvalue", params.to_string());
+    }
+}
+
+#[cfg(test)]
 mod test_add_raw {
     use crate::internals::QueryParamsStore;
 
