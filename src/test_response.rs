@@ -1964,6 +1964,25 @@ mod test_form {
 }
 
 #[cfg(test)]
+mod test_from {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::Router;
+    use bytes::Bytes;
+
+    #[tokio::test]
+    async fn it_should_turn_into_response_bytes() {
+        let app = Router::new().route(&"/text", get(|| async { "This is some example text" }));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/text").await;
+        let bytes: Bytes = response.into();
+        let text = String::from_utf8_lossy(&bytes);
+        assert_eq!(text, "This is some example text");
+    }
+}
+
+#[cfg(test)]
 mod test_assert_text {
     use crate::TestServer;
     use axum::routing::get;
