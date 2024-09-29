@@ -738,7 +738,7 @@ impl TestResponse {
         P: AsRef<Path>,
     {
         let path_ref = path.as_ref();
-        let expected = read_to_string(&path_ref)
+        let expected = read_to_string(path_ref)
             .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
             .unwrap();
 
@@ -838,7 +838,7 @@ impl TestResponse {
         P: AsRef<Path>,
     {
         let path_ref = path.as_ref();
-        let file = File::open(&path_ref)
+        let file = File::open(path_ref)
             .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
             .unwrap();
 
@@ -877,7 +877,7 @@ impl TestResponse {
         P: AsRef<Path>,
     {
         let path_ref = path.as_ref();
-        let file = File::open(&path_ref)
+        let file = File::open(path_ref)
             .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
             .unwrap();
 

@@ -156,7 +156,7 @@ impl TestRequest {
         P: AsRef<Path>,
     {
         let path_ref = path.as_ref();
-        let file = File::open(&path_ref)
+        let file = File::open(path_ref)
             .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
             .unwrap();
 
@@ -193,7 +193,7 @@ impl TestRequest {
         P: AsRef<Path>,
     {
         let path_ref = path.as_ref();
-        let file = File::open(&path_ref)
+        let file = File::open(path_ref)
             .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
             .unwrap();
 
@@ -318,7 +318,7 @@ impl TestRequest {
         P: AsRef<Path>,
     {
         let path_ref = path.as_ref();
-        let payload = read_to_string(&path_ref)
+        let payload = read_to_string(path_ref)
             .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
             .unwrap();
 
@@ -343,7 +343,7 @@ impl TestRequest {
         P: AsRef<Path>,
     {
         let path_ref = path.as_ref();
-        let payload = read(&path_ref)
+        let payload = read(path_ref)
             .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
             .unwrap();
 
@@ -1149,7 +1149,6 @@ mod test_yaml_from_file {
     use http::HeaderMap;
     use serde::Deserialize;
     use serde::Serialize;
-    use serde_json::json;
 
     #[tokio::test]
     async fn it_should_pass_yaml_up_to_be_read() {
