@@ -33,6 +33,7 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::TestResponseWebSocket;
 #[cfg(feature = "ws")]
 use crate::TestWebSocket;
+use std::path::Path;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -732,8 +733,15 @@ impl TestResponse {
 
     /// Asserts the response from the server matches the contents of the file.
     #[track_caller]
-    pub fn assert_text_from_file(&self, path: &str) {
-        let expected = read_to_string(path).unwrap();
+    pub fn assert_text_from_file<P>(&self, path: P)
+    where
+        P: AsRef<Path>,
+    {
+        let path_ref = path.as_ref();
+        let expected = read_to_string(path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
         self.assert_text(expected);
     }
 
@@ -825,10 +833,25 @@ impl TestResponse {
     /// ```
     ///
     #[track_caller]
-    pub fn assert_json_from_file(&self, path: &str) {
-        let file = File::open(path).unwrap();
+    pub fn assert_json_from_file<P>(&self, path: P)
+    where
+        P: AsRef<Path>,
+    {
+        let path_ref = path.as_ref();
+        let file = File::open(path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
         let reader = BufReader::new(file);
-        let expected = serde_json::from_reader::<_, serde_json::Value>(reader).unwrap();
+        let expected = serde_json::from_reader::<_, serde_json::Value>(reader)
+            .with_context(|| {
+                format!(
+                    "Failed to deserialize file '{}' as json",
+                    path_ref.display()
+                )
+            })
+            .unwrap();
+
         self.assert_json(&expected);
     }
 
@@ -849,10 +872,25 @@ impl TestResponse {
     /// Read yaml file from given path and assert it with yaml response.
     #[cfg(feature = "yaml")]
     #[track_caller]
-    pub fn assert_yaml_from_file(&self, path: &str) {
-        let file = File::open(path).unwrap();
+    pub fn assert_yaml_from_file<P>(&self, path: P)
+    where
+        P: AsRef<Path>,
+    {
+        let path_ref = path.as_ref();
+        let file = File::open(path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
         let reader = BufReader::new(file);
-        let expected = serde_yaml::from_reader::<_, serde_yaml::Value>(reader).unwrap();
+        let expected = serde_yaml::from_reader::<_, serde_yaml::Value>(reader)
+            .with_context(|| {
+                format!(
+                    "Failed to deserialize file '{}' as yaml",
+                    path_ref.display()
+                )
+            })
+            .unwrap();
+
         self.assert_yaml(&expected);
     }
 
