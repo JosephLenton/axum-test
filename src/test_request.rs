@@ -856,7 +856,6 @@ fn build_content_type_header(
 #[cfg(test)]
 mod test_content_type {
     use crate::TestServer;
-
     use axum::routing::get;
     use axum::Router;
     use http::header::CONTENT_TYPE;
@@ -926,7 +925,6 @@ mod test_content_type {
 #[cfg(test)]
 mod test_json {
     use crate::TestServer;
-
     use axum::routing::post;
     use axum::Json;
     use axum::Router;
@@ -945,17 +943,18 @@ mod test_json {
             pets: Option<String>,
         }
 
-        async fn get_json(Json(json): Json<TestJson>) -> String {
-            format!(
-                "json: {}, {}, {}",
-                json.name,
-                json.age,
-                json.pets.unwrap_or_else(|| "pandas".to_string())
-            )
-        }
-
         // Build an application with a route.
-        let app = Router::new().route("/json", post(get_json));
+        let app = Router::new().route(
+            "/json",
+            post(|Json(json): Json<TestJson>| async move {
+                format!(
+                    "json: {}, {}, {}",
+                    json.name,
+                    json.age,
+                    json.pets.unwrap_or_else(|| "pandas".to_string())
+                )
+            }),
+        );
 
         // Run the server.
         let server = TestServer::new(app).expect("Should create test server");
@@ -976,15 +975,16 @@ mod test_json {
 
     #[tokio::test]
     async fn it_should_pass_json_content_type_for_json() {
-        async fn get_content_type(headers: HeaderMap) -> String {
-            headers
-                .get(CONTENT_TYPE)
-                .map(|h| h.to_str().unwrap().to_string())
-                .unwrap_or_else(|| "".to_string())
-        }
-
         // Build an application with a route.
-        let app = Router::new().route("/content_type", post(get_content_type));
+        let app = Router::new().route(
+            "/content_type",
+            post(|headers: HeaderMap| async move {
+                headers
+                    .get(CONTENT_TYPE)
+                    .map(|h| h.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string())
+            }),
+        );
 
         // Run the server.
         let server = TestServer::new(app).expect("Should create test server");
@@ -996,11 +996,77 @@ mod test_json {
     }
 }
 
+#[cfg(test)]
+mod test_json_from_file {
+    use crate::TestServer;
+    use axum::routing::post;
+    use axum::Json;
+    use axum::Router;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use serde::Deserialize;
+    use serde::Serialize;
+
+    #[tokio::test]
+    async fn it_should_pass_json_up_to_be_read() {
+        #[derive(Deserialize, Serialize)]
+        struct TestJson {
+            name: String,
+            age: u32,
+        }
+
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/json",
+            post(|Json(json): Json<TestJson>| async move {
+                format!("json: {}, {}", json.name, json.age,)
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/json")
+            .json_from_file(&"files/example.json")
+            .await
+            .text();
+
+        assert_eq!(text, "json: Joe, 20");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_json_content_type_for_json() {
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/content_type",
+            post(|headers: HeaderMap| async move {
+                headers
+                    .get(CONTENT_TYPE)
+                    .map(|h| h.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string())
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .json_from_file(&"files/example.json")
+            .await
+            .text();
+
+        assert_eq!(text, "application/json");
+    }
+}
+
 #[cfg(feature = "yaml")]
 #[cfg(test)]
 mod test_yaml {
     use crate::TestServer;
-
     use axum::routing::post;
     use axum::Router;
     use axum_yaml::Yaml;
@@ -1019,17 +1085,18 @@ mod test_yaml {
             pets: Option<String>,
         }
 
-        async fn get_yaml(Yaml(yaml): Yaml<TestYaml>) -> String {
-            format!(
-                "yaml: {}, {}, {}",
-                yaml.name,
-                yaml.age,
-                yaml.pets.unwrap_or_else(|| "pandas".to_string())
-            )
-        }
-
         // Build an application with a route.
-        let app = Router::new().route("/yaml", post(get_yaml));
+        let app = Router::new().route(
+            "/yaml",
+            post(|Yaml(yaml): Yaml<TestYaml>| async move {
+                format!(
+                    "yaml: {}, {}, {}",
+                    yaml.name,
+                    yaml.age,
+                    yaml.pets.unwrap_or_else(|| "pandas".to_string())
+                )
+            }),
+        );
 
         // Run the server.
         let server = TestServer::new(app).expect("Should create test server");
@@ -1050,15 +1117,16 @@ mod test_yaml {
 
     #[tokio::test]
     async fn it_should_pass_yaml_content_type_for_yaml() {
-        async fn get_content_type(headers: HeaderMap) -> String {
-            headers
-                .get(CONTENT_TYPE)
-                .map(|h| h.to_str().unwrap().to_string())
-                .unwrap_or_else(|| "".to_string())
-        }
-
         // Build an application with a route.
-        let app = Router::new().route("/content_type", post(get_content_type));
+        let app = Router::new().route(
+            "/content_type",
+            post(|headers: HeaderMap| async move {
+                headers
+                    .get(CONTENT_TYPE)
+                    .map(|h| h.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string())
+            }),
+        );
 
         // Run the server.
         let server = TestServer::new(app).expect("Should create test server");
@@ -1070,11 +1138,79 @@ mod test_yaml {
     }
 }
 
+#[cfg(feature = "yaml")]
+#[cfg(test)]
+mod test_yaml_from_file {
+    use crate::TestServer;
+    use axum::routing::post;
+    use axum::Router;
+    use axum_yaml::Yaml;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn it_should_pass_yaml_up_to_be_read() {
+        #[derive(Deserialize, Serialize)]
+        struct TestYaml {
+            name: String,
+            age: u32,
+        }
+
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/yaml",
+            post(|Yaml(yaml): Yaml<TestYaml>| async move {
+                format!("yaml: {}, {}", yaml.name, yaml.age,)
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/yaml")
+            .yaml_from_file(&"files/example.yaml")
+            .await
+            .text();
+
+        assert_eq!(text, "yaml: Joe, 20");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_yaml_content_type_for_yaml() {
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/content_type",
+            post(|headers: HeaderMap| async move {
+                headers
+                    .get(CONTENT_TYPE)
+                    .map(|h| h.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string())
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .yaml_from_file(&"files/example.yaml")
+            .await
+            .text();
+
+        assert_eq!(text, "application/yaml");
+    }
+}
+
 #[cfg(feature = "msgpack")]
 #[cfg(test)]
 mod test_msgpack {
     use crate::TestServer;
-
     use axum::routing::post;
     use axum::Router;
     use axum_msgpack::MsgPack;
@@ -1151,7 +1287,6 @@ mod test_msgpack {
 #[cfg(test)]
 mod test_form {
     use crate::TestServer;
-
     use axum::routing::post;
     use axum::Form;
     use axum::Router;
@@ -1228,9 +1363,144 @@ mod test_form {
 }
 
 #[cfg(test)]
+mod test_bytes {
+    use crate::TestServer;
+    use axum::extract::Request;
+    use axum::routing::post;
+    use axum::Router;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use http_body_util::BodyExt;
+
+    #[tokio::test]
+    async fn it_should_pass_bytes_up_to_be_read() {
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/bytes",
+            post(|request: Request| async move {
+                let body_bytes = request
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("Should read body to bytes")
+                    .to_bytes();
+                let body_text = String::from_utf8_lossy(&body_bytes);
+
+                format!("{}", body_text)
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/bytes")
+            .bytes("hello!".as_bytes().into())
+            .await
+            .text();
+
+        assert_eq!(text, "hello!");
+    }
+
+    #[tokio::test]
+    async fn it_should_not_change_content_type() {
+        let app = Router::new().route(
+            "/content_type",
+            post(|headers: HeaderMap| async move {
+                headers
+                    .get(CONTENT_TYPE)
+                    .map(|h| h.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string())
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .content_type(&"application/testing")
+            .bytes("hello!".as_bytes().into())
+            .await
+            .text();
+
+        assert_eq!(text, "application/testing");
+    }
+}
+
+#[cfg(test)]
+mod test_bytes_from_file {
+    use crate::TestServer;
+    use axum::extract::Request;
+    use axum::routing::post;
+    use axum::Router;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use http_body_util::BodyExt;
+
+    #[tokio::test]
+    async fn it_should_pass_bytes_up_to_be_read() {
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/bytes",
+            post(|request: Request| async move {
+                let body_bytes = request
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("Should read body to bytes")
+                    .to_bytes();
+                let body_text = String::from_utf8_lossy(&body_bytes);
+
+                format!("{}", body_text)
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/bytes")
+            .bytes_from_file(&"files/example.txt")
+            .await
+            .text();
+
+        assert_eq!(text, "hello!");
+    }
+
+    #[tokio::test]
+    async fn it_should_not_change_content_type() {
+        let app = Router::new().route(
+            "/content_type",
+            post(|headers: HeaderMap| async move {
+                headers
+                    .get(CONTENT_TYPE)
+                    .map(|h| h.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string())
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .content_type(&"application/testing")
+            .bytes_from_file(&"files/example.txt")
+            .await
+            .text();
+
+        assert_eq!(text, "application/testing");
+    }
+}
+
+#[cfg(test)]
 mod test_text {
     use crate::TestServer;
-
     use axum::extract::Request;
     use axum::routing::post;
     use axum::Router;
@@ -1240,20 +1510,21 @@ mod test_text {
 
     #[tokio::test]
     async fn it_should_pass_text_up_to_be_read() {
-        async fn get_text(request: Request) -> String {
-            let body_bytes = request
-                .into_body()
-                .collect()
-                .await
-                .expect("Should read body to bytes")
-                .to_bytes();
-            let body_text = String::from_utf8_lossy(&body_bytes);
-
-            format!("{}", body_text)
-        }
-
         // Build an application with a route.
-        let app = Router::new().route("/text", post(get_text));
+        let app = Router::new().route(
+            "/text",
+            post(|request: Request| async move {
+                let body_bytes = request
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("Should read body to bytes")
+                    .to_bytes();
+                let body_text = String::from_utf8_lossy(&body_bytes);
+
+                format!("{}", body_text)
+            }),
+        );
 
         // Run the server.
         let server = TestServer::new(app).expect("Should create test server");
@@ -1266,21 +1537,89 @@ mod test_text {
 
     #[tokio::test]
     async fn it_should_pass_text_content_type_for_text() {
-        async fn get_content_type(headers: HeaderMap) -> String {
-            headers
-                .get(CONTENT_TYPE)
-                .map(|h| h.to_str().unwrap().to_string())
-                .unwrap_or_else(|| "".to_string())
-        }
-
-        // Build an application with a route.
-        let app = Router::new().route("/content_type", post(get_content_type));
+        let app = Router::new().route(
+            "/content_type",
+            post(|headers: HeaderMap| async move {
+                headers
+                    .get(CONTENT_TYPE)
+                    .map(|h| h.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string())
+            }),
+        );
 
         // Run the server.
         let server = TestServer::new(app).expect("Should create test server");
 
         // Get the request.
         let text = server.post(&"/content_type").text(&"hello!").await.text();
+
+        assert_eq!(text, "text/plain");
+    }
+}
+
+#[cfg(test)]
+mod test_text_from_file {
+    use crate::TestServer;
+    use axum::extract::Request;
+    use axum::routing::post;
+    use axum::Router;
+    use http::header::CONTENT_TYPE;
+    use http::HeaderMap;
+    use http_body_util::BodyExt;
+
+    #[tokio::test]
+    async fn it_should_pass_text_up_to_be_read() {
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/text",
+            post(|request: Request| async move {
+                let body_bytes = request
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("Should read body to bytes")
+                    .to_bytes();
+                let body_text = String::from_utf8_lossy(&body_bytes);
+
+                format!("{}", body_text)
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/text")
+            .text_from_file(&"files/example.txt")
+            .await
+            .text();
+
+        assert_eq!(text, "hello!");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_text_content_type_for_text() {
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/content_type",
+            post(|headers: HeaderMap| async move {
+                headers
+                    .get(CONTENT_TYPE)
+                    .map(|h| h.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string())
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::new(app).expect("Should create test server");
+
+        // Get the request.
+        let text = server
+            .post(&"/content_type")
+            .text_from_file(&"files/example.txt")
+            .await
+            .text();
 
         assert_eq!(text, "text/plain");
     }
@@ -1426,7 +1765,6 @@ mod test_expect_failure {
 #[cfg(test)]
 mod test_add_cookie {
     use crate::TestServer;
-
     use axum::routing::get;
     use axum::Router;
     use axum_extra::extract::cookie::CookieJar;
@@ -1485,7 +1823,6 @@ mod test_add_cookie {
 #[cfg(test)]
 mod test_add_cookies {
     use crate::TestServer;
-
     use axum::http::header::HeaderMap;
     use axum::routing::get;
     use axum::Router;
@@ -1563,7 +1900,6 @@ mod test_add_cookies {
 #[cfg(test)]
 mod test_save_cookies {
     use crate::TestServer;
-
     use axum::extract::Request;
     use axum::http::header::HeaderMap;
     use axum::routing::get;
@@ -1634,7 +1970,6 @@ mod test_save_cookies {
 #[cfg(test)]
 mod test_do_not_save_cookies {
     use crate::TestServer;
-
     use axum::extract::Request;
     use axum::http::header::HeaderMap;
     use axum::routing::get;
@@ -1728,7 +2063,6 @@ mod test_do_not_save_cookies {
 #[cfg(test)]
 mod test_clear_cookies {
     use crate::TestServer;
-
     use axum::extract::Request;
     use axum::routing::get;
     use axum::routing::put;
@@ -1843,7 +2177,7 @@ mod test_clear_cookies {
 #[cfg(test)]
 mod test_add_header {
     use super::*;
-
+    use crate::TestServer;
     use axum::async_trait;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
@@ -1853,8 +2187,6 @@ mod test_add_header {
     use http::HeaderValue;
     use hyper::StatusCode;
     use std::marker::Sync;
-
-    use crate::TestServer;
 
     const TEST_HEADER_NAME: &'static str = &"test-header";
     const TEST_HEADER_CONTENT: &'static str = &"Test header content";
@@ -1906,7 +2238,7 @@ mod test_add_header {
 #[cfg(test)]
 mod test_authorization {
     use super::*;
-
+    use crate::TestServer;
     use axum::async_trait;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
@@ -1914,8 +2246,6 @@ mod test_authorization {
     use http::request::Parts;
     use hyper::StatusCode;
     use std::marker::Sync;
-
-    use crate::TestServer;
 
     fn new_test_server() -> TestServer {
         struct TestHeader(String);
@@ -1968,7 +2298,7 @@ mod test_authorization {
 #[cfg(test)]
 mod test_authorization_bearer {
     use super::*;
-
+    use crate::TestServer;
     use axum::async_trait;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
@@ -1976,8 +2306,6 @@ mod test_authorization_bearer {
     use http::request::Parts;
     use hyper::StatusCode;
     use std::marker::Sync;
-
-    use crate::TestServer;
 
     fn new_test_server() -> TestServer {
         struct TestHeader(String);
@@ -2030,7 +2358,7 @@ mod test_authorization_bearer {
 #[cfg(test)]
 mod test_clear_headers {
     use super::*;
-
+    use crate::TestServer;
     use axum::async_trait;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
@@ -2040,8 +2368,6 @@ mod test_clear_headers {
     use http::HeaderValue;
     use hyper::StatusCode;
     use std::marker::Sync;
-
-    use crate::TestServer;
 
     const TEST_HEADER_NAME: &'static str = &"test-header";
     const TEST_HEADER_CONTENT: &'static str = &"Test header content";
@@ -2114,15 +2440,13 @@ mod test_clear_headers {
 
 #[cfg(test)]
 mod test_add_query_params {
+    use crate::TestServer;
     use axum::extract::Query as AxumStdQuery;
     use axum::routing::get;
     use axum::Router;
-
     use serde::Deserialize;
     use serde::Serialize;
     use serde_json::json;
-
-    use crate::TestServer;
 
     #[derive(Debug, Deserialize, Serialize)]
     struct QueryParam {
@@ -2223,6 +2547,7 @@ mod test_add_query_params {
 
 #[cfg(test)]
 mod test_add_raw_query_param {
+    use crate::TestServer;
     use axum::extract::Query as AxumStdQuery;
     use axum::routing::get;
     use axum::Router;
@@ -2230,8 +2555,6 @@ mod test_add_raw_query_param {
     use serde::Deserialize;
     use serde::Serialize;
     use std::fmt::Write;
-
-    use crate::TestServer;
 
     #[derive(Debug, Deserialize, Serialize)]
     struct QueryParam {
@@ -2317,14 +2640,12 @@ mod test_add_raw_query_param {
 
 #[cfg(test)]
 mod test_add_query_param {
+    use crate::TestServer;
     use axum::extract::Query;
     use axum::routing::get;
     use axum::Router;
-
     use serde::Deserialize;
     use serde::Serialize;
-
-    use crate::TestServer;
 
     #[derive(Debug, Deserialize, Serialize)]
     struct QueryParam {
@@ -2381,14 +2702,12 @@ mod test_add_query_param {
 
 #[cfg(test)]
 mod test_clear_query_params {
+    use crate::TestServer;
     use axum::extract::Query;
     use axum::routing::get;
     use axum::Router;
-
     use serde::Deserialize;
     use serde::Serialize;
-
-    use crate::TestServer;
 
     #[derive(Debug, Deserialize, Serialize)]
     struct QueryParams {
@@ -2451,11 +2770,10 @@ mod test_clear_query_params {
 
 #[cfg(test)]
 mod test_scheme {
+    use crate::TestServer;
     use axum::extract::Request;
     use axum::routing::get;
     use axum::Router;
-
-    use crate::TestServer;
 
     async fn route_get_scheme(request: Request) -> String {
         request.uri().scheme_str().unwrap().to_string()
@@ -2510,14 +2828,13 @@ mod test_scheme {
 
 #[cfg(test)]
 mod test_multipart {
+    use crate::multipart::MultipartForm;
+    use crate::multipart::Part;
+    use crate::TestServer;
     use axum::extract::Multipart;
     use axum::routing::post;
     use axum::Json;
     use axum::Router;
-
-    use crate::multipart::MultipartForm;
-    use crate::multipart::Part;
-    use crate::TestServer;
 
     async fn route_post_multipart(mut multipart: Multipart) -> Json<Vec<String>> {
         let mut fields = vec![];
