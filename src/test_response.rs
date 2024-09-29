@@ -33,6 +33,7 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::TestResponseWebSocket;
 #[cfg(feature = "ws")]
 use crate::TestWebSocket;
+use std::path::Path;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -732,7 +733,10 @@ impl TestResponse {
 
     /// Asserts the response from the server matches the contents of the file.
     #[track_caller]
-    pub fn assert_text_from_file(&self, path: &str) {
+    pub fn assert_text_from_file<P>(&self, path: P)
+    where
+        P: AsRef<Path>,
+    {
         let expected = read_to_string(path).unwrap();
         self.assert_text(expected);
     }
@@ -825,7 +829,10 @@ impl TestResponse {
     /// ```
     ///
     #[track_caller]
-    pub fn assert_json_from_file(&self, path: &str) {
+    pub fn assert_json_from_file<P>(&self, path: P)
+    where
+        P: AsRef<Path>,
+    {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
         let expected = serde_json::from_reader::<_, serde_json::Value>(reader).unwrap();
@@ -849,7 +856,10 @@ impl TestResponse {
     /// Read yaml file from given path and assert it with yaml response.
     #[cfg(feature = "yaml")]
     #[track_caller]
-    pub fn assert_yaml_from_file(&self, path: &str) {
+    pub fn assert_yaml_from_file<P>(&self, path: P)
+    where
+        P: AsRef<Path>,
+    {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
         let expected = serde_yaml::from_reader::<_, serde_yaml::Value>(reader).unwrap();
