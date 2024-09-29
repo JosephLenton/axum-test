@@ -737,7 +737,11 @@ impl TestResponse {
     where
         P: AsRef<Path>,
     {
-        let expected = read_to_string(path).unwrap();
+        let path_ref = path.as_ref();
+        let expected = read_to_string(&path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
         self.assert_text(expected);
     }
 
@@ -833,9 +837,21 @@ impl TestResponse {
     where
         P: AsRef<Path>,
     {
-        let file = File::open(path).unwrap();
+        let path_ref = path.as_ref();
+        let file = File::open(&path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
         let reader = BufReader::new(file);
-        let expected = serde_json::from_reader::<_, serde_json::Value>(reader).unwrap();
+        let expected = serde_json::from_reader::<_, serde_json::Value>(reader)
+            .with_context(|| {
+                format!(
+                    "Failed to deserialize file '{}' as json",
+                    path_ref.display()
+                )
+            })
+            .unwrap();
+
         self.assert_json(&expected);
     }
 
@@ -860,9 +876,21 @@ impl TestResponse {
     where
         P: AsRef<Path>,
     {
-        let file = File::open(path).unwrap();
+        let path_ref = path.as_ref();
+        let file = File::open(&path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
         let reader = BufReader::new(file);
-        let expected = serde_yaml::from_reader::<_, serde_yaml::Value>(reader).unwrap();
+        let expected = serde_yaml::from_reader::<_, serde_yaml::Value>(reader)
+            .with_context(|| {
+                format!(
+                    "Failed to deserialize file '{}' as yaml",
+                    path_ref.display()
+                )
+            })
+            .unwrap();
+
         self.assert_yaml(&expected);
     }
 

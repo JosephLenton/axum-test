@@ -18,7 +18,12 @@ use http_body_util::BodyExt;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::fs::read;
+use std::fs::read_to_string;
+use std::fs::File;
 use std::future::IntoFuture;
+use std::io::BufReader;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 use url::Url;
@@ -31,8 +36,8 @@ use crate::transport_layer::TransportLayer;
 use crate::ServerSharedState;
 use crate::TestResponse;
 
-pub(crate) use self::test_request_config::*;
 mod test_request_config;
+pub(crate) use self::test_request_config::*;
 
 ///
 /// A `TestRequest` is for building and executing a HTTP request to the [`TestServer`](crate::TestServer).
@@ -139,10 +144,33 @@ impl TestRequest {
         J: ?Sized + Serialize,
     {
         let body_bytes =
-            ::serde_json::to_vec(body).expect("It should serialize the content into Json");
+            serde_json::to_vec(body).expect("It should serialize the content into Json");
 
         self.bytes(body_bytes.into())
             .content_type(mime::APPLICATION_JSON.essence_str())
+    }
+
+    /// Sends a payload as a Json request, with the contents coming from a file.
+    pub fn json_from_file<P>(self, path: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        let path_ref = path.as_ref();
+        let file = File::open(&path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
+        let reader = BufReader::new(file);
+        let payload = serde_json::from_reader::<_, serde_json::Value>(reader)
+            .with_context(|| {
+                format!(
+                    "Failed to deserialize file '{}' as Json",
+                    path_ref.display()
+                )
+            })
+            .unwrap();
+
+        self.json(&payload)
     }
 
     /// Set the body of the request to send up data as Yaml,
@@ -152,11 +180,34 @@ impl TestRequest {
     where
         Y: ?Sized + Serialize,
     {
-        let body =
-            ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
+        let body = serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
 
         self.bytes(body.into_bytes().into())
             .content_type("application/yaml")
+    }
+
+    /// Sends a payload as a Yaml request, with the contents coming from a file.
+    #[cfg(feature = "yaml")]
+    pub fn yaml_from_file<P>(self, path: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        let path_ref = path.as_ref();
+        let file = File::open(&path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
+        let reader = BufReader::new(file);
+        let payload = serde_yaml::from_reader::<_, serde_yaml::Value>(reader)
+            .with_context(|| {
+                format!(
+                    "Failed to deserialize file '{}' as Yaml",
+                    path_ref.display()
+                )
+            })
+            .unwrap();
+
+        self.yaml(&payload)
     }
 
     /// Set the body of the request to send up data as MsgPack,
@@ -261,6 +312,19 @@ impl TestRequest {
             .content_type(mime::TEXT_PLAIN.essence_str())
     }
 
+    /// Sends a payload as plain text, with the contents coming from a file.
+    pub fn text_from_file<P>(self, path: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        let path_ref = path.as_ref();
+        let payload = read_to_string(&path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
+        self.text(payload)
+    }
+
     /// Set raw bytes as the body of the request.
     ///
     /// The content type is left unchanged.
@@ -269,6 +333,21 @@ impl TestRequest {
 
         self.body = Some(body);
         self
+    }
+
+    /// Reads the contents of the file as raw bytes, and sends it within the request.
+    ///
+    /// The content type is left unchanged, and no parsing of the file is done.
+    pub fn bytes_from_file<P>(self, path: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        let path_ref = path.as_ref();
+        let payload = read(&path_ref)
+            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
+            .unwrap();
+
+        self.bytes(payload.into())
     }
 
     /// Set the content type to use for this request in the header.
