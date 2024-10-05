@@ -1128,6 +1128,11 @@ impl TestResponse {
         self.assert_status(StatusCode::FORBIDDEN)
     }
 
+    /// Assert the response status code is 409.
+    pub fn assert_status_conflict(&self) {
+        self.assert_status(StatusCode::CONFLICT)
+    }
+
     /// Assert the response status code is 413.
     ///
     /// The payload is too large.
