@@ -16,6 +16,21 @@ readme = "README.md"
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[[example]]
+name = "example-shuttle"
+path = "examples/example-shuttle/main.rs"
+required-features = ["shuttle"]
+
+[[example]]
+name = "example-websocket-chat"
+path = "examples/example-websocket-chat/main.rs"
+required-features = ["ws"]
+
+[[example]]
+name = "example-websocket-ping-pong"
+path = "examples/example-websocket-ping-pong/main.rs"
+required-features = ["ws"]
+
 [features]
 default = ["pretty-assertions"]
 
