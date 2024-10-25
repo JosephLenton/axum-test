@@ -1,4 +1,5 @@
 use crate::internals::format_status_code_range;
+use crate::internals::DebugResponseBody;
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::TryIntoRangeBounds;
@@ -476,6 +477,25 @@ impl TestResponse {
         &self.headers
     }
 
+    #[must_use]
+    pub fn maybe_content_type(&self) -> Option<String> {
+        self.headers.get(http::header::CONTENT_TYPE).map(|header| {
+            header
+                .to_str()
+                .with_context(|| {
+                    format!("Failed to decode header CONTENT_TYPE, received '{header:?}'")
+                })
+                .unwrap()
+                .to_string()
+        })
+    }
+
+    #[must_use]
+    pub fn content_type(&self) -> String {
+        self.maybe_content_type()
+            .expect("CONTENT_TYPE not found in response header")
+    }
+
     /// Finds a header with the given name.
     /// If there are multiple headers with the same name,
     /// then only the first will be returned.
@@ -927,10 +947,11 @@ impl TestResponse {
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
         let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert_eq!(
             expected_status_code, self.status_code,
-            "Expected status code to be {expected_debug}, received {received_debug}, for request {debug_request_format}",
+            "Expected status code to be {expected_debug}, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
 
@@ -940,11 +961,12 @@ impl TestResponse {
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
         let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert_ne!(
             expected_status_code,
             self.status_code,
-            "Expected status code to not be {expected_debug}, received {received_debug}, for request {debug_request_format}"
+            "Expected status code to not be {expected_debug}, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
 
@@ -955,10 +977,11 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert!(
             200 <= status_code && status_code <= 299,
-            "Expect status code within 2xx range, received {received_debug}, for request {debug_request_format}"
+            "Expect status code within 2xx range, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
 
@@ -969,10 +992,11 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert!(
             status_code < 200 || 299 < status_code,
-            "Expect status code outside 2xx range, received {received_debug}, for request {debug_request_format}",
+            "Expect status code outside 2xx range, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
 
@@ -1023,10 +1047,12 @@ impl TestResponse {
 
         let status_code = self.status_code();
         let is_in_range = range.contains(&status_code);
+        let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert!(
             is_in_range,
-            "Expected status to be in range {}, received {status_code}",
+            "Expected status to be in range {}, received {status_code}, for request {debug_request_format}, with body {debug_body}",
             format_status_code_range(range)
         );
     }
@@ -1078,10 +1104,12 @@ impl TestResponse {
 
         let status_code = self.status_code();
         let is_not_in_range = !range.contains(&status_code);
+        let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert!(
             is_not_in_range,
-            "Expected status is not in range {}, received {status_code}",
+            "Expected status is not in range {}, received {status_code}, for request {debug_request_format}, with body {debug_body}",
             format_status_code_range(range)
         );
     }
@@ -1841,6 +1869,61 @@ mod test_into_bytes {
         let text = String::from_utf8_lossy(&bytes);
 
         assert_eq!(text, r#"{"message":"it works?"}"#);
+    }
+}
+
+#[cfg(test)]
+mod test_content_type {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::Json;
+    use axum::Router;
+    use serde::Deserialize;
+    use serde::Serialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    #[tokio::test]
+    async fn it_should_retrieve_json_content_type_for_json() {
+        let app = Router::new().route(
+            &"/json",
+            get(|| async {
+                Json(ExampleResponse {
+                    name: "Joe".to_string(),
+                    age: 20,
+                })
+            }),
+        );
+
+        let server = TestServer::new(app).unwrap();
+
+        let content_type = server.get(&"/json").await.content_type();
+        assert_eq!(content_type, "application/json");
+    }
+
+    #[cfg(feature = "yaml")]
+    #[tokio::test]
+    async fn it_should_retrieve_yaml_content_type_for_yaml() {
+        use axum_yaml::Yaml;
+
+        let app = Router::new().route(
+            &"/yaml",
+            get(|| async {
+                Yaml(ExampleResponse {
+                    name: "Joe".to_string(),
+                    age: 20,
+                })
+            }),
+        );
+
+        let server = TestServer::new(app).unwrap();
+
+        let content_type = server.get(&"/yaml").await.content_type();
+        assert_eq!(content_type, "application/yaml");
     }
 }
 
