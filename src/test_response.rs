@@ -947,10 +947,11 @@ impl TestResponse {
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
         let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert_eq!(
             expected_status_code, self.status_code,
-            "Expected status code to be {expected_debug}, received {received_debug}, for request {debug_request_format}",
+            "Expected status code to be {expected_debug}, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
 
@@ -960,11 +961,12 @@ impl TestResponse {
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
         let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert_ne!(
             expected_status_code,
             self.status_code,
-            "Expected status code to not be {expected_debug}, received {received_debug}, for request {debug_request_format}"
+            "Expected status code to not be {expected_debug}, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
 
@@ -990,10 +992,11 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert!(
             status_code < 200 || 299 < status_code,
-            "Expect status code outside 2xx range, received {received_debug}, for request {debug_request_format}",
+            "Expect status code outside 2xx range, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
 
@@ -1044,10 +1047,12 @@ impl TestResponse {
 
         let status_code = self.status_code();
         let is_in_range = range.contains(&status_code);
+        let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert!(
             is_in_range,
-            "Expected status to be in range {}, received {status_code}",
+            "Expected status to be in range {}, received {status_code}, for request {debug_request_format}, with body {debug_body}",
             format_status_code_range(range)
         );
     }
@@ -1099,10 +1104,12 @@ impl TestResponse {
 
         let status_code = self.status_code();
         let is_not_in_range = !range.contains(&status_code);
+        let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert!(
             is_not_in_range,
-            "Expected status is not in range {}, received {status_code}",
+            "Expected status is not in range {}, received {status_code}, for request {debug_request_format}, with body {debug_body}",
             format_status_code_range(range)
         );
     }
