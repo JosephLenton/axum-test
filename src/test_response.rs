@@ -476,6 +476,20 @@ impl TestResponse {
         &self.headers
     }
 
+    #[must_use]
+    pub fn content_type(&self) -> String {
+        let header = self
+            .headers
+            .get(http::header::CONTENT_TYPE)
+            .expect("CONTENT_TYPE not found in response header");
+
+        header
+            .to_str()
+            .with_context(|| format!("Failed to decode header CONTENT_TYPE, received '{header:?}'"))
+            .unwrap()
+            .to_string()
+    }
+
     /// Finds a header with the given name.
     /// If there are multiple headers with the same name,
     /// then only the first will be returned.
@@ -1841,6 +1855,61 @@ mod test_into_bytes {
         let text = String::from_utf8_lossy(&bytes);
 
         assert_eq!(text, r#"{"message":"it works?"}"#);
+    }
+}
+
+#[cfg(test)]
+mod test_content_type {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::Json;
+    use axum::Router;
+    use serde::Deserialize;
+    use serde::Serialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    #[tokio::test]
+    async fn it_should_retrieve_json_content_type_for_json() {
+        let app = Router::new().route(
+            &"/json",
+            get(|| async {
+                Json(ExampleResponse {
+                    name: "Joe".to_string(),
+                    age: 20,
+                })
+            }),
+        );
+
+        let server = TestServer::new(app).unwrap();
+
+        let content_type = server.get(&"/json").await.content_type();
+        assert_eq!(content_type, "application/json");
+    }
+
+    #[cfg(feature = "yaml")]
+    #[tokio::test]
+    async fn it_should_retrieve_yaml_content_type_for_yaml() {
+        use axum_yaml::Yaml;
+
+        let app = Router::new().route(
+            &"/yaml",
+            get(|| async {
+                Yaml(ExampleResponse {
+                    name: "Joe".to_string(),
+                    age: 20,
+                })
+            }),
+        );
+
+        let server = TestServer::new(app).unwrap();
+
+        let content_type = server.get(&"/yaml").await.content_type();
+        assert_eq!(content_type, "application/yaml");
     }
 }
 
