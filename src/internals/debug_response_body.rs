@@ -15,7 +15,10 @@ impl<'a> Display for DebugResponseBody<'a> {
             Some(content_type) => {
                 match content_type.as_str() {
                     // Json
-                    "application/json" | "text/json" => write_json(f, &self.0),
+                    "application/json" | "text/json" => write_json(f, self.0),
+
+                    // Msgpack
+                    "application/msgpack" => write!(f, "<MsgPack>"),
 
                     // Yaml
                     #[cfg(feature = "yaml")]
@@ -74,13 +77,13 @@ fn write_text(f: &mut Formatter<'_>, text: &str) -> FmtResult {
 
 fn write_json(f: &mut Formatter<'_>, response: &TestResponse) -> FmtResult {
     let bytes = response.as_bytes();
-    let result = serde_json::from_slice::<serde_json::Value>(&bytes);
+    let result = serde_json::from_slice::<serde_json::Value>(bytes);
 
     match result {
         Err(_) => {
             write!(
                 f,
-                " !!! YOUR JSON IS MALFORMED !!! Body: '{}'",
+                "!!! YOUR JSON IS MALFORMED !!!\nBody: '{}'",
                 response.text()
             )
         }
@@ -101,7 +104,7 @@ fn write_yaml(f: &mut Formatter<'_>, response: &TestResponse) -> FmtResult {
         Err(_) => {
             write!(
                 f,
-                " !!! YOUR YAML IS MALFORMED !!! Body: '{}'",
+                "!!! YOUR YAML IS MALFORMED !!!\nBody: '{}'",
                 response.text()
             )
         }
@@ -117,9 +120,14 @@ fn write_yaml(f: &mut Formatter<'_>, response: &TestResponse) -> FmtResult {
 mod test_fmt {
     use super::*;
     use crate::TestServer;
+    use axum::body::Body;
+    use axum::response::IntoResponse;
+    use axum::response::Response;
     use axum::routing::get;
     use axum::Json;
     use axum::Router;
+    use http::header;
+    use http::HeaderValue;
     use pretty_assertions::assert_eq;
     use serde::Deserialize;
     use serde::Serialize;
@@ -162,7 +170,7 @@ mod test_fmt {
     }
 
     #[tokio::test]
-    async fn it_should_pretty_print_json_content() {
+    async fn it_should_pretty_print_json() {
         let router = Router::new().route(
             "/json",
             get(|| async {
@@ -184,9 +192,36 @@ mod test_fmt {
         assert_eq!(output, expected);
     }
 
+    #[tokio::test]
+    async fn it_should_warn_malformed_json() {
+        let router = Router::new().route(
+            "/json",
+            get(|| async {
+                let body = Body::new(r###"{ "name": "Joe" "###.to_string());
+
+                Response::builder()
+                    .header(
+                        header::CONTENT_TYPE,
+                        HeaderValue::from_static("application/json"),
+                    )
+                    .body(body)
+                    .unwrap()
+                    .into_response()
+            }),
+        );
+        let response = TestServer::new(router).unwrap().get("/json").await;
+
+        let debug_body = DebugResponseBody(&response);
+        let output = format!("{debug_body}");
+        let expected = r###"!!! YOUR JSON IS MALFORMED !!!
+Body: '{ "name": "Joe" '"###;
+
+        assert_eq!(output, expected);
+    }
+
     #[cfg(feature = "yaml")]
     #[tokio::test]
-    async fn it_should_pretty_print_yaml_content() {
+    async fn it_should_pretty_print_yaml() {
         use axum_yaml::Yaml;
 
         let router = Router::new().route(
@@ -205,6 +240,34 @@ mod test_fmt {
         let expected = r###"name: Joe
 age: 20
 "###;
+
+        assert_eq!(output, expected);
+    }
+
+    #[cfg(feature = "yaml")]
+    #[tokio::test]
+    async fn it_should_warn_on_malformed_yaml() {
+        let router = Router::new().route(
+            "/yaml",
+            get(|| async {
+                let body = Body::new("🦊 🦊 🦊: : :🦊 🦊 🦊".to_string());
+
+                Response::builder()
+                    .header(
+                        header::CONTENT_TYPE,
+                        HeaderValue::from_static("application/yaml"),
+                    )
+                    .body(body)
+                    .unwrap()
+                    .into_response()
+            }),
+        );
+        let response = TestServer::new(router).unwrap().get("/yaml").await;
+
+        let debug_body = DebugResponseBody(&response);
+        let output = format!("{debug_body}");
+        let expected = r###"!!! YOUR YAML IS MALFORMED !!!
+Body: '🦊 🦊 🦊: : :🦊 🦊 🦊'"###;
 
         assert_eq!(output, expected);
     }
