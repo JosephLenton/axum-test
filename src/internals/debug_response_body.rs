@@ -23,7 +23,7 @@ impl<'a> Display for DebugResponseBody<'a> {
                     // Yaml
                     #[cfg(feature = "yaml")]
                     "application/yaml" | "application/x-yaml" | "text/yaml" => {
-                        write_yaml(f, &self.0)
+                        write_yaml(f, self.0)
                     }
 
                     #[cfg(not(feature = "yaml"))]
@@ -97,8 +97,8 @@ fn write_json(f: &mut Formatter<'_>, response: &TestResponse) -> FmtResult {
 
 #[cfg(feature = "yaml")]
 fn write_yaml(f: &mut Formatter<'_>, response: &TestResponse) -> FmtResult {
-    let bytes = response.as_bytes();
-    let result = serde_yaml::from_slice::<serde_yaml::Value>(&bytes);
+    let response_bytes = response.as_bytes();
+    let result = serde_yaml::from_slice::<serde_yaml::Value>(response_bytes);
 
     match result {
         Err(_) => {
