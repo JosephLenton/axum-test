@@ -1,4 +1,5 @@
 use crate::internals::format_status_code_range;
+use crate::internals::DebugResponseBody;
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::TryIntoRangeBounds;
@@ -477,17 +478,22 @@ impl TestResponse {
     }
 
     #[must_use]
-    pub fn content_type(&self) -> String {
-        let header = self
-            .headers
-            .get(http::header::CONTENT_TYPE)
-            .expect("CONTENT_TYPE not found in response header");
+    pub fn maybe_content_type(&self) -> Option<String> {
+        self.headers.get(http::header::CONTENT_TYPE).map(|header| {
+            header
+                .to_str()
+                .with_context(|| {
+                    format!("Failed to decode header CONTENT_TYPE, received '{header:?}'")
+                })
+                .unwrap()
+                .to_string()
+        })
+    }
 
-        header
-            .to_str()
-            .with_context(|| format!("Failed to decode header CONTENT_TYPE, received '{header:?}'"))
-            .unwrap()
-            .to_string()
+    #[must_use]
+    pub fn content_type(&self) -> String {
+        self.maybe_content_type()
+            .expect("CONTENT_TYPE not found in response header")
     }
 
     /// Finds a header with the given name.
@@ -969,10 +975,11 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let debug_request_format = self.debug_request_format();
+        let debug_body = DebugResponseBody(self);
 
         assert!(
             200 <= status_code && status_code <= 299,
-            "Expect status code within 2xx range, received {received_debug}, for request {debug_request_format}"
+            "Expect status code within 2xx range, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
 
