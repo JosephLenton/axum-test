@@ -6,6 +6,9 @@ mod websockets;
 #[cfg(feature = "ws")]
 pub use self::websockets::*;
 
+mod debug_response_body;
+pub use self::debug_response_body::*;
+
 mod expected_state;
 pub use self::expected_state::*;
 
