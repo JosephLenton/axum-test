@@ -925,11 +925,13 @@ mod test_content_type {
 #[cfg(test)]
 mod test_json {
     use crate::TestServer;
+    use axum::extract::DefaultBodyLimit;
     use axum::routing::post;
     use axum::Json;
     use axum::Router;
     use http::header::CONTENT_TYPE;
     use http::HeaderMap;
+    use rand::random;
     use serde::Deserialize;
     use serde::Serialize;
     use serde_json::json;
@@ -993,6 +995,47 @@ mod test_json {
         let text = server.post(&"/content_type").json(&json!({})).await.text();
 
         assert_eq!(text, "application/json");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_large_json_blobs_over_http() {
+        const LARGE_BLOB_SIZE: usize = 16777216; // 16mb
+
+        #[derive(Deserialize, Serialize, PartialEq, Debug)]
+        struct TestLargeJson {
+            items: Vec<String>,
+        }
+
+        let mut size = 0;
+        let mut items = vec![];
+        while size < LARGE_BLOB_SIZE {
+            let item = random::<u64>().to_string();
+            size += item.len();
+            items.push(item);
+        }
+        let large_json_blob = TestLargeJson { items };
+
+        // Build an application with a route.
+        let app = Router::new()
+            .route(
+                "/json",
+                post(|Json(json): Json<TestLargeJson>| async { Json(json) }),
+            )
+            .layer(DefaultBodyLimit::max(LARGE_BLOB_SIZE * 2));
+
+        // Run the server.
+        let server = TestServer::builder()
+            .http_transport()
+            .expect_success_by_default()
+            .build(app)
+            .expect("Should create test server");
+
+        // Get the request.
+        server
+            .post(&"/json")
+            .json(&large_json_blob)
+            .await
+            .assert_json(&large_json_blob);
     }
 }
 
@@ -1553,6 +1596,74 @@ mod test_text {
         let text = server.post(&"/content_type").text(&"hello!").await.text();
 
         assert_eq!(text, "text/plain");
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_large_text_blobs_over_mock_http() {
+        const LARGE_BLOB_SIZE: usize = 16777216; // 16mb
+        let large_blob = (0..LARGE_BLOB_SIZE).map(|_| "X").collect::<String>();
+
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/text",
+            post(|request: Request| async move {
+                let body_bytes = request
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("Should read body to bytes")
+                    .to_bytes();
+                let body_text = String::from_utf8_lossy(&body_bytes);
+
+                format!("{}", body_text)
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(app)
+            .expect("Should create test server");
+
+        // Get the request.
+        let text = server.post(&"/text").text(&large_blob).await.text();
+
+        assert_eq!(text.len(), LARGE_BLOB_SIZE);
+        assert_eq!(text, large_blob);
+    }
+
+    #[tokio::test]
+    async fn it_should_pass_large_text_blobs_over_http() {
+        const LARGE_BLOB_SIZE: usize = 16777216; // 16mb
+        let large_blob = (0..LARGE_BLOB_SIZE).map(|_| "X").collect::<String>();
+
+        // Build an application with a route.
+        let app = Router::new().route(
+            "/text",
+            post(|request: Request| async move {
+                let body_bytes = request
+                    .into_body()
+                    .collect()
+                    .await
+                    .expect("Should read body to bytes")
+                    .to_bytes();
+                let body_text = String::from_utf8_lossy(&body_bytes);
+
+                format!("{}", body_text)
+            }),
+        );
+
+        // Run the server.
+        let server = TestServer::builder()
+            .http_transport()
+            .build(app)
+            .expect("Should create test server");
+
+        // Get the request.
+        let text = server.post(&"/text").text(&large_blob).await.text();
+
+        assert_eq!(text.len(), LARGE_BLOB_SIZE);
+        assert_eq!(text, large_blob);
     }
 }
 

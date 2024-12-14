@@ -9,7 +9,7 @@ const MAX_TEXT_PRINT_LEN: usize = 10_000;
 
 pub struct DebugResponseBody<'a>(pub &'a TestResponse);
 
-impl<'a> Display for DebugResponseBody<'a> {
+impl Display for DebugResponseBody<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self.0.maybe_content_type() {
             Some(content_type) => {
