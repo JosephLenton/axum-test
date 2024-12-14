@@ -286,6 +286,28 @@ mod test_assert_receive_text {
     }
 
     #[tokio::test]
+    async fn it_should_ping_pong_large_text_blobs() {
+        const LARGE_BLOB_SIZE: usize = 16777200; // Max websocket size (16mb) - 16 bytes for the 'Text: ' in the reply.
+        let large_blob = (0..LARGE_BLOB_SIZE).map(|_| "X").collect::<String>();
+
+        let server = new_test_app();
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket.send_text(&large_blob).await;
+
+        websocket
+            .assert_receive_text(format!("Text: {large_blob}"))
+            .await;
+        websocket
+            .assert_receive_text(format!("Binary: {large_blob}"))
+            .await;
+    }
+
+    #[tokio::test]
     #[should_panic]
     async fn it_should_not_match_partial_text_match() {
         let server = new_test_app();

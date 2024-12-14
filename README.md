@@ -66,11 +66,11 @@ The current version of Axum Test requires at least Axum v0.7.6.
 
 Here is a list of compatability with prior versions:
 
-| Axum Version   | Axum Test Version                                   |
-|----------------|-----------------------------------------------------|
-| 0.7.6 (latest) | 16+ (latest)                                        |
-| 0.7            | 14, 15                                              |
-| 0.6            | 13.4.1                                              |
+| Axum Version            | Axum Test Version |
+|-------------------------|-------------------|
+| 0.7.6 to 0.7.9 (latest) | 16+ (latest)      |
+| 0.7.0 to 0.7.5          | 14, 15            |
+| 0.6                     | 13.4.1            |
 
 ## Examples
 

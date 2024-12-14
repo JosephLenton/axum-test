@@ -26,7 +26,7 @@ impl<'a> RequestPathFormatter<'a> {
     }
 }
 
-impl<'a> fmt::Display for RequestPathFormatter<'a> {
+impl fmt::Display for RequestPathFormatter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let method = &self.method;
         let user_requested_path = &self.user_requested_path;
