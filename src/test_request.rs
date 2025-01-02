@@ -2288,7 +2288,6 @@ mod test_clear_cookies {
 mod test_add_header {
     use super::*;
     use crate::TestServer;
-    use axum::async_trait;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
     use axum::Router;
@@ -2303,7 +2302,6 @@ mod test_add_header {
 
     struct TestHeader(Vec<u8>);
 
-    #[async_trait]
     impl<S: Sync> FromRequestParts<S> for TestHeader {
         type Rejection = (StatusCode, &'static str);
 
@@ -2349,7 +2347,6 @@ mod test_add_header {
 mod test_authorization {
     use super::*;
     use crate::TestServer;
-    use axum::async_trait;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
     use axum::Router;
@@ -2360,7 +2357,6 @@ mod test_authorization {
     fn new_test_server() -> TestServer {
         struct TestHeader(String);
 
-        #[async_trait]
         impl<S: Sync> FromRequestParts<S> for TestHeader {
             type Rejection = (StatusCode, &'static str);
 
@@ -2409,7 +2405,6 @@ mod test_authorization {
 mod test_authorization_bearer {
     use super::*;
     use crate::TestServer;
-    use axum::async_trait;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
     use axum::Router;
@@ -2420,7 +2415,6 @@ mod test_authorization_bearer {
     fn new_test_server() -> TestServer {
         struct TestHeader(String);
 
-        #[async_trait]
         impl<S: Sync> FromRequestParts<S> for TestHeader {
             type Rejection = (StatusCode, &'static str);
 
@@ -2469,7 +2463,6 @@ mod test_authorization_bearer {
 mod test_clear_headers {
     use super::*;
     use crate::TestServer;
-    use axum::async_trait;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
     use axum::Router;
@@ -2484,7 +2477,6 @@ mod test_clear_headers {
 
     struct TestHeader(Vec<u8>);
 
-    #[async_trait]
     impl<S: Sync> FromRequestParts<S> for TestHeader {
         type Rejection = (StatusCode, &'static str);
 

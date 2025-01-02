@@ -1688,8 +1688,7 @@ mod test_clear_cookies {
 #[cfg(test)]
 mod test_add_header {
     use super::*;
-
-    use axum::async_trait;
+    use crate::TestServer;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
     use axum::Router;
@@ -1699,14 +1698,11 @@ mod test_add_header {
     use hyper::StatusCode;
     use std::marker::Sync;
 
-    use crate::TestServer;
-
     const TEST_HEADER_NAME: &'static str = &"test-header";
     const TEST_HEADER_CONTENT: &'static str = &"Test header content";
 
     struct TestHeader(Vec<u8>);
 
-    #[async_trait]
     impl<S: Sync> FromRequestParts<S> for TestHeader {
         type Rejection = (StatusCode, &'static str);
 
@@ -1749,8 +1745,7 @@ mod test_add_header {
 #[cfg(test)]
 mod test_clear_headers {
     use super::*;
-
-    use axum::async_trait;
+    use crate::TestServer;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
     use axum::Router;
@@ -1760,21 +1755,18 @@ mod test_clear_headers {
     use hyper::StatusCode;
     use std::marker::Sync;
 
-    use crate::TestServer;
-
     const TEST_HEADER_NAME: &'static str = &"test-header";
     const TEST_HEADER_CONTENT: &'static str = &"Test header content";
 
     struct TestHeader(Vec<u8>);
 
-    #[async_trait]
     impl<S: Sync> FromRequestParts<S> for TestHeader {
         type Rejection = (StatusCode, &'static str);
 
         async fn from_request_parts(
             parts: &mut Parts,
             _state: &S,
-        ) -> Result<TestHeader, Self::Rejection> {
+        ) -> Result<Self, Self::Rejection> {
             parts
                 .headers
                 .get(HeaderName::from_static(TEST_HEADER_NAME))

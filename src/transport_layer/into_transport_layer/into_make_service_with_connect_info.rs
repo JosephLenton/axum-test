@@ -1,3 +1,8 @@
+use crate::internals::HttpTransportLayer;
+use crate::transport_layer::IntoTransportLayer;
+use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerBuilder;
+use crate::util::spawn_serve;
 use anyhow::anyhow;
 use anyhow::Result;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
@@ -5,18 +10,13 @@ use axum::extract::Request as AxumRequest;
 use axum::response::Response as AxumResponse;
 use axum::serve::IncomingStream;
 use std::convert::Infallible;
+use tokio::net::TcpListener;
 use tower::Service;
 use url::Url;
 
-use crate::internals::HttpTransportLayer;
-use crate::transport_layer::IntoTransportLayer;
-use crate::transport_layer::TransportLayer;
-use crate::transport_layer::TransportLayerBuilder;
-use crate::util::spawn_serve;
-
 impl<S, C> IntoTransportLayer for IntoMakeServiceWithConnectInfo<S, C>
 where
-    for<'a> C: axum::extract::connect_info::Connected<IncomingStream<'a>>,
+    for<'a> C: axum::extract::connect_info::Connected<IncomingStream<'a, TcpListener>>,
     S: Service<AxumRequest, Response = AxumResponse, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
 {

@@ -1,23 +1,25 @@
+use crate::util::ServeHandle;
 use axum::extract::Request;
 use axum::response::Response;
 use axum::serve;
 use axum::serve::IncomingStream;
+use axum::serve::Listener;
+use core::fmt::Debug;
 use std::convert::Infallible;
-use tokio::net::TcpListener;
 use tokio::spawn;
 use tower::Service;
-
-use crate::util::ServeHandle;
 
 /// A wrapper around [`axum::serve()`] for tests,
 /// which spawns the service in a new thread.
 ///
 /// The [`crate::util::ServeHandle`] returned will automatically attempt
 /// to terminate the service when dropped.
-pub fn spawn_serve<M, S>(tcp_listener: TcpListener, make_service: M) -> ServeHandle
+pub fn spawn_serve<L, M, S>(tcp_listener: L, make_service: M) -> ServeHandle
 where
-    M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
-    for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
+    L: Listener,
+    L::Addr: Debug,
+    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a, L>>>::Future: Send,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
 {

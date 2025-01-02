@@ -1,3 +1,8 @@
+use crate::internals::HttpTransportLayer;
+use crate::transport_layer::IntoTransportLayer;
+use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerBuilder;
+use crate::util::ServeHandle;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
@@ -6,21 +11,18 @@ use axum::response::Response;
 use axum::serve::IncomingStream;
 use axum::serve::WithGracefulShutdown;
 use std::convert::Infallible;
+use std::future::Future;
+use tokio::net::TcpListener;
 use tokio::spawn;
 use tower::Service;
 use url::Url;
 
-use crate::internals::HttpTransportLayer;
-use crate::transport_layer::IntoTransportLayer;
-use crate::transport_layer::TransportLayer;
-use crate::transport_layer::TransportLayerBuilder;
-use crate::util::ServeHandle;
-use std::future::Future;
-
-impl<M, S, F> IntoTransportLayer for WithGracefulShutdown<M, S, F>
+impl<M, S, F> IntoTransportLayer for WithGracefulShutdown<TcpListener, M, S, F>
 where
-    M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
-    for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
+    M: for<'a> Service<IncomingStream<'a, TcpListener>, Error = Infallible, Response = S>
+        + Send
+        + 'static,
+    for<'a> <M as Service<IncomingStream<'a, TcpListener>>>::Future: Send,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
     F: Future<Output = ()> + Send + 'static,
