@@ -444,7 +444,7 @@ impl TestServer {
     /// use axum_test::TestServer;
     ///
     /// #[derive(TypedPath, Deserialize)]
-    /// #[typed_path("/users/:user_id")]
+    /// #[typed_path("/users/{user_id}")]
     /// struct UserPath {
     ///     pub user_id: u32,
     /// }
@@ -2374,7 +2374,7 @@ mod test_typed_get {
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/path/:id")]
+    #[typed_path("/path/{id}")]
     struct TestingPath {
         id: u32,
     }
@@ -2408,7 +2408,7 @@ mod test_typed_post {
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/path/:id")]
+    #[typed_path("/path/{id}")]
     struct TestingPath {
         id: u32,
     }
@@ -2442,7 +2442,7 @@ mod test_typed_patch {
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/path/:id")]
+    #[typed_path("/path/{id}")]
     struct TestingPath {
         id: u32,
     }
@@ -2476,7 +2476,7 @@ mod test_typed_put {
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/path/:id")]
+    #[typed_path("/path/{id}")]
     struct TestingPath {
         id: u32,
     }
@@ -2510,7 +2510,7 @@ mod test_typed_delete {
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/path/:id")]
+    #[typed_path("/path/{id}")]
     struct TestingPath {
         id: u32,
     }
@@ -2544,7 +2544,7 @@ mod test_typed_method {
     use serde::Deserialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/path/:id")]
+    #[typed_path("/path/{id}")]
     struct TestingPath {
         id: u32,
     }

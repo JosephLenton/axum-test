@@ -158,7 +158,7 @@ pub(crate) fn new_app() -> Router {
     let shared_state = Arc::new(RwLock::new(state));
 
     Router::new()
-        .route(&"/ws-chat/:name", get(route_get_websocket_chat))
+        .route(&"/ws-chat/{name}", get(route_get_websocket_chat))
         .with_state(shared_state)
 }
 
