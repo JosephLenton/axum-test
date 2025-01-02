@@ -86,7 +86,7 @@ axum-extra = { version = "0.10", features = ["typed-routing"], optional = true }
 uuid = { version = "1.11", optional = true, features = ["v4"]}
 base64 = { version = "0.22", optional = true }
 futures-util = { version = "0.3", optional = true }
-tokio-tungstenite = { version = "0.24", optional = true }
+tokio-tungstenite = { version = "0.26", optional = true }
 
 # Reqwest
 reqwest = { version = "0.12", optional = true, features = ["cookies", "json", "stream", "multipart", "rustls-tls"] }
