@@ -16,8 +16,8 @@ use crate::util::ServeHandle;
 /// to terminate the service when dropped.
 pub fn spawn_serve<M, S>(tcp_listener: TcpListener, make_service: M) -> ServeHandle
 where
-    M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
-    for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
+    M: for<'a> Service<IncomingStream<'a, TcpListener>, Error = Infallible, Response = S> + Send + 'static,
+    for<'a> <M as Service<IncomingStream<'a, TcpListener>>>::Future: Send,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
 {
