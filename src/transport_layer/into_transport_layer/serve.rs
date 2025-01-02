@@ -4,6 +4,7 @@ use anyhow::Result;
 use axum::extract::Request;
 use axum::response::Response;
 use axum::serve::IncomingStream;
+use axum::serve::Listener;
 use axum::serve::Serve;
 use std::convert::Infallible;
 use tokio::spawn;
@@ -16,10 +17,10 @@ use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 use crate::util::ServeHandle;
 
-impl<M, S> IntoTransportLayer for Serve<M, S>
+impl<L, M, S> IntoTransportLayer for Serve<L, M, S>
 where
-    M: for<'a> Service<IncomingStream<'a>, Error = Infallible, Response = S> + Send + 'static,
-    for<'a> <M as Service<IncomingStream<'a>>>::Future: Send,
+    L: Listener,
+    M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send,
 {
