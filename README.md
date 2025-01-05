@@ -77,7 +77,7 @@ Here is a list of compatability with prior versions:
 You can find examples of writing tests in the [/examples folder](/examples/).
 These include tests for:
 
- * [a simple REST Todo application](/examples/example-todo), and [the same using Shuttle](/examples/example-shuttle)
+ * [a simple REST Todo application](/examples/example-todo)
  * [a WebSocket ping pong application](/examples/example-websocket-ping-pong) which sends requests up and down
  * [a simple WebSocket chat application](/examples/example-websocket-chat)
 
