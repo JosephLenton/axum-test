@@ -350,7 +350,7 @@ mod integrated_test_typed_routing_and_query {
     use serde::Serialize;
 
     #[derive(TypedPath, Deserialize)]
-    #[typed_path("/path-query/:id")]
+    #[typed_path("/path-query/{id}")]
     struct TestingPathQuery {
         id: u32,
     }

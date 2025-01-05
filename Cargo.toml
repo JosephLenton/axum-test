@@ -1,7 +1,7 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "16.4.1"
+version = "17.0.0"
 rust-version = "1.75"
 edition = "2021"
 license = "MIT"
@@ -34,12 +34,12 @@ required-features = ["ws"]
 [features]
 default = ["pretty-assertions"]
 
-all = ["pretty-assertions", "yaml", "msgpack", "reqwest", "shuttle", "typed-routing", "ws"]
+all = ["pretty-assertions", "yaml", "msgpack", "reqwest", "typed-routing", "ws"]
 
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 msgpack = ["dep:rmp-serde"]
-shuttle = ["dep:shuttle-axum"]
+# shuttle = ["dep:shuttle-axum"]
 typed-routing = ["dep:axum-extra"]
 ws = ["axum/ws", "tokio/time", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
 reqwest = ["dep:reqwest"]
@@ -47,7 +47,7 @@ reqwest = ["dep:reqwest"]
 [dependencies]
 auto-future = "1.0"
 assert-json-diff = "2.0"
-axum = { version = "0.7.9", features = [] }
+axum = { version = "0.8.1", features = [] }
 anyhow = "1.0"
 bytes = "1.8"
 bytesize = "1.3.0"
@@ -74,29 +74,28 @@ pretty_assertions = { version = "1.4", optional = true }
 serde_yaml = { version = "0.9", optional = true }
 
 # Shuttle
-shuttle-axum = { version = "0.49", optional = true }
+# shuttle-axum = { version = "0.49", optional = true }
 
 # MsgPack
 rmp-serde = { version = "1.3", optional = true }
 
 # Typed Routing
-axum-extra = { version = "0.9", features = ["typed-routing"], optional = true }
+axum-extra = { version = "0.10", features = ["typed-routing"], optional = true }
 
 # WebSockets
 uuid = { version = "1.11", optional = true, features = ["v4"]}
 base64 = { version = "0.22", optional = true }
 futures-util = { version = "0.3", optional = true }
-tokio-tungstenite = { version = "0.24", optional = true }
+tokio-tungstenite = { version = "0.26", optional = true }
 
 # Reqwest
 reqwest = { version = "0.12", optional = true, features = ["cookies", "json", "stream", "multipart", "rustls-tls"] }
 
 [dev-dependencies]
-async-trait = "0.1"
-axum = { version = "0.7", features = ["multipart", "tokio", "ws"] }
-axum-extra = { version = "0.9", features = ["cookie", "typed-routing", "query"] }
-axum-msgpack = "0.4"
-axum-yaml = "0.4"
+axum = { version = "0.8", features = ["multipart", "tokio", "ws"] }
+axum-extra = { version = "0.10", features = ["cookie", "typed-routing", "query"] }
+axum-msgpack = "0.5"
+axum-yaml = "0.5"
 futures-util = "0.3"
 local-ip-address = "0.6"
 rand = { version = "0.8", features = ["small_rng"] }

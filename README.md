@@ -55,7 +55,6 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 | `pretty-assertions` | **on**            | Uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) on response `assert_*` methods.                    |
 | `yaml`              | _off_             | Enables support for sending, receiving, and asserting, [yaml content](https://yaml.org/).                                         |
 | `msgpack`           | _off_             | Enables support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).                         |
-| `shuttle`           | _off_             | Enables support for building a `TestServer` an [`shuttle_axum::AxumService`](https://docs.rs/shuttle-axum/latest/shuttle_axum/struct.AxumService.html), for use with [Shuttle.rs](https://shuttle.rs). |
 | `typed-routing`     | _off_             | Enables support for using `TypedPath` in requests. See [axum-extra](https://crates.io/crates/axum-extra) for details.             |
 | `ws`                | _off_             | Enables WebSocket support. See [TestWebSocket](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) for details. |
 | `reqwest`           | _off_             | Enables the `TestServer` being able to create [Reqwest](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) requests for querying. |
@@ -66,11 +65,12 @@ The current version of Axum Test requires at least Axum v0.7.6.
 
 Here is a list of compatability with prior versions:
 
-| Axum Version            | Axum Test Version |
-|-------------------------|-------------------|
-| 0.7.6 to 0.7.9 (latest) | 16+ (latest)      |
-| 0.7.0 to 0.7.5          | 14, 15            |
-| 0.6                     | 13.4.1            |
+| Axum Version    | Axum Test Version |
+|-----------------|-------------------|
+| 0.8.0+ (latest) | 17+ (latest)      |
+| 0.7.6 to 0.7.9  | 16                |
+| 0.7.0 to 0.7.5  | 14, 15            |
+| 0.6             | 13.4.1            |
 
 ## Examples
 

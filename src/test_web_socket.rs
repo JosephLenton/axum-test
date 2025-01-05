@@ -1,3 +1,4 @@
+use crate::WsMessage;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
@@ -12,8 +13,6 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use tokio_tungstenite::tungstenite::protocol::Role;
 use tokio_tungstenite::WebSocketStream;
-
-use crate::WsMessage;
 
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
@@ -42,7 +41,7 @@ impl TestWebSocket {
         T: Display,
     {
         let text = format!("{}", raw_text);
-        self.send_message(WsMessage::Text(text)).await;
+        self.send_message(WsMessage::Text(text.into())).await;
     }
 
     pub async fn send_json<J>(&mut self, body: &J)
@@ -52,7 +51,7 @@ impl TestWebSocket {
         let raw_json =
             ::serde_json::to_string(body).expect("It should serialize the content into Json");
 
-        self.send_message(WsMessage::Text(raw_json)).await;
+        self.send_message(WsMessage::Text(raw_json.into())).await;
     }
 
     #[cfg(feature = "yaml")]
@@ -63,7 +62,7 @@ impl TestWebSocket {
         let raw_yaml =
             ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
 
-        self.send_message(WsMessage::Text(raw_yaml)).await;
+        self.send_message(WsMessage::Text(raw_yaml.into())).await;
     }
 
     #[cfg(feature = "msgpack")]
@@ -74,7 +73,8 @@ impl TestWebSocket {
         let body_bytes =
             ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
 
-        self.send_message(WsMessage::Binary(body_bytes)).await;
+        self.send_message(WsMessage::Binary(body_bytes.into()))
+            .await;
     }
 
     pub async fn send_message(&mut self, message: WsMessage) {
@@ -203,12 +203,18 @@ impl TestWebSocket {
 
 fn message_to_text(message: WsMessage) -> Result<String> {
     let text = match message {
-        WsMessage::Text(text) => text,
-        WsMessage::Binary(data) => String::from_utf8(data).map_err(|err| err.utf8_error())?,
-        WsMessage::Ping(data) => String::from_utf8(data).map_err(|err| err.utf8_error())?,
-        WsMessage::Pong(data) => String::from_utf8(data).map_err(|err| err.utf8_error())?,
+        WsMessage::Text(text) => text.to_string(),
+        WsMessage::Binary(data) => {
+            String::from_utf8(data.to_vec()).map_err(|err| err.utf8_error())?
+        }
+        WsMessage::Ping(data) => {
+            String::from_utf8(data.to_vec()).map_err(|err| err.utf8_error())?
+        }
+        WsMessage::Pong(data) => {
+            String::from_utf8(data.to_vec()).map_err(|err| err.utf8_error())?
+        }
         WsMessage::Close(None) => String::new(),
-        WsMessage::Close(Some(frame)) => frame.reason.into_owned(),
+        WsMessage::Close(Some(frame)) => frame.reason.to_string(),
         WsMessage::Frame(_) => {
             return Err(anyhow!(
                 "Unexpected Frame, did not expect Frame message whilst reading"
@@ -221,12 +227,12 @@ fn message_to_text(message: WsMessage) -> Result<String> {
 
 fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
     let bytes = match message {
-        WsMessage::Text(string) => string.into_bytes().into(),
-        WsMessage::Binary(data) => data.into(),
-        WsMessage::Ping(data) => data.into(),
-        WsMessage::Pong(data) => data.into(),
+        WsMessage::Text(string) => string.into(),
+        WsMessage::Binary(data) => data,
+        WsMessage::Ping(data) => data,
+        WsMessage::Pong(data) => data,
         WsMessage::Close(None) => Bytes::new(),
-        WsMessage::Close(Some(frame)) => frame.reason.into_owned().into_bytes().into(),
+        WsMessage::Close(Some(frame)) => frame.reason.into(),
         WsMessage::Frame(_) => {
             return Err(anyhow!(
                 "Unexpected Frame, did not expect Frame message whilst reading"
@@ -254,8 +260,8 @@ mod test_assert_receive_text {
                 while let Some(maybe_message) = socket.recv().await {
                     let message_text = maybe_message.unwrap().into_text().unwrap();
 
-                    let encoded_text = format!("Text: {message_text}");
-                    let encoded_data = format!("Binary: {message_text}").into_bytes();
+                    let encoded_text = format!("Text: {message_text}").try_into().unwrap();
+                    let encoded_data = format!("Binary: {message_text}").into_bytes().into();
 
                     socket.send(Message::Text(encoded_text)).await.unwrap();
                     socket.send(Message::Binary(encoded_data)).await.unwrap();
@@ -354,7 +360,7 @@ mod test_assert_receive_text_contains {
             async fn handle_ping_pong(mut socket: WebSocket) {
                 while let Some(maybe_message) = socket.recv().await {
                     let message_text = maybe_message.unwrap().into_text().unwrap();
-                    let encoded_text = format!("Text: {message_text}");
+                    let encoded_text = format!("Text: {message_text}").try_into().unwrap();
 
                     socket.send(Message::Text(encoded_text)).await.unwrap();
                 }
@@ -437,12 +443,15 @@ mod test_assert_receive_json {
                         "format": "text",
                         "message": decoded
                     }))
+                    .unwrap()
+                    .try_into()
                     .unwrap();
                     let encoded_data = serde_json::to_vec(&json!({
                         "format": "binary",
                         "message": decoded
                     }))
-                    .unwrap();
+                    .unwrap()
+                    .into();
 
                     socket.send(Message::Text(encoded_text)).await.unwrap();
                     socket.send(Message::Binary(encoded_data)).await.unwrap();
@@ -522,13 +531,15 @@ mod test_assert_receive_yaml {
                         "format": "text",
                         "message": decoded
                     }))
+                    .unwrap()
+                    .try_into()
                     .unwrap();
                     let encoded_data = serde_yaml::to_string(&json!({
                         "format": "binary",
                         "message": decoded
                     }))
                     .unwrap()
-                    .into_bytes();
+                    .into();
 
                     socket.send(Message::Text(encoded_text)).await.unwrap();
                     socket.send(Message::Binary(encoded_data)).await.unwrap();
@@ -608,7 +619,8 @@ mod test_assert_receive_msgpack {
                         "format": "binary",
                         "message": decoded
                     }))
-                    .unwrap();
+                    .unwrap()
+                    .into();
 
                     socket.send(Message::Binary(encoded_data)).await.unwrap();
                 }
