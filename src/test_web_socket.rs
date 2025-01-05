@@ -1,3 +1,4 @@
+use crate::WsMessage;
 use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
@@ -13,11 +14,8 @@ use std::fmt::Display;
 use tokio_tungstenite::tungstenite::protocol::Role;
 use tokio_tungstenite::WebSocketStream;
 
-use crate::WsMessage;
-
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
-use tokio_tungstenite::tungstenite::Utf8Bytes;
 
 pub struct TestWebSocket {
     stream: WebSocketStream<TokioIo<Upgraded>>,
@@ -43,8 +41,7 @@ impl TestWebSocket {
         T: Display,
     {
         let text = format!("{}", raw_text);
-        let text_bytes: Utf8Bytes = text.try_into().expect("Text contains non-Utf8 chars");
-        self.send_message(WsMessage::Text(text_bytes)).await;
+        self.send_message(WsMessage::Text(text.into())).await;
     }
 
     pub async fn send_json<J>(&mut self, body: &J)
@@ -53,9 +50,8 @@ impl TestWebSocket {
     {
         let raw_json =
             ::serde_json::to_string(body).expect("It should serialize the content into Json");
-        let json_bytes: Utf8Bytes = raw_json.try_into().expect("Json contains non-Utf8 chars");
 
-        self.send_message(WsMessage::Text(json_bytes)).await;
+        self.send_message(WsMessage::Text(raw_json.into())).await;
     }
 
     #[cfg(feature = "yaml")]
@@ -65,9 +61,8 @@ impl TestWebSocket {
     {
         let raw_yaml =
             ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
-        let yaml_bytes: Utf8Bytes = raw_yaml.try_into().expect("Yaml contains non-Utf8 chars");
 
-        self.send_message(WsMessage::Text(yaml_bytes)).await;
+        self.send_message(WsMessage::Text(raw_yaml.into())).await;
     }
 
     #[cfg(feature = "msgpack")]
@@ -233,9 +228,9 @@ fn message_to_text(message: WsMessage) -> Result<String> {
 fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
     let bytes = match message {
         WsMessage::Text(string) => string.into(),
-        WsMessage::Binary(data) => data.into(),
-        WsMessage::Ping(data) => data.into(),
-        WsMessage::Pong(data) => data.into(),
+        WsMessage::Binary(data) => data,
+        WsMessage::Ping(data) => data,
+        WsMessage::Pong(data) => data,
         WsMessage::Close(None) => Bytes::new(),
         WsMessage::Close(Some(frame)) => frame.reason.into(),
         WsMessage::Frame(_) => {

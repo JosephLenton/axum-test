@@ -104,7 +104,7 @@ async fn handle_chat(socket: WebSocket, username: String, state: SharedAppState)
                         .expect("Failed to build JSON message for sending");
 
                     sender
-                        .send(Message::Text(json_text))
+                        .send(Message::Text(json_text.into()))
                         .await
                         .expect("Failed to send message to socket");
                 }
