@@ -32,8 +32,7 @@ path = "examples/example-websocket-ping-pong/main.rs"
 required-features = ["ws"]
 
 [features]
-# default = ["pretty-assertions"]
-default = ["all"]
+default = ["pretty-assertions"]
 
 all = ["pretty-assertions", "yaml", "msgpack", "reqwest", "typed-routing", "ws"]
 
