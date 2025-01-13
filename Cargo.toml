@@ -1,7 +1,7 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "17.0.1"
+version = "17.0.2"
 rust-version = "1.75"
 edition = "2021"
 license = "MIT"

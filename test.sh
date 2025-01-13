@@ -2,24 +2,24 @@
 
 set -e
 
-cargo check
-# cargo test --example=example-shuttle --features shuttle
-cargo test --example=example-todo
-cargo test --example=example-websocket-ping-pong --features ws
-cargo test --example=example-websocket-chat --features ws
-cargo test  --features all "$@"
-cargo test "$@"
+cargo +stable check
+# cargo +stable test --example=example-shuttle --features shuttle
+cargo +stable test --example=example-todo
+cargo +stable test --example=example-websocket-ping-pong --features ws
+cargo +stable test --example=example-websocket-chat --features ws
+cargo +stable test  --features all "$@"
+cargo +stable test "$@"
 
 # Check the various build variations work
-cargo check --no-default-features
-cargo check --features all
-cargo check --features pretty-assertions
-cargo check --features yaml
-cargo check --features msgpack
-cargo check --features reqwest
-# cargo check --features shuttle
-cargo check --features typed-routing
-cargo check --features ws
-cargo check --features reqwest
+cargo +stable check --no-default-features
+cargo +stable check --features all
+cargo +stable check --features pretty-assertions
+cargo +stable check --features yaml
+cargo +stable check --features msgpack
+cargo +stable check --features reqwest
+# cargo +stable check --features shuttle
+cargo +stable check --features typed-routing
+cargo +stable check --features ws
+cargo +stable check --features reqwest
 
-cargo clippy --features all
+cargo +stable clippy --features all
