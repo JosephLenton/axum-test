@@ -3056,7 +3056,7 @@ mod test_multipart {
 
         let form = MultipartForm::new().add_part(
             "file",
-            Part::bytes(include_bytes!("../rust-toolchain").as_slice()).mime_type(mime::TEXT_PLAIN),
+            Part::bytes(include_bytes!("../files/example.txt").as_slice()).mime_type(mime::TEXT_PLAIN),
         );
 
         // Get the request.
