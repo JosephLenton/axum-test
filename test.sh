@@ -3,15 +3,17 @@
 set -e
 
 cargo +stable check
-# cargo +stable test --example=example-shuttle --features shuttle
+cargo +stable test --example=example-shuttle --features shuttle
 cargo +stable test --example=example-todo
 cargo +stable test --example=example-websocket-ping-pong --features ws
 cargo +stable test --example=example-websocket-chat --features ws
 cargo +stable test  --features all "$@"
 cargo +stable test "$@"
 
+# Check minimum version works, excluding shuttle
+cargo +1.78 check --features "pretty-assertions,yaml,msgpack,reqwest,typed-routing,ws"
 # Check nightly also works, see https://github.com/JosephLenton/axum-test/issues/133
-cargo +nightly test  --features all "$@"
+cargo +nightly check --features all "$@"
 
 # Check the various build variations work
 cargo +stable check --no-default-features
