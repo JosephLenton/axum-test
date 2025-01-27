@@ -1,10 +1,9 @@
+use crate::multipart::Part;
 use axum::body::Body as AxumBody;
 use rust_multipart_rfc7578_2::client::multipart::Body as CommonMultipartBody;
 use rust_multipart_rfc7578_2::client::multipart::Form;
 use std::fmt::Display;
 use std::io::Cursor;
-
-use crate::multipart::Part;
 
 pub struct MultipartForm {
     inner: Form<'static>,
