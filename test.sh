@@ -11,7 +11,7 @@ cargo +stable test  --features all "$@"
 cargo +stable test "$@"
 
 # Check minimum version works, excluding shuttle
-cargo +1.78 check --features "pretty-assertions,yaml,msgpack,reqwest,typed-routing,ws"
+cargo +1.83 check --features "pretty-assertions,yaml,msgpack,reqwest,typed-routing,ws"
 # Check nightly also works, see https://github.com/JosephLenton/axum-test/issues/133
 cargo +nightly check --features all "$@"
 

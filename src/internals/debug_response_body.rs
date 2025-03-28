@@ -7,6 +7,7 @@ use std::fmt::Result as FmtResult;
 /// An arbituary limit to avoid printing gigabytes to the terminal.
 const MAX_TEXT_PRINT_LEN: usize = 10_000;
 
+#[derive(Debug)]
 pub struct DebugResponseBody<'a>(pub &'a TestResponse);
 
 impl Display for DebugResponseBody<'_> {

@@ -1,6 +1,9 @@
 use anyhow::Context;
 use bytes::Bytes;
+use http::HeaderName;
+use http::HeaderValue;
 use mime::Mime;
+use std::fmt::Debug;
 use std::fmt::Display;
 
 ///
@@ -9,10 +12,12 @@ use std::fmt::Display;
 /// Use [`Part::text()`](crate::multipart::Part::text()) and [`Part::bytes()`](crate::multipart::Part::bytes()) for creating new instances.
 /// Then attach them to a `MultipartForm` using [`MultipartForm::add_part()`](crate::multipart::MultipartForm::add_part()).
 ///
+#[derive(Debug, Clone)]
 pub struct Part {
     pub(crate) bytes: Bytes,
     pub(crate) file_name: Option<String>,
     pub(crate) mime_type: Mime,
+    pub(crate) headers: Vec<(HeaderName, HeaderValue)>,
 }
 
 impl Part {
@@ -23,11 +28,9 @@ impl Part {
     where
         T: Display,
     {
-        Self {
-            bytes: text.to_string().into_bytes().into(),
-            file_name: None,
-            mime_type: mime::TEXT_PLAIN,
-        }
+        let bytes = text.to_string().into_bytes().into();
+
+        Self::new(bytes, mime::TEXT_PLAIN)
     }
 
     /// Creates a new part of a multipart form, that will upload bytes.
@@ -37,10 +40,15 @@ impl Part {
     where
         B: Into<Bytes>,
     {
+        Self::new(bytes.into(), mime::APPLICATION_OCTET_STREAM)
+    }
+
+    fn new(bytes: Bytes, mime_type: Mime) -> Self {
         Self {
-            bytes: bytes.into(),
+            bytes,
             file_name: None,
-            mime_type: mime::APPLICATION_OCTET_STREAM,
+            mime_type,
+            headers: Default::default(),
         }
     }
 
@@ -72,6 +80,53 @@ impl Part {
 
         self.mime_type = parsed_mime_type;
 
+        self
+    }
+
+    /// Adds a header to be sent with the Part of this Multiform.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use axum::Router;
+    /// use axum_test::TestServer;
+    /// use axum_test::multipart::MultipartForm;
+    /// use axum_test::multipart::Part;
+    ///
+    /// let app = Router::new();
+    /// let server = TestServer::new(app)?;
+    ///
+    /// let readme_bytes = include_bytes!("../../README.md");
+    /// let readme_part = Part::bytes(readme_bytes.as_slice())
+    ///     .file_name(&"README.md")
+    ///     // Add a header to the Part
+    ///     .add_header("x-text-category", "readme");
+    ///
+    /// let multipart_form = MultipartForm::new()
+    ///     .add_part("file", readme_part);
+    ///
+    /// let response = server.post(&"/my-form")
+    ///     .multipart(multipart_form)
+    ///     .await;
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    pub fn add_header<N, V>(mut self, name: N, value: V) -> Self
+    where
+        N: TryInto<HeaderName>,
+        N::Error: Debug,
+        V: TryInto<HeaderValue>,
+        V::Error: Debug,
+    {
+        let header_name: HeaderName = name
+            .try_into()
+            .expect("Failed to convert header name to HeaderName");
+        let header_value: HeaderValue = value
+            .try_into()
+            .expect("Failed to convert header vlue to HeaderValue");
+
+        self.headers.push((header_name, header_value));
         self
     }
 }
