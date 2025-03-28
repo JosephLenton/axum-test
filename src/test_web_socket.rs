@@ -17,6 +17,7 @@ use tokio_tungstenite::WebSocketStream;
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
 
+#[derive(Debug)]
 pub struct TestWebSocket {
     stream: WebSocketStream<TokioIo<Upgraded>>,
 }

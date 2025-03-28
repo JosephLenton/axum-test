@@ -62,13 +62,14 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 
 ## Axum Compatability
 
-The current version of Axum Test requires at least Axum v0.7.6.
+The current version of Axum Test requires at least Axum v0.8.3.
 
 Here is a list of compatability with prior versions:
 
 | Axum Version    | Axum Test Version |
 |-----------------|-------------------|
-| 0.8.0+ (latest) | 17+ (latest)      |
+| 0.8.3+ (latest) | 17.3+ (latest)    |
+| 0.8.0           | 17                |
 | 0.7.6 to 0.7.9  | 16                |
 | 0.7.0 to 0.7.5  | 14, 15            |
 | 0.6             | 13.4.1            |

@@ -5,6 +5,7 @@ use rust_multipart_rfc7578_2::client::multipart::Form;
 use std::fmt::Display;
 use std::io::Cursor;
 
+#[derive(Debug)]
 pub struct MultipartForm {
     inner: Form<'static>,
 }
@@ -32,8 +33,13 @@ impl MultipartForm {
         N: Display,
     {
         let reader = Cursor::new(part.bytes);
-        self.inner
-            .add_reader_2(name, reader, part.file_name, Some(part.mime_type));
+        self.inner.add_reader_2(
+            name,
+            reader,
+            part.file_name,
+            Some(part.mime_type),
+            part.headers,
+        );
 
         self
     }

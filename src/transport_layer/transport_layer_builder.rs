@@ -7,6 +7,7 @@ use tokio::net::TcpListener;
 
 use crate::internals::StartingTcpSetup;
 
+#[derive(Debug, Clone)]
 pub struct TransportLayerBuilder {
     ip: Option<IpAddr>,
     port: Option<u16>,

@@ -132,7 +132,7 @@ use std::path::Path;
 /// # }
 /// ```
 ///
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct TestResponse {
     method: Method,
 

@@ -9,6 +9,7 @@ use tokio::net::TcpListener as TokioTcpListener;
 
 pub const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
+#[derive(Debug)]
 pub struct StartingTcpSetup {
     pub maybe_reserved_port: Option<ReservedPort>,
     pub socket_addr: SocketAddr,

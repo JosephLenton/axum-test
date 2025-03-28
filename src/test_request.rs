@@ -278,13 +278,13 @@ impl TestRequest {
     /// let app = Router::new();
     /// let server = TestServer::new(app)?;
     ///
-    /// let image_bytes = include_bytes!("../README.md");
-    /// let image_part = Part::bytes(image_bytes.as_slice())
+    /// let readme_bytes = include_bytes!("../README.md");
+    /// let readme_part = Part::bytes(readme_bytes.as_slice())
     ///     .file_name(&"README.md")
     ///     .mime_type(&"text/markdown");
     ///
     /// let multipart_form = MultipartForm::new()
-    ///     .add_part("file", image_part);
+    ///     .add_part("file", readme_part);
     ///
     /// let response = server.post(&"/my-form")
     ///     .multipart(multipart_form)
@@ -2937,6 +2937,8 @@ mod test_multipart {
     use axum::routing::post;
     use axum::Json;
     use axum::Router;
+    use serde_json::json;
+    use serde_json::Value;
 
     async fn route_post_multipart(mut multipart: Multipart) -> Json<Vec<String>> {
         let mut fields = vec![];
@@ -2953,8 +2955,34 @@ mod test_multipart {
         Json(fields)
     }
 
+    async fn route_post_multipart_headers(mut multipart: Multipart) -> Json<Vec<Value>> {
+        let mut sent_part_headers = vec![];
+
+        while let Some(field) = multipart.next_field().await.unwrap() {
+            let part_name = field.name().unwrap().to_string();
+            let part_header_value = field
+                .headers()
+                .get("x-part-header-test")
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+            let part_text = String::from_utf8(field.bytes().await.unwrap().into()).unwrap();
+
+            sent_part_headers.push(json!({
+                "name": part_name,
+                "text": part_text,
+                "header": part_header_value,
+            }))
+        }
+
+        Json(sent_part_headers)
+    }
+
     fn test_router() -> Router {
-        Router::new().route("/multipart", post(route_post_multipart))
+        Router::new()
+            .route("/multipart", post(route_post_multipart))
+            .route("/multipart_headers", post(route_post_multipart_headers))
     }
 
     #[tokio::test]
@@ -3066,5 +3094,42 @@ mod test_multipart {
             .multipart(form)
             .await
             .assert_json(&vec!["file is 6 bytes, text/plain".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn it_should_send_form_headers_in_parts() {
+        // Run the server.
+        let server = TestServer::builder()
+            .mock_transport()
+            .build(test_router())
+            .expect("Should create test server");
+
+        let form = MultipartForm::new()
+            .add_part(
+                "part_1",
+                Part::text("part_1_text").add_header("x-part-header-test", "part_1_header"),
+            )
+            .add_part(
+                "part_2",
+                Part::text("part_2_text").add_header("x-part-header-test", "part_2_header"),
+            );
+
+        // Get the request.
+        server
+            .post(&"/multipart_headers")
+            .multipart(form)
+            .await
+            .assert_json(&json!([
+                {
+                    "name": "part_1",
+                    "text": "part_1_text",
+                    "header": "part_1_header",
+                },
+                {
+                    "name": "part_2",
+                    "text": "part_2_text",
+                    "header": "part_2_header",
+                },
+            ]));
     }
 }
