@@ -4,10 +4,10 @@ use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::TryIntoRangeBounds;
 use anyhow::Context;
-use assert_json_diff::assert_json_include;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
+use expect_json::expect_json_eq;
 use http::header::HeaderName;
 use http::header::SET_COOKIE;
 use http::response::Parts;
@@ -25,6 +25,7 @@ use std::fs::read_to_string;
 use std::fs::File;
 use std::io::BufReader;
 use std::ops::RangeBounds;
+use std::path::Path;
 use url::Url;
 
 #[cfg(feature = "pretty-assertions")]
@@ -34,7 +35,6 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::TestResponseWebSocket;
 #[cfg(feature = "ws")]
 use crate::TestWebSocket;
-use std::path::Path;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -821,7 +821,20 @@ impl TestResponse {
         T: Serialize,
     {
         let received = self.json::<Value>();
-        assert_json_include!(actual: received, expected: expected);
+
+        #[cfg(feature = "old-json-diff")]
+        {
+            assert_json_diff::assert_json_include!(actual: received, expected: expected);
+            return;
+        }
+
+        if let Err(error) = expect_json_eq(&received, &expected) {
+            panic!(
+                "
+{error}
+",
+            );
+        }
     }
 
     /// Read json file from given path and assert it with json response.
