@@ -35,6 +35,8 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::TestResponseWebSocket;
 #[cfg(feature = "ws")]
 use crate::TestWebSocket;
+use expect_json::expect;
+use serde_json::json;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -773,9 +775,18 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_json<T>(&self, expected: &T)
     where
-        T: DeserializeOwned + PartialEq<T> + Debug,
+        T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
-        assert_eq!(*expected, self.json::<T>());
+        let received = self.json::<T>();
+        if *expected != received {
+            if let Err(error) = expect_json_eq(&received, &expected) {
+                panic!(
+                    "
+{error}
+",
+                );
+            }
+        }
     }
 
     /// Asserts the content is within the json returned.
@@ -828,7 +839,8 @@ impl TestResponse {
             return;
         }
 
-        if let Err(error) = expect_json_eq(&received, &expected) {
+        let expected_value = serde_json::to_value(expected).unwrap();
+        if let Err(error) = expect_json_eq(&received, &json!(expect.contains(expected_value))) {
             panic!(
                 "
 {error}
@@ -2244,8 +2256,12 @@ mod test_assert_json {
     use axum::Form;
     use axum::Json;
     use axum::Router;
+    use expect_json::internals::Context;
+    use expect_json::internals::JsonValueEqResult;
+    use expect_json::ExpectOp;
     use serde::Deserialize;
     use serde::Serialize;
+    use serde_json::json;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2303,6 +2319,41 @@ mod test_assert_json {
             name: "Joe".to_string(),
             age: 20,
         });
+    }
+
+    #[tokio::test]
+    async fn it_should_work_with_custom_expect_op() {
+        use crate::expect;
+
+        #[expect_json::expect_op]
+        #[derive(Clone, Debug)]
+        struct ExpectStrMinLen {
+            min: usize,
+        }
+
+        impl ExpectOp for ExpectStrMinLen {
+            fn on_string(
+                &self,
+                context: &mut Context<'_>,
+                received: &str,
+            ) -> JsonValueEqResult<()> {
+                if received.len() < self.min {
+                    panic!("String is too short, received: {received}");
+                }
+
+                Ok(())
+            }
+        }
+
+        let app = Router::new().route(&"/json", get(route_get_json));
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_json(&json!({
+            "name": ExpectStrMinLen { min: 3 },
+            "age": 20,
+
+            // "scores": expect.contains(vec![10, 20, 30]),
+        }));
     }
 }
 

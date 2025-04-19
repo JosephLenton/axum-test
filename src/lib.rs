@@ -109,6 +109,10 @@ pub use self::transport::*;
 
 pub use http;
 
+pub use ::expect_json::Expect;
+pub use ::expect_json::ExpectNot;
+pub use ::expect_json::expect;
+
 #[cfg(test)]
 mod integrated_test_cookie_saving {
     use super::*;
