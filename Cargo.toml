@@ -43,6 +43,8 @@ shuttle = ["dep:shuttle-axum"]
 typed-routing = ["dep:axum-extra"]
 ws = ["axum/ws", "tokio/time", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
 reqwest = ["dep:reqwest"]
+
+# Deprecated, and will be removed in the future.
 old-json-diff = ["dep:assert-json-diff"]
 
 [dependencies]
