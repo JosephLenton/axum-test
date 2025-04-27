@@ -22,9 +22,10 @@ cargo +stable check --features pretty-assertions
 cargo +stable check --features yaml
 cargo +stable check --features msgpack
 cargo +stable check --features reqwest
-# cargo +stable check --features shuttle
+cargo +stable check --features shuttle
 cargo +stable check --features typed-routing
 cargo +stable check --features ws
 cargo +stable check --features reqwest
+cargo +stable check --features old-json-diff
 
 cargo +stable clippy --features all
