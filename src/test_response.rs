@@ -2267,6 +2267,7 @@ mod test_assert_json {
     use crate::expect_json::Context;
     use crate::expect_json::ExpectOp;
     use crate::expect_json::ExpectOpResult;
+    use crate::expect_json::expect_op;
     use crate::TestServer;
     use axum::routing::get;
     use axum::Form;
@@ -2336,7 +2337,7 @@ mod test_assert_json {
 
     #[tokio::test]
     async fn it_should_work_with_custom_expect_op() {
-        #[expect_json::expect_op]
+        #[expect_op]
         #[derive(Clone, Debug)]
         struct ExpectStrMinLen {
             min: usize,
