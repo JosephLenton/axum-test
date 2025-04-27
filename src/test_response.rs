@@ -7,8 +7,6 @@ use anyhow::Context;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
-use expect_json::expect;
-use expect_json::expect_json_eq;
 use http::header::HeaderName;
 use http::header::SET_COOKIE;
 use http::response::Parts;
@@ -36,6 +34,11 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::TestResponseWebSocket;
 #[cfg(feature = "ws")]
 use crate::TestWebSocket;
+
+#[cfg(not(feature = "old-json-diff"))]
+use expect_json::expect;
+#[cfg(not(feature = "old-json-diff"))]
+use expect_json::expect_json_eq;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -776,14 +779,22 @@ impl TestResponse {
     where
         T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
-        let received = self.json::<T>();
-        if *expected != received {
-            if let Err(error) = expect_json_eq(&received, &expected) {
-                panic!(
-                    "
+        #[cfg(feature = "old-json-diff")]
+        {
+            assert_eq!(*expected, self.json::<T>());
+        }
+
+        #[cfg(not(feature = "old-json-diff"))]
+        {
+            let received = self.json::<T>();
+            if *expected != received {
+                if let Err(error) = expect_json_eq(&received, &expected) {
+                    panic!(
+                        "
 {error}
 ",
-                );
+                    );
+                }
             }
         }
     }
