@@ -4,10 +4,11 @@ use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::TryIntoRangeBounds;
 use anyhow::Context;
-use assert_json_diff::assert_json_include;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
+use expect_json::expect;
+use expect_json::expect_json_eq;
 use http::header::HeaderName;
 use http::header::SET_COOKIE;
 use http::response::Parts;
@@ -25,6 +26,7 @@ use std::fs::read_to_string;
 use std::fs::File;
 use std::io::BufReader;
 use std::ops::RangeBounds;
+use std::path::Path;
 use url::Url;
 
 #[cfg(feature = "pretty-assertions")]
@@ -34,7 +36,6 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::internals::TestResponseWebSocket;
 #[cfg(feature = "ws")]
 use crate::TestWebSocket;
-use std::path::Path;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -773,9 +774,18 @@ impl TestResponse {
     #[track_caller]
     pub fn assert_json<T>(&self, expected: &T)
     where
-        T: DeserializeOwned + PartialEq<T> + Debug,
+        T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
-        assert_eq!(*expected, self.json::<T>());
+        let received = self.json::<T>();
+        if *expected != received {
+            if let Err(error) = expect_json_eq(&received, &expected) {
+                panic!(
+                    "
+{error}
+",
+                );
+            }
+        }
     }
 
     /// Asserts the content is within the json returned.
@@ -821,7 +831,24 @@ impl TestResponse {
         T: Serialize,
     {
         let received = self.json::<Value>();
-        assert_json_include!(actual: received, expected: expected);
+
+        #[cfg(feature = "old-json-diff")]
+        {
+            assert_json_diff::assert_json_include!(actual: received, expected: expected);
+        }
+
+        #[cfg(not(feature = "old-json-diff"))]
+        {
+            let expected_value = serde_json::to_value(expected).unwrap();
+            let result = expect_json_eq(&received, &expect::object().contains(expected_value));
+            if let Err(error) = result {
+                panic!(
+                    "
+{error}
+",
+                );
+            }
+        }
     }
 
     /// Read json file from given path and assert it with json response.
@@ -2226,6 +2253,9 @@ mod test_assert_text_from_file {
 
 #[cfg(test)]
 mod test_assert_json {
+    use crate::expect_json::Context;
+    use crate::expect_json::ExpectOp;
+    use crate::expect_json::ExpectOpResult;
     use crate::TestServer;
     use axum::routing::get;
     use axum::Form;
@@ -2233,6 +2263,7 @@ mod test_assert_json {
     use axum::Router;
     use serde::Deserialize;
     use serde::Serialize;
+    use serde_json::json;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2290,6 +2321,35 @@ mod test_assert_json {
             name: "Joe".to_string(),
             age: 20,
         });
+    }
+
+    #[tokio::test]
+    async fn it_should_work_with_custom_expect_op() {
+        #[::expect_json::expect_op]
+        #[derive(Clone, Debug)]
+        struct ExpectStrMinLen {
+            min: usize,
+        }
+
+        impl ExpectOp for ExpectStrMinLen {
+            fn on_string(&self, _context: &mut Context<'_>, received: &str) -> ExpectOpResult<()> {
+                if received.len() < self.min {
+                    panic!("String is too short, received: {received}");
+                }
+
+                Ok(())
+            }
+        }
+
+        let app = Router::new().route(&"/json", get(route_get_json));
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_json(&json!({
+            "name": ExpectStrMinLen { min: 3 },
+            "age": 20,
+
+            // "scores": expect::array().contains(vec![10, 20, 30]),
+        }));
     }
 }
 
