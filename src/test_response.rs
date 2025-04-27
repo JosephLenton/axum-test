@@ -2264,10 +2264,10 @@ mod test_assert_text_from_file {
 
 #[cfg(test)]
 mod test_assert_json {
+    use crate::expect_json::expect_op;
     use crate::expect_json::Context;
     use crate::expect_json::ExpectOp;
     use crate::expect_json::ExpectOpResult;
-    use crate::expect_json::expect_op;
     use crate::TestServer;
     use axum::routing::get;
     use axum::Form;
