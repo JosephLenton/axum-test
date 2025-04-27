@@ -107,8 +107,6 @@ pub use tokio_tungstenite::tungstenite::Message as WsMessage;
 mod transport;
 pub use self::transport::*;
 
-// TODO, remove this once expect_json is officially supported
-#[doc(hidden)]
 pub mod expect_json;
 
 pub use http;

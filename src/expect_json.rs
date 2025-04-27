@@ -1,5 +1,9 @@
 pub use ::expect_json::expect;
+
+/// This macro is for defining your own custom [`ExpectOp`] checks.
+#[doc(inline)]
 pub use ::expect_json::expect_op_for_axum_test as expect_op;
+
 pub use ::expect_json::ops;
 pub use ::expect_json::Context;
 pub use ::expect_json::ExpectJsonError;

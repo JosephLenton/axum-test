@@ -2264,6 +2264,7 @@ mod test_assert_text_from_file {
 
 #[cfg(test)]
 mod test_assert_json {
+    use ::expect_json::expect_op;
     use crate::expect_json::Context;
     use crate::expect_json::ExpectOp;
     use crate::expect_json::ExpectOpResult;
@@ -2336,7 +2337,7 @@ mod test_assert_json {
 
     #[tokio::test]
     async fn it_should_work_with_custom_expect_op() {
-        #[::expect_json::expect_op]
+        #[expect_op]
         #[derive(Clone, Debug)]
         struct ExpectStrMinLen {
             min: usize,
@@ -2358,8 +2359,6 @@ mod test_assert_json {
         server.get(&"/json").await.assert_json(&json!({
             "name": ExpectStrMinLen { min: 3 },
             "age": 20,
-
-            // "scores": expect::array().contains(vec![10, 20, 30]),
         }));
     }
 }
