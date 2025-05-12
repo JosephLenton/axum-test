@@ -69,7 +69,8 @@ Here is a list of compatability with prior versions:
 
 | Axum Version    | Axum Test Version |
 |-----------------|-------------------|
-| 0.8.3+ (latest) | 17.3+ (latest)    |
+| 0.8.4+ (latest) | 18 (latest)       |
+| 0.8.3           | 17.3              |
 | 0.8.0           | 17                |
 | 0.7.6 to 0.7.9  | 16                |
 | 0.7.0 to 0.7.5  | 14, 15            |
