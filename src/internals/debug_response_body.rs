@@ -63,7 +63,7 @@ fn write_text(f: &mut Formatter<'_>, text: &str) -> FmtResult {
     let len = text.len();
 
     if len < MAX_TEXT_PRINT_LEN {
-        write!(f, "'{}'", text)
+        write!(f, "'{text}'")
     } else {
         let text_start = text.chars().take(MAX_TEXT_PRINT_LEN);
         write!(f, "'")?;

@@ -54,7 +54,7 @@ mod test_fmt {
     fn it_should_format_with_path_given() {
         let query_params = QueryParamsStore::new();
         let debug = RequestPathFormatter::new(&Method::GET, &"/donkeys", Some(&query_params));
-        let output = format!("{}", debug);
+        let output = debug.to_string();
 
         assert_eq!(output, "GET /donkeys");
     }
@@ -62,7 +62,7 @@ mod test_fmt {
     #[test]
     fn it_should_format_with_path_given_and_no_query_params() {
         let debug = RequestPathFormatter::new(&Method::GET, &"/donkeys", None);
-        let output = format!("{}", debug);
+        let output = debug.to_string();
 
         assert_eq!(output, "GET /donkeys");
     }
@@ -74,7 +74,7 @@ mod test_fmt {
         query_params.add_raw("another-value".to_string());
 
         let debug = RequestPathFormatter::new(&Method::GET, &"/donkeys", Some(&query_params));
-        let output = format!("{}", debug);
+        let output = debug.to_string();
 
         assert_eq!(output, "GET /donkeys?value=123&another-value");
     }

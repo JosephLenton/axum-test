@@ -306,7 +306,7 @@ impl TestRequest {
     where
         T: Display,
     {
-        let body_text = format!("{}", raw_text);
+        let body_text = raw_text.to_string();
 
         self.bytes(body_text.into())
             .content_type(mime::TEXT_PLAIN.essence_str())
@@ -1426,9 +1426,8 @@ mod test_bytes {
                     .await
                     .expect("Should read body to bytes")
                     .to_bytes();
-                let body_text = String::from_utf8_lossy(&body_bytes);
 
-                format!("{}", body_text)
+                String::from_utf8_lossy(&body_bytes).to_string()
             }),
         );
 
@@ -1494,9 +1493,8 @@ mod test_bytes_from_file {
                     .await
                     .expect("Should read body to bytes")
                     .to_bytes();
-                let body_text = String::from_utf8_lossy(&body_bytes);
 
-                format!("{}", body_text)
+                String::from_utf8_lossy(&body_bytes).to_string()
             }),
         );
 
@@ -1562,9 +1560,8 @@ mod test_text {
                     .await
                     .expect("Should read body to bytes")
                     .to_bytes();
-                let body_text = String::from_utf8_lossy(&body_bytes);
 
-                format!("{}", body_text)
+                String::from_utf8_lossy(&body_bytes).to_string()
             }),
         );
 
@@ -1613,9 +1610,8 @@ mod test_text {
                     .await
                     .expect("Should read body to bytes")
                     .to_bytes();
-                let body_text = String::from_utf8_lossy(&body_bytes);
 
-                format!("{}", body_text)
+                String::from_utf8_lossy(&body_bytes).to_string()
             }),
         );
 
@@ -1647,9 +1643,8 @@ mod test_text {
                     .await
                     .expect("Should read body to bytes")
                     .to_bytes();
-                let body_text = String::from_utf8_lossy(&body_bytes);
 
-                format!("{}", body_text)
+                String::from_utf8_lossy(&body_bytes).to_string()
             }),
         );
 
@@ -1689,9 +1684,8 @@ mod test_text_from_file {
                     .await
                     .expect("Should read body to bytes")
                     .to_bytes();
-                let body_text = String::from_utf8_lossy(&body_bytes);
 
-                format!("{}", body_text)
+                String::from_utf8_lossy(&body_bytes).to_string()
             }),
         );
 

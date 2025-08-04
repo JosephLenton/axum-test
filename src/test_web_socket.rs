@@ -41,7 +41,7 @@ impl TestWebSocket {
     where
         T: Display,
     {
-        let text = format!("{}", raw_text);
+        let text = raw_text.to_string();
         self.send_message(WsMessage::Text(text.into())).await;
     }
 
