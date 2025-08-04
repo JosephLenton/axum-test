@@ -123,7 +123,7 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
         // Build the server.
         let result = TestServer::builder().mock_transport().build(app);
         let err = result.unwrap_err();
-        let err_msg = format!("{}", err);
+        let err_msg = err.to_string();
 
         assert_eq!(err_msg, "`IntoMakeServiceWithConnectInfo` cannot be mocked, as it's underlying implementation requires a real connection. Set the `TestServerConfig` to run with a transport of `HttpRandomPort`, or a `HttpIpPort`.");
     }

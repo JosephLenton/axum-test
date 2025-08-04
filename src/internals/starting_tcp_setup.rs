@@ -66,7 +66,7 @@ mod test_new {
         let port = None;
 
         let setup = StartingTcpSetup::new(ip, port).unwrap();
-        let addr = format!("{}", setup.socket_addr);
+        let addr = setup.socket_addr.to_string();
 
         let regex = Regex::new("^127\\.0\\.0\\.1:[0-9]+$").unwrap();
         let is_match = regex.is_match(&addr);
@@ -79,7 +79,7 @@ mod test_new {
         let port = None;
 
         let setup = StartingTcpSetup::new(ip, port).unwrap();
-        let addr = format!("{}", setup.socket_addr);
+        let addr = setup.socket_addr.to_string();
 
         let regex = Regex::new("^127\\.0\\.0\\.1:[0-9]+$").unwrap();
         let is_match = regex.is_match(&addr);
@@ -92,7 +92,7 @@ mod test_new {
         let port = Some(8123);
 
         let setup = StartingTcpSetup::new(ip, port).unwrap();
-        let addr = format!("{}", setup.socket_addr);
+        let addr = setup.socket_addr.to_string();
 
         assert_eq!(addr, "127.0.0.1:8123");
     }
@@ -103,7 +103,7 @@ mod test_new {
         let port = Some(8124);
 
         let setup = StartingTcpSetup::new(ip, port).unwrap();
-        let addr = format!("{}", setup.socket_addr);
+        let addr = setup.socket_addr.to_string();
 
         assert_eq!(addr, "127.0.0.1:8124");
     }

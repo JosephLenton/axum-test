@@ -21,7 +21,7 @@ mod test_fmt {
     fn it_should_format_with_reason_where_available() {
         let status_code = StatusCode::UNAUTHORIZED;
         let debug = StatusCodeFormatter(status_code);
-        let output = format!("{}", debug);
+        let output = debug.to_string();
 
         assert_eq!(output, "401 (Unauthorized)");
     }
@@ -30,7 +30,7 @@ mod test_fmt {
     fn it_should_provide_only_number_where_reason_is_unavailable() {
         let status_code = StatusCode::from_u16(218).unwrap(); // Unofficial Apache status code.
         let debug = StatusCodeFormatter(status_code);
-        let output = format!("{}", debug);
+        let output = debug.to_string();
 
         assert_eq!(output, "218 (unknown status code)");
     }

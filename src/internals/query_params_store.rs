@@ -52,7 +52,7 @@ impl Display for QueryParamsStore {
                 write!(f, "&")?;
             }
 
-            write!(f, "{}", query)?;
+            write!(f, "{query}")?;
             is_joining = true;
         }
 
