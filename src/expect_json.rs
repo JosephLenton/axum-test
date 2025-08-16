@@ -1,22 +1,17 @@
-pub use ::expect_json::expect;
+pub use ::expect_json::expect::*;
 
-/// This macro is for defining your own custom [`ExpectOp`] checks.
-#[doc(inline)]
-pub use ::expect_json::expect_op_for_axum_test as expect_op;
+/// For implementing your own expectations.
+pub mod expect_core {
+    pub use ::expect_json::expect_core::*;
 
-pub use ::expect_json::ops;
-pub use ::expect_json::Context;
-pub use ::expect_json::ExpectJsonError;
-pub use ::expect_json::ExpectJsonResult;
-pub use ::expect_json::ExpectOp;
-pub use ::expect_json::ExpectOpError;
-pub use ::expect_json::ExpectOpExt;
-pub use ::expect_json::ExpectOpResult;
-pub use ::expect_json::JsonType;
+    /// This macro is for defining your own custom [`ExpectOp`] checks.
+    #[doc(inline)]
+    pub use ::expect_json::expect_core::expect_op_for_axum_test as expect_op;
 
-#[doc(hidden)]
-pub use ::expect_json::ExpectOpSerialize;
-#[doc(hidden)]
-pub use ::expect_json::SerializeExpectOp;
+    pub use ::expect_json::ExpectJsonError;
+    pub use ::expect_json::ExpectJsonResult;
+    pub use ::expect_json::JsonType;
+}
+
 #[doc(hidden)]
 pub use ::expect_json::__private;

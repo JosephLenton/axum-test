@@ -774,6 +774,40 @@ impl TestResponse {
     ///
     /// If `other` does not match, or the response is not Json,
     /// then this will panic.
+    ///
+    /// This includes all of the abilities from [`crate::expect_json`],
+    /// to allow you to check if things partially match. See that module
+    /// for more information.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use axum::Router;
+    /// use axum::extract::Json;
+    /// use axum::routing::get;
+    /// use axum_test::TestServer;
+    /// use serde_json::json;
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/user", get(|| async {
+    ///         Json(json!({
+    ///            "name": "Joe",
+    ///            "age": 20,
+    ///        }))
+    ///     }));
+    /// let server = TestServer::new(app)?;
+    ///
+    /// server.get(&"/user")
+    ///     .await
+    ///     .assert_json(&json!({
+    ///         "name": "Joe",
+    ///         "age": 20,
+    ///     }));
+    /// #
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// This supports the ability to
     #[track_caller]
     pub fn assert_json<T>(&self, expected: &T)
     where
@@ -2264,11 +2298,12 @@ mod test_assert_text_from_file {
 
 #[cfg(test)]
 mod test_assert_json {
-    use crate::expect_json::Context;
-    use crate::expect_json::ExpectOp;
-    use crate::expect_json::ExpectOpResult;
+    use crate::expect_json::expect_core::Context;
+    use crate::expect_json::expect_core::ExpectOp;
+    use crate::expect_json::expect_core::ExpectOpResult;
     use crate::TestServer;
-    use ::expect_json::expect_op;
+    // This needs to be the external crate, as the `::axum_test` path doesn't work within our tests.
+    use ::expect_json::expect_core::expect_op;
     use axum::routing::get;
     use axum::Form;
     use axum::Json;

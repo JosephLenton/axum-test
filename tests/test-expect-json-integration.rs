@@ -1,5 +1,5 @@
-use axum_test::expect_json::expect_op;
-use axum_test::expect_json::ExpectOp;
+use axum_test::expect_json::expect_core::expect_op;
+use axum_test::expect_json::expect_core::ExpectOp;
 
 // If it compiles, it works!
 #[test]
