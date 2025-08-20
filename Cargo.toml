@@ -58,7 +58,7 @@ expect-json = { version = "1.3.0", path = "../expect-json/expect-json" }
 http = "1.3"
 http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["client", "http1", "client-legacy"] }
-hyper = { version = "1.6", features = ["http1"] }
+hyper = { version = "1.7", features = ["http1"] }
 mime = "0.3"
 rust-multipart-rfc7578_2 = "0.8"
 reserve-port = "2.3"
