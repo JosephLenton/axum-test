@@ -797,11 +797,20 @@ impl TestResponse {
     ///     }));
     /// let server = TestServer::new(app)?;
     ///
+    /// // Example 1
     /// server.get(&"/user")
     ///     .await
     ///     .assert_json(&json!({
     ///         "name": "Joe",
     ///         "age": 20,
+    ///     }));
+    ///
+    /// // Example 2
+    /// server.get(&"/user")
+    ///     .await
+    ///     .assert_json(&json!({
+    ///         "name": axum_test::expect_json::string(),
+    ///         "age": axum_test::expect_json::integer().in_range(18..=30),
     ///     }));
     /// #
     /// # Ok(()) }
