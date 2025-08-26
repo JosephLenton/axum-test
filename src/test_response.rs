@@ -249,6 +249,7 @@ impl TestResponse {
     /// # Ok(())
     /// # }
     /// ```
+    ///
     #[must_use]
     pub fn json<T>(&self) -> T
     where
@@ -894,7 +895,10 @@ impl TestResponse {
         #[cfg(not(feature = "old-json-diff"))]
         {
             let expected_value = serde_json::to_value(expected).unwrap();
-            let result = expect_json_eq(&received, &expect::object().contains(expected_value));
+            let result = expect_json_eq(
+                &received,
+                &expect::object().propagated_contains(expected_value),
+            );
             if let Err(error) = result {
                 panic!(
                     "
@@ -2479,6 +2483,18 @@ mod test_assert_json_contains {
             "name": "Joe",
             "age": 20,
         }));
+    }
+
+    /// See: https://github.com/JosephLenton/axum-test/issues/151
+    #[tokio::test]
+    async fn it_should_propagate_contains_to_sub_objects() {
+        let json_result = json!({ "a": {"prop1": "value1"} }).to_string();
+        let app = Router::new().route(&"/json", get(|| async { json_result }));
+
+        let server = TestServer::new(app).unwrap();
+        let response = server.get("/json").await;
+
+        response.assert_json_contains(&json!({ "a": {} }));
     }
 }
 
