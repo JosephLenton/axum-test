@@ -105,7 +105,7 @@ Querying your application on the `TestServer` supports all of the common request
  - Typed Routing from Axum Extra
  - Reqwest integration
 
-## Contributions
+## ❤️ Contributions
 
 A big thanks to all of these who have helped!
 
@@ -113,4 +113,4 @@ A big thanks to all of these who have helped!
   <img src="https://contrib.rocks/image?repo=josephlenton/axum-test" />
 </a>
 
-Made with [contrib.rocks](https://contrib.rocks).
+Made with [contrib.rocks](https://contrib.rocks)
