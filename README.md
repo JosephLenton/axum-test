@@ -94,6 +94,45 @@ Querying your application on the `TestServer` supports all of the common request
  - Cookie, query, and header setting and reading
  - Status code reading and assertions
 
+### Powerful Json assertions
+
+The ability to assert only the _shape_ of the Json returned:
+
+```rust
+use axum_test::TestServer;
+use axum_test::expect_json;
+use std::time::Duration;
+
+// Your application
+let app = Router::new()
+    .route(&"/user/alan", get(|| async {
+        // ...
+    }));
+
+let server = TestServer::new(app)?;
+server.get(&"/user/alan")
+    .await
+    .assert_json(&json!({
+        "name": "Alan",
+
+        // expect a valid UUID
+        "id": expect_json::uuid(),
+
+        // expect an adult age
+        "age": expect_json::integer()
+                .in_range(18..=120),
+
+        // expect user to be created within the last minute
+        "created_at": expect_json::iso_date_time()
+                .within_past(Duration::from_secs(60))
+                .utc()
+    }));
+```
+
+Docs:
+ - [axum_test::TestResponse::assert_json](https://docs.rs/axum-test/latest/axum_test/struct.TestResponse.html#method.assert_json)
+ - [axum_test::expect_json](https://docs.rs/axum-test/latest/axum_test/expect_json/index.html)
+
 ### Also includes
 
  - WebSockets testing support
