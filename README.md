@@ -61,7 +61,7 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 | `reqwest`           | _off_         | Enables the `TestServer` being able to create [Reqwest](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) requests for querying. |
 | `old-json-diff`     | _off_         | Switches back to the old Json diff behaviour before Axum 18. If you find yourself needing this, then please raise an issue to let me know why.       |
 
-## Axum Compatability
+## Axum Compatibility
 
 The current version of Axum Test requires at least Axum v0.8.3.
 
