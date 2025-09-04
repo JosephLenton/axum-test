@@ -48,7 +48,6 @@ reqwest = ["dep:reqwest"]
 old-json-diff = ["dep:assert-json-diff"]
 
 [dependencies]
-auto-future = "1.0"
 axum = { version = "0.8.4", features = [] }
 anyhow = "1.0"
 bytes = "1.10"

@@ -35,13 +35,14 @@ where
     S: Service<Request<Body>, Response = RouterService> + Clone + Send + Sync + 'static,
     AnyhowError: From<S::Error>,
     S::Future: Send + Sync,
-    RouterService: Service<Request<Body>, Response = AxumResponse>,
+    RouterService: Service<Request<Body>, Response = AxumResponse> + Send,
+    RouterService::Future: Send,
     AnyhowError: From<RouterService::Error>,
 {
     fn send<'a>(
         &'a self,
         request: Request<Body>,
-    ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>>>> {
+    ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>> + Send>> {
         Box::pin(async {
             let body: Body = Bytes::new().into();
             let empty_request = Request::builder()
