@@ -41,7 +41,7 @@ impl TransportLayer for HttpTransportLayer {
     fn send<'a>(
         &'a self,
         request: Request<Body>,
-    ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>>>> {
+    ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>> + Send>> {
         Box::pin(async {
             let client = Client::builder(hyper_util::rt::TokioExecutor::new()).build_http();
             let hyper_response = client.request(request).await?;

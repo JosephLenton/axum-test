@@ -2,7 +2,6 @@ use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Error as AnyhowError;
 use anyhow::Result;
-use auto_future::AutoFuture;
 use axum::body::Body;
 use bytes::Bytes;
 use cookie::time::OffsetDateTime;
@@ -21,9 +20,10 @@ use std::fmt::Display;
 use std::fs::read;
 use std::fs::read_to_string;
 use std::fs::File;
-use std::future::IntoFuture;
+use std::future::{Future, IntoFuture};
 use std::io::BufReader;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
 use url::Url;
@@ -833,10 +833,10 @@ impl TryFrom<TestRequest> for Request<Body> {
 
 impl IntoFuture for TestRequest {
     type Output = TestResponse;
-    type IntoFuture = AutoFuture<TestResponse>;
+    type IntoFuture = Pin<Box<dyn Future<Output = TestResponse> + Send>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        AutoFuture::new(async { self.send().await.context("Sending request failed").unwrap() })
+        Box::pin(async { self.send().await.context("Sending request failed").unwrap() })
     }
 }
 
