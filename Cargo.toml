@@ -1,7 +1,7 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "18.0.2"
+version = "18.1.0"
 rust-version = "1.83"
 edition = "2021"
 license = "MIT"
@@ -85,7 +85,7 @@ rmp-serde = { version = "1.3", optional = true }
 axum-extra = { version = "0.10", features = ["typed-routing"], optional = true }
 
 # WebSockets
-uuid = { version = "1.12", optional = true, features = ["v4"]}
+uuid = { version = "1.18", optional = true, features = ["v4"]}
 base64 = { version = "0.22", optional = true }
 futures-util = { version = "0.3", optional = true }
 tokio-tungstenite = { version = "0.27", optional = true }
