@@ -833,11 +833,7 @@ impl TestResponse {
             let received = self.json::<T>();
             if *expected != received {
                 if let Err(error) = expect_json_eq(&received, &expected) {
-                    panic!(
-                        "
-{error}
-",
-                    );
+                    panic!("{error}");
                 }
             }
         }
@@ -900,12 +896,98 @@ impl TestResponse {
                 &expect::object().propagated_contains(expected_value),
             );
             if let Err(error) = result {
-                panic!(
-                    "
-{error}
-",
-                );
+                panic!("{error}");
             }
+        }
+    }
+
+    /// Asserts the response contains an array that includes all the specified elements.
+    /// This is useful for partial array matching where you want to verify that certain
+    /// elements are present in the array without requiring an exact match.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// use axum::Router;
+    /// use axum::extract::Json;
+    /// use axum::routing::get;
+    /// use axum_test::TestServer;
+    /// use serde_json::json;
+    ///
+    /// let app = Router::new()
+    ///     .route(&"/users", get(|| async {
+    ///         Json(json!([
+    ///             {"id": 1, "name": "Alice", "role": "admin"},
+    ///             {"id": 2, "name": "Bob", "role": "user"},
+    ///             {"id": 3, "name": "Charlie", "role": "user"}
+    ///         ]))
+    ///     }));
+    /// let server = TestServer::new(app)?;
+    ///
+    /// // Checks the response array contains these items (partial match)
+    /// server.get(&"/users")
+    ///     .await
+    ///     .assert_array_contains(&json!([
+    ///         {"name": "Alice", "role": "admin"},
+    ///         {"name": "Bob"}
+    ///     ]));
+    /// #
+    /// # Ok(()) }
+    /// ```
+    #[track_caller]
+    pub fn assert_array_contains<T>(&self, expected: &T)
+    where
+        T: Serialize,
+    {
+        let received = self.json::<Value>();
+
+        // Ensure the response is an array
+        let received_array = match &received {
+            Value::Array(arr) => arr,
+            _ => panic!("Response is not an array, received: {:?}", received),
+        };
+
+        // Convert expected to Value and ensure it's an array
+        let expected_value = serde_json::to_value(expected).unwrap();
+        let expected_array = match expected_value {
+            Value::Array(arr) => arr,
+            _ => panic!("Expected value must be an array for assert_array_contains"),
+        };
+
+        // Check each expected item is contained in the received array
+        for expected_item in expected_array {
+            let found = received_array.iter().any(|received_item| {
+                self.is_json_item_contained(&expected_item, received_item)
+            });
+
+            if !found {
+                panic!("Expected array item {:?} not found in response array {:?}", expected_item, received_array);
+            }
+        }
+    }
+
+    /// This method checks if an expected JSON item is contained within a received JSON item
+    /// This supports partial matching for objects
+    fn is_json_item_contained(&self, expected: &Value, received: &Value) -> bool {
+        match (expected, received) {
+            (Value::Object(expected_obj), Value::Object(received_obj)) => {
+                // For objects, check that all expected fields are present and match
+                expected_obj.iter().all(|(key, expected_val)| {
+                    received_obj.get(key).map_or(false, |received_val| {
+                        self.is_json_item_contained(expected_val, received_val)
+                    })
+                })
+            }
+            (Value::Array(expected_arr), Value::Array(received_arr)) => {
+                // For arrays, check that all expected elements are contained
+                expected_arr.iter().all(|expected_elem| {
+                    received_arr.iter().any(|received_elem| {
+                        self.is_json_item_contained(expected_elem, received_elem)
+                    })
+                })
+            }
+            // For primitive values, direct comparison
+            _ => expected == received,
         }
     }
 
@@ -2872,5 +2954,151 @@ mod test_into_websocket {
             .unwrap();
 
         let _ = server.get_websocket(&"/ws").await.into_websocket().await;
+    }
+}
+
+#[cfg(test)]
+mod test_assert_array_contains {
+    use crate::TestServer;
+    use axum::routing::get;
+    use axum::Json;
+    use axum::Router;
+    use serde::Deserialize;
+    use serde::Serialize;
+    use serde_json::json;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct User {
+        id: u32,
+        name: String,
+        role: String,
+    }
+
+    async fn route_get_users() -> Json<Vec<User>> {
+        Json(vec![
+            User {
+                id: 1,
+                name: "Alice".to_string(),
+                role: "admin".to_string(),
+            },
+            User {
+                id: 2,
+                name: "Bob".to_string(),
+                role: "user".to_string(),
+            },
+            User {
+                id: 3,
+                name: "Charlie".to_string(),
+                role: "user".to_string(),
+            },
+        ])
+    }
+
+    async fn route_get_simple_array() -> Json<Vec<String>> {
+        Json(vec!["apple".to_string(), "banana".to_string(), "cherry".to_string()])
+    }
+
+    #[tokio::test]
+    async fn it_should_match_partial_objects_in_array() {
+        let app = Router::new().route(&"/users", get(route_get_users));
+        let server = TestServer::new(app).unwrap();
+
+        // Test partial object matching
+        server.get(&"/users").await.assert_array_contains(&json!([
+            {"name": "Alice", "role": "admin"},
+            {"name": "Bob"}
+        ]));
+    }
+
+    #[tokio::test]
+    async fn it_should_match_exact_objects_in_array() {
+        let app = Router::new().route(&"/users", get(route_get_users));
+        let server = TestServer::new(app).unwrap();
+
+        // Test exact object matching
+        server.get(&"/users").await.assert_array_contains(&json!([
+            {"id": 1, "name": "Alice", "role": "admin"}
+        ]));
+    }
+
+    #[tokio::test]
+    async fn it_should_match_simple_values_in_array() {
+        let app = Router::new().route(&"/fruits", get(route_get_simple_array));
+        let server = TestServer::new(app).unwrap();
+
+        // Test simple value matching
+        server.get(&"/fruits").await.assert_array_contains(&json!([
+            "apple", "cherry"
+        ]));
+    }
+
+    #[tokio::test]
+    async fn it_should_match_single_element() {
+        let app = Router::new().route(&"/users", get(route_get_users));
+        let server = TestServer::new(app).unwrap();
+
+        // Test single element matching
+        server.get(&"/users").await.assert_array_contains(&json!([
+            {"name": "Charlie", "role": "user"}
+        ]));
+    }
+
+    #[tokio::test]
+    async fn it_should_match_empty_array() {
+        let app = Router::new().route(&"/users", get(route_get_users));
+        let server = TestServer::new(app).unwrap();
+
+        // Test empty array (should pass as empty set is subset)
+        server.get(&"/users").await.assert_array_contains(&json!([]));
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_element_not_found() {
+        let app = Router::new().route(&"/users", get(route_get_users));
+        let server = TestServer::new(app).unwrap();
+
+        // This should panic because "David" is not in the array
+        server.get(&"/users").await.assert_array_contains(&json!([
+            {"name": "David", "role": "user"}
+        ]));
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_response_is_not_array() {
+        let app = Router::new().route(&"/object", get(|| async {
+            Json(json!({"not": "an array"}))
+        }));
+        let server = TestServer::new(app).unwrap();
+
+        // This should panic because response is not an array
+        server.get(&"/object").await.assert_array_contains(&json!([
+            {"name": "Alice"}
+        ]));
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_expected_is_not_array() {
+        let app = Router::new().route(&"/users", get(route_get_users));
+        let server = TestServer::new(app).unwrap();
+
+        // This should panic because expected is not an array
+        server.get(&"/users").await.assert_array_contains(&json!({
+            "name": "Alice"
+        }));
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_when_partial_match_fails() {
+        let app = Router::new().route(&"/users", get(route_get_users));
+        let server = TestServer::new(app).unwrap();
+
+        // This should panic because Alice's role is "admin", not "user"
+        server.get(&"/users").await.assert_array_contains(&json!([
+            {"name": "Alice", "role": "user"}
+        ]));
     }
 }
