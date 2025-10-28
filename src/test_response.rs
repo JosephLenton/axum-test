@@ -1211,6 +1211,12 @@ impl TestResponse {
         self.assert_not_status(StatusCode::OK)
     }
 
+    /// Assert the response status code is 204.
+    #[track_caller]
+    pub fn assert_status_no_content(&self) {
+        self.assert_status(StatusCode::NO_CONTENT)
+    }
+
     /// Assert the response status code is 303.
     #[track_caller]
     pub fn assert_status_see_other(&self) {
