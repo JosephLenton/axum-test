@@ -2446,6 +2446,10 @@ mod test_assert_json_contains {
         })
     }
 
+    async fn route_get_array() -> Json<Vec<u32>> {
+        Json(vec![1, 2, 3, 4, 5])
+    }
+
     #[tokio::test]
     async fn it_should_match_subset_of_json_returned() {
         let app = Router::new().route(&"/json", get(route_get_json));
@@ -2495,6 +2499,14 @@ mod test_assert_json_contains {
         let response = server.get("/json").await;
 
         response.assert_json_contains(&json!({ "a": {} }));
+    }
+
+    #[tokio::test]
+    async fn it_should_contains_on_array_responses() {
+        let app = Router::new().route(&"/array", get(route_get_array));
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/array").await.assert_json_contains(&json!([1, 2, 3]));
     }
 }
 

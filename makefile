@@ -13,6 +13,7 @@ test:
 	cargo +stable test --example=example-websocket-ping-pong --features ws
 	cargo +stable test --example=example-websocket-chat --features ws
 	cargo +stable test  --features all
+	cargo +stable test  --features old-json-diff
 	cargo +stable test
 
 	# Check minimum version works, excluding shuttle
