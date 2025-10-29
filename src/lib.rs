@@ -73,7 +73,7 @@
 #![allow(clippy::derivable_impls)]
 #![allow(clippy::manual_range_contains)]
 #![forbid(unsafe_code)]
-#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub(crate) mod internals;
 
