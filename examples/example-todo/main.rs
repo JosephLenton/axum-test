@@ -15,15 +15,15 @@
 //! At the bottom of this file are a series of tests for these endpoints.
 //!
 
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
+use axum::Router;
 use axum::extract::Json;
 use axum::extract::State;
 use axum::routing::get;
 use axum::routing::post;
 use axum::routing::put;
 use axum::serve::serve;
-use axum::Router;
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::cookie::CookieJar;
 use http::StatusCode;

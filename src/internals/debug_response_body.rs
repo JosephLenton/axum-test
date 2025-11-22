@@ -121,14 +121,14 @@ fn write_yaml(f: &mut Formatter<'_>, response: &TestResponse) -> FmtResult {
 mod test_fmt {
     use super::*;
     use crate::TestServer;
+    use axum::Json;
+    use axum::Router;
     use axum::body::Body;
     use axum::response::IntoResponse;
     use axum::response::Response;
     use axum::routing::get;
-    use axum::Json;
-    use axum::Router;
-    use http::header;
     use http::HeaderValue;
+    use http::header;
     use pretty_assertions::assert_eq;
     use serde::Deserialize;
     use serde::Serialize;

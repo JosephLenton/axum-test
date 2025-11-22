@@ -1,9 +1,9 @@
 use anyhow::Result;
 
-use crate::transport_layer::IntoTransportLayer;
 use crate::TestServer;
 use crate::TestServerBuilder;
 use crate::Transport;
+use crate::transport_layer::IntoTransportLayer;
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
 /// It implements [`Default`] to ease building.
@@ -155,9 +155,9 @@ impl From<TestServerBuilder> for TestServerConfig {
 
 #[cfg(test)]
 mod test_scheme {
+    use axum::Router;
     use axum::extract::Request;
     use axum::routing::get;
-    use axum::Router;
 
     use crate::TestServer;
     use crate::TestServerConfig;

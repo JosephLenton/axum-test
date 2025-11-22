@@ -1,27 +1,27 @@
-use crate::internals::format_status_code_range;
 use crate::internals::DebugResponseBody;
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::TryIntoRangeBounds;
+use crate::internals::format_status_code_range;
 use anyhow::Context;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
-use http::header::HeaderName;
-use http::header::SET_COOKIE;
-use http::response::Parts;
 use http::HeaderMap;
 use http::HeaderValue;
 use http::Method;
 use http::StatusCode;
-use serde::de::DeserializeOwned;
+use http::header::HeaderName;
+use http::header::SET_COOKIE;
+use http::response::Parts;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Display;
-use std::fs::read_to_string;
 use std::fs::File;
+use std::fs::read_to_string;
 use std::io::BufReader;
 use std::ops::RangeBounds;
 use std::path::Path;
@@ -31,9 +31,9 @@ use url::Url;
 use pretty_assertions::{assert_eq, assert_ne};
 
 #[cfg(feature = "ws")]
-use crate::internals::TestResponseWebSocket;
-#[cfg(feature = "ws")]
 use crate::TestWebSocket;
+#[cfg(feature = "ws")]
+use crate::internals::TestResponseWebSocket;
 
 #[cfg(not(feature = "old-json-diff"))]
 use expect_json::expect;
@@ -569,7 +569,10 @@ impl TestResponse {
         let debug_request_format = self.debug_request_format();
         let has_header = self.contains_header(name);
 
-        assert!(has_header, "Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}");
+        assert!(
+            has_header,
+            "Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}"
+        );
     }
 
     #[track_caller]
@@ -592,7 +595,9 @@ impl TestResponse {
 
         match maybe_found_header_value {
             None => {
-                panic!("Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}")
+                panic!(
+                    "Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}"
+                )
             }
             Some(found_header_value) => {
                 assert_eq!(expected_header_value, found_header_value,)
@@ -709,7 +714,9 @@ impl TestResponse {
 
         // Using the mock approach will just fail.
         if self.websockets.transport_type != TransportLayerType::Http {
-            unimplemented!("WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`");
+            unimplemented!(
+                "WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`"
+            );
         }
 
         let debug_request_format = self.debug_request_format().to_string();
@@ -1050,8 +1057,7 @@ impl TestResponse {
         let debug_body = DebugResponseBody(self);
 
         assert_ne!(
-            expected_status_code,
-            self.status_code,
+            expected_status_code, self.status_code,
             "Expected status code to not be {expected_debug}, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
     }
@@ -1123,6 +1129,7 @@ impl TestResponse {
     /// #
     /// # Ok(()) }
     /// ```
+    #[track_caller]
     pub fn assert_status_in_range<R, S>(&self, expected_status_range: R)
     where
         R: RangeBounds<S> + TryIntoRangeBounds<StatusCode> + Debug,
@@ -1180,6 +1187,7 @@ impl TestResponse {
     /// #
     /// # Ok(()) }
     /// ```
+    #[track_caller]
     pub fn assert_status_not_in_range<R, S>(&self, expected_status_range: R)
     where
         R: RangeBounds<S> + TryIntoRangeBounds<StatusCode> + Debug,
@@ -1308,9 +1316,9 @@ impl From<TestResponse> for Bytes {
 #[cfg(test)]
 mod test_assert_header {
     use crate::TestServer;
+    use axum::Router;
     use axum::http::HeaderMap;
     use axum::routing::get;
-    use axum::Router;
 
     async fn route_get_header() -> HeaderMap {
         let mut headers = HeaderMap::new();
@@ -1360,9 +1368,9 @@ mod test_assert_header {
 #[cfg(test)]
 mod test_assert_contains_header {
     use crate::TestServer;
+    use axum::Router;
     use axum::http::HeaderMap;
     use axum::routing::get;
-    use axum::Router;
 
     async fn route_get_header() -> HeaderMap {
         let mut headers = HeaderMap::new();
@@ -1399,8 +1407,8 @@ mod test_assert_contains_header {
 #[cfg(test)]
 mod test_assert_success {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use http::StatusCode;
 
     pub async fn route_get_pass() -> StatusCode {
@@ -1442,8 +1450,8 @@ mod test_assert_success {
 #[cfg(test)]
 mod test_assert_failure {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use http::StatusCode;
 
     pub async fn route_get_pass() -> StatusCode {
@@ -1483,8 +1491,8 @@ mod test_assert_failure {
 #[cfg(test)]
 mod test_assert_status {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use http::StatusCode;
 
     pub async fn route_get_ok() -> StatusCode {
@@ -1512,8 +1520,8 @@ mod test_assert_status {
 #[cfg(test)]
 mod test_assert_not_status {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use http::StatusCode;
 
     pub async fn route_get_ok() -> StatusCode {
@@ -1544,8 +1552,8 @@ mod test_assert_not_status {
 #[cfg(test)]
 mod test_assert_status_in_range {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::routing::Router;
+    use axum::routing::get;
     use http::StatusCode;
     use std::ops::RangeFull;
 
@@ -1741,8 +1749,8 @@ mod test_assert_status_in_range {
 #[cfg(test)]
 mod test_assert_status_not_in_range {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::routing::Router;
+    use axum::routing::get;
     use http::StatusCode;
     use std::ops::RangeFull;
 
@@ -1939,11 +1947,11 @@ mod test_assert_status_not_in_range {
 #[cfg(test)]
 mod test_into_bytes {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Json;
     use axum::Router;
-    use serde_json::json;
+    use axum::routing::get;
     use serde_json::Value;
+    use serde_json::json;
 
     async fn route_get_json() -> Json<Value> {
         Json(json!({
@@ -1967,9 +1975,9 @@ mod test_into_bytes {
 #[cfg(test)]
 mod test_content_type {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Json;
     use axum::Router;
+    use axum::routing::get;
     use serde::Deserialize;
     use serde::Serialize;
 
@@ -2022,9 +2030,9 @@ mod test_content_type {
 #[cfg(test)]
 mod test_json {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Json;
     use axum::Router;
+    use axum::routing::get;
     use serde::Deserialize;
     use serde::Serialize;
 
@@ -2063,8 +2071,8 @@ mod test_json {
 #[cfg(test)]
 mod test_yaml {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use axum_yaml::Yaml;
     use serde::Deserialize;
     use serde::Serialize;
@@ -2104,8 +2112,8 @@ mod test_yaml {
 #[cfg(test)]
 mod test_msgpack {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use axum_msgpack::MsgPack;
     use serde::Deserialize;
     use serde::Serialize;
@@ -2144,9 +2152,9 @@ mod test_msgpack {
 #[cfg(test)]
 mod test_form {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Form;
     use axum::Router;
+    use axum::routing::get;
     use serde::Deserialize;
     use serde::Serialize;
 
@@ -2184,8 +2192,8 @@ mod test_form {
 #[cfg(test)]
 mod test_from {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use bytes::Bytes;
 
     #[tokio::test]
@@ -2203,8 +2211,8 @@ mod test_from {
 #[cfg(test)]
 mod test_assert_text {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
 
     fn new_test_server() -> TestServer {
         async fn route_get_text() -> &'static str {
@@ -2245,8 +2253,8 @@ mod test_assert_text {
 #[cfg(test)]
 mod test_assert_text_contains {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
 
     fn new_test_server() -> TestServer {
         async fn route_get_text() -> &'static str {
@@ -2289,8 +2297,8 @@ mod test_assert_text_contains {
 #[cfg(test)]
 mod test_assert_text_from_file {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::routing::Router;
+    use axum::routing::get;
 
     #[tokio::test]
     async fn it_should_match_from_file() {
@@ -2320,10 +2328,10 @@ mod test_assert_text_from_file {
 mod test_assert_json {
     use super::*;
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Form;
     use axum::Json;
     use axum::Router;
+    use axum::routing::get;
     use serde::Deserialize;
     use serde_json::json;
 
@@ -2429,10 +2437,10 @@ mod test_assert_json {
 #[cfg(test)]
 mod test_assert_json_contains {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Form;
     use axum::Json;
     use axum::Router;
+    use axum::routing::get;
     use serde::Deserialize;
     use serde::Serialize;
     use serde_json::json;
@@ -2516,10 +2524,10 @@ mod test_assert_json_contains {
 #[cfg(test)]
 mod test_assert_json_from_file {
     use crate::TestServer;
-    use axum::routing::get;
-    use axum::routing::Router;
     use axum::Form;
     use axum::Json;
+    use axum::routing::Router;
+    use axum::routing::get;
     use serde::Deserialize;
     use serde::Serialize;
     use serde_json::json;
@@ -2598,9 +2606,9 @@ mod test_assert_json_from_file {
 #[cfg(test)]
 mod test_assert_yaml {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Form;
     use axum::Router;
+    use axum::routing::get;
     use axum_yaml::Yaml;
     use serde::Deserialize;
     use serde::Serialize;
@@ -2668,9 +2676,9 @@ mod test_assert_yaml {
 #[cfg(test)]
 mod test_assert_yaml_from_file {
     use crate::TestServer;
-    use axum::routing::get;
-    use axum::routing::Router;
     use axum::Form;
+    use axum::routing::Router;
+    use axum::routing::get;
     use axum_yaml::Yaml;
     use serde::Deserialize;
     use serde::Serialize;
@@ -2749,10 +2757,10 @@ mod test_assert_yaml_from_file {
 #[cfg(test)]
 mod test_assert_form {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Form;
     use axum::Json;
     use axum::Router;
+    use axum::routing::get;
     use serde::Deserialize;
     use serde::Serialize;
 
@@ -2818,8 +2826,8 @@ mod test_assert_form {
 #[cfg(test)]
 mod test_text {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
 
     #[tokio::test]
     async fn it_should_deserialize_into_text() {
@@ -2842,11 +2850,11 @@ mod test_text {
 mod test_into_websocket {
     use crate::TestServer;
 
-    use axum::extract::ws::WebSocket;
+    use axum::Router;
     use axum::extract::WebSocketUpgrade;
+    use axum::extract::ws::WebSocket;
     use axum::response::Response;
     use axum::routing::get;
-    use axum::Router;
 
     fn new_test_router() -> Router {
         pub async fn route_get_websocket(ws: WebSocketUpgrade) -> Response {

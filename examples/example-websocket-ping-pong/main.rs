@@ -11,12 +11,12 @@
 //!
 
 use anyhow::Result;
-use axum::extract::ws::WebSocket;
+use axum::Router;
 use axum::extract::WebSocketUpgrade;
+use axum::extract::ws::WebSocket;
 use axum::response::Response;
 use axum::routing::get;
 use axum::serve::serve;
-use axum::Router;
 use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;

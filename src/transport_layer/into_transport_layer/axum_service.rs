@@ -23,9 +23,9 @@ impl IntoTransportLayer for AxumService {
 mod test_into_http_transport_layer_for_axum_service {
     use super::*;
 
+    use axum::Router;
     use axum::extract::State;
     use axum::routing::get;
-    use axum::Router;
 
     use crate::TestServer;
 
@@ -56,9 +56,9 @@ mod test_into_http_transport_layer_for_axum_service {
 mod test_into_mock_transport_layer_for_axum_service {
     use super::*;
 
+    use axum::Router;
     use axum::extract::State;
     use axum::routing::get;
-    use axum::Router;
 
     use crate::TestServer;
 

@@ -49,11 +49,11 @@ where
 #[cfg(test)]
 mod test_into_http_transport_layer_for_into_make_service {
     use crate::TestServer;
+    use axum::Router;
+    use axum::ServiceExt;
     use axum::extract::Request;
     use axum::extract::State;
     use axum::routing::get;
-    use axum::Router;
-    use axum::ServiceExt;
     use tower::Layer;
     use tower_http::normalize_path::NormalizePathLayer;
 
@@ -123,11 +123,11 @@ mod test_into_http_transport_layer_for_into_make_service {
 #[cfg(test)]
 mod test_into_mock_transport_layer_for_into_make_service {
     use crate::TestServer;
+    use axum::Router;
+    use axum::ServiceExt;
     use axum::extract::Request;
     use axum::extract::State;
     use axum::routing::get;
-    use axum::Router;
-    use axum::ServiceExt;
     use tower::Layer;
     use tower_http::normalize_path::NormalizePathLayer;
 
