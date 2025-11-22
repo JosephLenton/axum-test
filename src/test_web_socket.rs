@@ -17,6 +17,9 @@ use tokio_tungstenite::WebSocketStream;
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
 
+#[cfg(not(feature = "old-json-diff"))]
+use expect_json::expect_json_eq;
+
 #[derive(Debug)]
 pub struct TestWebSocket {
     stream: WebSocketStream<TokioIo<Upgraded>>,
@@ -144,9 +147,27 @@ impl TestWebSocket {
 
     pub async fn assert_receive_json<T>(&mut self, expected: &T)
     where
-        T: DeserializeOwned + PartialEq<T> + Debug,
+        T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
-        assert_eq!(*expected, self.receive_json::<T>().await);
+        let received = self.receive_json::<T>().await;
+
+        #[cfg(feature = "old-json-diff")]
+        {
+            assert_eq!(*expected, received);
+        }
+
+        #[cfg(not(feature = "old-json-diff"))]
+        {
+            if *expected != received {
+                if let Err(error) = expect_json_eq(&received, &expected) {
+                    panic!(
+                        "
+{error}
+",
+                    );
+                }
+            }
+        }
     }
 
     pub async fn assert_receive_text<C>(&mut self, expected: C)
@@ -348,7 +369,6 @@ mod test_assert_receive_text {
 #[cfg(test)]
 mod test_assert_receive_text_contains {
     use crate::TestServer;
-
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
     use axum::extract::WebSocketUpgrade;
@@ -423,7 +443,6 @@ mod test_assert_receive_text_contains {
 #[cfg(test)]
 mod test_assert_receive_json {
     use crate::TestServer;
-
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
     use axum::extract::WebSocketUpgrade;
@@ -432,6 +451,11 @@ mod test_assert_receive_json {
     use axum::Router;
     use serde_json::json;
     use serde_json::Value;
+
+    #[cfg(not(feature = "old-json-diff"))]
+    use crate::testing::ExpectStrMinLen;
+    #[cfg(not(feature = "old-json-diff"))]
+    use expect_json::expect;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -501,6 +525,76 @@ mod test_assert_receive_json {
                 "message": {
                     "hello": "world",
                     "numbers": [1, 2, 3],
+                },
+            }))
+            .await;
+    }
+
+    #[cfg(not(feature = "old-json-diff"))]
+    #[tokio::test]
+    async fn it_should_work_with_custom_expect_op() {
+        let server = new_test_app();
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        // Once for text
+        websocket
+            .assert_receive_json(&json!({
+                "format": "text",
+                "message": {
+                    "hello": ExpectStrMinLen { min: 3 },
+                    "numbers": expect::array().len(3).all(expect::integer()),
+                },
+            }))
+            .await;
+
+        // Again for binary
+        websocket
+            .assert_receive_json(&json!({
+                "format": "binary",
+                "message": {
+                    "hello": ExpectStrMinLen { min: 3 },
+                    "numbers": expect::array().len(3).all(expect::integer()),
+                },
+            }))
+            .await;
+    }
+
+    #[cfg(not(feature = "old-json-diff"))]
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_custom_expect_op_fails() {
+        let server = new_test_app();
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        // Once for text
+        websocket
+            .assert_receive_json(&json!({
+                "format": "text",
+                "message": {
+                    "hello": ExpectStrMinLen { min: 10 },
+                    "numbers": expect::array().len(3).all(expect::integer()),
                 },
             }))
             .await;

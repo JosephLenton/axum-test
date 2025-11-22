@@ -823,14 +823,15 @@ impl TestResponse {
     where
         T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
+        let received = self.json::<T>();
+
         #[cfg(feature = "old-json-diff")]
         {
-            assert_eq!(*expected, self.json::<T>());
+            assert_eq!(*expected, received);
         }
 
         #[cfg(not(feature = "old-json-diff"))]
         {
-            let received = self.json::<T>();
             if *expected != received {
                 if let Err(error) = expect_json_eq(&received, &expected) {
                     panic!(
@@ -2317,19 +2318,17 @@ mod test_assert_text_from_file {
 
 #[cfg(test)]
 mod test_assert_json {
-    use crate::expect_json::expect_core::Context;
-    use crate::expect_json::expect_core::ExpectOp;
-    use crate::expect_json::expect_core::ExpectOpResult;
+    use super::*;
     use crate::TestServer;
-    // This needs to be the external crate, as the `::axum_test` path doesn't work within our tests.
-    use ::expect_json::expect_core::expect_op;
     use axum::routing::get;
     use axum::Form;
     use axum::Json;
     use axum::Router;
     use serde::Deserialize;
-    use serde::Serialize;
     use serde_json::json;
+
+    #[cfg(not(feature = "old-json-diff"))]
+    use crate::testing::ExpectStrMinLen;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2364,6 +2363,18 @@ mod test_assert_json {
     }
 
     #[tokio::test]
+    async fn it_should_match_json_returned_using_json_value() {
+        let app = Router::new().route(&"/json", get(route_get_json));
+
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_json(&json!({
+            "name": "Joe",
+            "age": 20,
+        }));
+    }
+
+    #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/json", get(route_get_json));
@@ -2389,29 +2400,27 @@ mod test_assert_json {
         });
     }
 
+    #[cfg(not(feature = "old-json-diff"))]
     #[tokio::test]
     async fn it_should_work_with_custom_expect_op() {
-        #[expect_op]
-        #[derive(Clone, Debug)]
-        struct ExpectStrMinLen {
-            min: usize,
-        }
-
-        impl ExpectOp for ExpectStrMinLen {
-            fn on_string(&self, _context: &mut Context<'_>, received: &str) -> ExpectOpResult<()> {
-                if received.len() < self.min {
-                    panic!("String is too short, received: {received}");
-                }
-
-                Ok(())
-            }
-        }
-
         let app = Router::new().route(&"/json", get(route_get_json));
         let server = TestServer::new(app).unwrap();
 
         server.get(&"/json").await.assert_json(&json!({
             "name": ExpectStrMinLen { min: 3 },
+            "age": 20,
+        }));
+    }
+
+    #[cfg(not(feature = "old-json-diff"))]
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_custom_expect_op_fails() {
+        let app = Router::new().route(&"/json", get(route_get_json));
+        let server = TestServer::new(app).unwrap();
+
+        server.get(&"/json").await.assert_json(&json!({
+            "name": ExpectStrMinLen { min: 10 },
             "age": 20,
         }));
     }

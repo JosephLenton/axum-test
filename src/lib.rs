@@ -112,6 +112,9 @@ pub mod expect_json;
 pub use http;
 
 #[cfg(test)]
+mod testing;
+
+#[cfg(test)]
 mod integrated_test_cookie_saving {
     use super::*;
 
