@@ -2,8 +2,8 @@
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
 version = "18.3.0"
-rust-version = "1.83"
-edition = "2021"
+rust-version = "1.85"
+edition = "2024"
 license = "MIT"
 description = "For spinning up and testing Axum servers"
 keywords = ["testing", "test", "axum"]
