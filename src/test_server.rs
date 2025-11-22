@@ -1,6 +1,6 @@
-use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::anyhow;
 use cookie::Cookie;
 use cookie::CookieJar;
 use http::HeaderName;
@@ -23,17 +23,17 @@ use reqwest::Client;
 #[cfg(feature = "reqwest")]
 use reqwest::RequestBuilder;
 
+use crate::TestRequest;
+use crate::TestRequestConfig;
+use crate::TestServerBuilder;
+use crate::TestServerConfig;
+use crate::Transport;
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
-use crate::TestRequest;
-use crate::TestRequestConfig;
-use crate::TestServerBuilder;
-use crate::TestServerConfig;
-use crate::Transport;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
@@ -842,7 +842,9 @@ fn build_url(
     if let Some(scheme) = path_uri.scheme_str() {
         if is_http_restricted {
             if has_different_schema(&url, &path_uri) || has_different_authority(&url, &path_uri) {
-                return Err(anyhow!("Request disallowed for path '{path}', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this."));
+                return Err(anyhow!(
+                    "Request disallowed for path '{path}', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this."
+                ));
             }
         } else {
             url.set_scheme(scheme)
@@ -1119,8 +1121,8 @@ mod test_build_url {
 
 #[cfg(test)]
 mod test_new {
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use std::net::SocketAddr;
 
     use crate::TestServer;
@@ -1148,8 +1150,8 @@ mod test_new {
 mod test_get {
     use super::*;
 
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use reserve_port::ReservedSocketAddr;
 
     async fn get_ping() -> &'static str {
@@ -1289,8 +1291,8 @@ mod test_get {
 mod test_reqwest_get {
     use super::*;
 
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -1322,9 +1324,9 @@ mod test_reqwest_get {
 mod test_reqwest_post {
     use super::*;
 
-    use axum::routing::post;
     use axum::Json;
     use axum::Router;
+    use axum::routing::post;
     use serde::Deserialize;
 
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -1575,8 +1577,8 @@ mod test_server_url {
 mod test_add_cookie {
     use crate::TestServer;
 
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use axum_extra::extract::cookie::CookieJar;
     use cookie::Cookie;
 
@@ -1608,8 +1610,8 @@ mod test_add_cookie {
 mod test_add_cookies {
     use crate::TestServer;
 
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use axum_extra::extract::cookie::CookieJar as AxumCookieJar;
     use cookie::Cookie;
     use cookie::CookieJar;
@@ -1649,8 +1651,8 @@ mod test_add_cookies {
 mod test_clear_cookies {
     use crate::TestServer;
 
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use axum_extra::extract::cookie::CookieJar as AxumCookieJar;
     use cookie::Cookie;
     use cookie::CookieJar;
@@ -1689,12 +1691,12 @@ mod test_clear_cookies {
 mod test_add_header {
     use super::*;
     use crate::TestServer;
+    use axum::Router;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
-    use axum::Router;
-    use http::request::Parts;
     use http::HeaderName;
     use http::HeaderValue;
+    use http::request::Parts;
     use hyper::StatusCode;
     use std::marker::Sync;
 
@@ -1746,12 +1748,12 @@ mod test_add_header {
 mod test_clear_headers {
     use super::*;
     use crate::TestServer;
+    use axum::Router;
     use axum::extract::FromRequestParts;
     use axum::routing::get;
-    use axum::Router;
-    use http::request::Parts;
     use http::HeaderName;
     use http::HeaderValue;
+    use http::request::Parts;
     use hyper::StatusCode;
     use std::marker::Sync;
 
@@ -1803,9 +1805,9 @@ mod test_clear_headers {
 
 #[cfg(test)]
 mod test_add_query_params {
+    use axum::Router;
     use axum::extract::Query;
     use axum::routing::get;
-    use axum::Router;
 
     use serde::Deserialize;
     use serde::Serialize;
@@ -1906,9 +1908,9 @@ mod test_add_query_params {
 
 #[cfg(test)]
 mod test_add_query_param {
+    use axum::Router;
     use axum::extract::Query;
     use axum::routing::get;
-    use axum::Router;
 
     use serde::Deserialize;
     use serde::Serialize;
@@ -1981,9 +1983,9 @@ mod test_add_query_param {
 
 #[cfg(test)]
 mod test_add_raw_query_param {
+    use axum::Router;
     use axum::extract::Query as AxumStdQuery;
     use axum::routing::get;
-    use axum::Router;
     use axum_extra::extract::Query as AxumExtraQuery;
     use serde::Deserialize;
     use serde::Serialize;
@@ -2072,9 +2074,9 @@ mod test_add_raw_query_param {
 
 #[cfg(test)]
 mod test_clear_query_params {
+    use axum::Router;
     use axum::extract::Query;
     use axum::routing::get;
-    use axum::Router;
 
     use serde::Deserialize;
     use serde::Serialize;
@@ -2144,8 +2146,8 @@ mod test_clear_query_params {
 mod test_expect_success_by_default {
     use super::*;
 
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
 
     #[tokio::test]
     async fn it_should_not_panic_by_default_if_accessing_404_route() {
@@ -2191,10 +2193,10 @@ mod test_expect_success_by_default {
 mod test_content_type {
     use super::*;
 
-    use axum::routing::get;
     use axum::Router;
-    use http::header::CONTENT_TYPE;
+    use axum::routing::get;
     use http::HeaderMap;
+    use http::header::CONTENT_TYPE;
 
     async fn get_content_type(headers: HeaderMap) -> String {
         headers
@@ -2224,8 +2226,8 @@ mod test_content_type {
 #[cfg(test)]
 mod test_expect_success {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use http::StatusCode;
 
     #[tokio::test]
@@ -2280,8 +2282,8 @@ mod test_expect_success {
 #[cfg(test)]
 mod test_expect_failure {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use http::StatusCode;
 
     #[tokio::test]
@@ -2336,9 +2338,9 @@ mod test_expect_failure {
 
 #[cfg(test)]
 mod test_scheme {
+    use axum::Router;
     use axum::extract::Request;
     use axum::routing::get;
-    use axum::Router;
 
     use crate::TestServer;
 
@@ -2632,8 +2634,8 @@ mod test_typed_method {
 #[cfg(test)]
 mod test_sync {
     use super::*;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use std::cell::OnceCell;
 
     #[tokio::test]
@@ -2657,10 +2659,10 @@ mod test_sync {
 mod test_is_running {
     use super::*;
     use crate::util::new_random_tokio_tcp_listener;
-    use axum::routing::get;
-    use axum::routing::IntoMakeService;
-    use axum::serve;
     use axum::Router;
+    use axum::routing::IntoMakeService;
+    use axum::routing::get;
+    use axum::serve;
     use std::time::Duration;
     use tokio::sync::Notify;
     use tokio::time::sleep;

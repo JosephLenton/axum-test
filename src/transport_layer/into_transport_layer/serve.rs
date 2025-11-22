@@ -3,9 +3,9 @@ use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 use crate::util::ServeHandle;
-use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::anyhow;
 use axum::extract::Request;
 use axum::response::Response;
 use axum::serve::IncomingStream;
@@ -29,11 +29,15 @@ where
         self,
         _builder: TransportLayerBuilder,
     ) -> Result<Box<dyn TransportLayer>> {
-        Err(anyhow!("`Serve` must be started with http or mock transport. Do not set any transport on `TestServerConfig`."))
+        Err(anyhow!(
+            "`Serve` must be started with http or mock transport. Do not set any transport on `TestServerConfig`."
+        ))
     }
 
     fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
-        Err(anyhow!("`Serve` cannot be mocked, as it's underlying implementation requires a real connection. Do not set any transport on `TestServerConfig`."))
+        Err(anyhow!(
+            "`Serve` cannot be mocked, as it's underlying implementation requires a real connection. Do not set any transport on `TestServerConfig`."
+        ))
     }
 
     fn into_default_transport(
@@ -61,12 +65,12 @@ where
 
 #[cfg(test)]
 mod test_into_http_transport_layer {
-    use crate::util::new_random_tokio_tcp_listener;
     use crate::TestServer;
-    use axum::routing::get;
-    use axum::routing::IntoMakeService;
-    use axum::serve;
+    use crate::util::new_random_tokio_tcp_listener;
     use axum::Router;
+    use axum::routing::IntoMakeService;
+    use axum::routing::get;
+    use axum::serve;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -92,12 +96,12 @@ mod test_into_http_transport_layer {
 
 #[cfg(test)]
 mod test_into_mock_transport_layer {
-    use crate::util::new_random_tokio_tcp_listener;
     use crate::TestServer;
-    use axum::routing::get;
-    use axum::routing::IntoMakeService;
-    use axum::serve;
+    use crate::util::new_random_tokio_tcp_listener;
     use axum::Router;
+    use axum::routing::IntoMakeService;
+    use axum::routing::get;
+    use axum::serve;
 
     async fn get_ping() -> &'static str {
         "pong!"
@@ -123,12 +127,12 @@ mod test_into_mock_transport_layer {
 
 #[cfg(test)]
 mod test_into_default_transport {
-    use crate::util::new_random_tokio_tcp_listener;
     use crate::TestServer;
-    use axum::routing::get;
-    use axum::routing::IntoMakeService;
-    use axum::serve;
+    use crate::util::new_random_tokio_tcp_listener;
     use axum::Router;
+    use axum::routing::IntoMakeService;
+    use axum::routing::get;
+    use axum::serve;
 
     async fn get_ping() -> &'static str {
         "pong!"

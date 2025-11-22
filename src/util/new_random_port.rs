@@ -1,5 +1,5 @@
-use anyhow::anyhow;
 use anyhow::Result;
+use anyhow::anyhow;
 use reserve_port::ReservedPort;
 
 /// Returns a randomly selected port that is not in use.

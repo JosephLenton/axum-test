@@ -3,10 +3,10 @@ use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 use crate::util::spawn_serve;
-use anyhow::anyhow;
 use anyhow::Result;
-use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
+use anyhow::anyhow;
 use axum::extract::Request as AxumRequest;
+use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::response::Response as AxumResponse;
 use axum::serve::IncomingStream;
 use std::convert::Infallible;
@@ -39,7 +39,9 @@ where
     }
 
     fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
-        Err(anyhow!("`IntoMakeServiceWithConnectInfo` cannot be mocked, as it's underlying implementation requires a real connection. Set the `TestServerConfig` to run with a transport of `HttpRandomPort`, or a `HttpIpPort`."))
+        Err(anyhow!(
+            "`IntoMakeServiceWithConnectInfo` cannot be mocked, as it's underlying implementation requires a real connection. Set the `TestServerConfig` to run with a transport of `HttpRandomPort`, or a `HttpIpPort`."
+        ))
     }
 
     fn into_default_transport(
@@ -53,10 +55,10 @@ where
 #[cfg(test)]
 mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
     use crate::TestServer;
-    use axum::extract::Request;
-    use axum::routing::get;
     use axum::Router;
     use axum::ServiceExt;
+    use axum::extract::Request;
+    use axum::routing::get;
     use std::net::SocketAddr;
     use tower::Layer;
     use tower_http::normalize_path::NormalizePathLayer;
@@ -105,8 +107,8 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
 #[cfg(test)]
 mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
     use crate::TestServer;
-    use axum::routing::get;
     use axum::Router;
+    use axum::routing::get;
     use std::net::SocketAddr;
 
     async fn get_ping() -> &'static str {
@@ -125,6 +127,9 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
         let err = result.unwrap_err();
         let err_msg = err.to_string();
 
-        assert_eq!(err_msg, "`IntoMakeServiceWithConnectInfo` cannot be mocked, as it's underlying implementation requires a real connection. Set the `TestServerConfig` to run with a transport of `HttpRandomPort`, or a `HttpIpPort`.");
+        assert_eq!(
+            err_msg,
+            "`IntoMakeServiceWithConnectInfo` cannot be mocked, as it's underlying implementation requires a real connection. Set the `TestServerConfig` to run with a transport of `HttpRandomPort`, or a `HttpIpPort`."
+        );
     }
 }

@@ -1,5 +1,5 @@
-use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use uuid::Uuid;
 
 /// Generates a random key for use, that is base 64 encoded for use over HTTP.

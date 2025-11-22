@@ -10,15 +10,15 @@
 //!
 
 use anyhow::Result;
-use axum::extract::ws::Message;
-use axum::extract::ws::WebSocket;
+use axum::Router;
 use axum::extract::Path;
 use axum::extract::State;
 use axum::extract::WebSocketUpgrade;
+use axum::extract::ws::Message;
+use axum::extract::ws::WebSocket;
 use axum::response::Response;
 use axum::routing::get;
 use axum::serve::serve;
-use axum::Router;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 use serde::Deserialize;

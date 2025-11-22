@@ -1,10 +1,10 @@
 use anyhow::Result;
 use std::net::IpAddr;
 
-use crate::transport_layer::IntoTransportLayer;
 use crate::TestServer;
 use crate::TestServerConfig;
 use crate::Transport;
+use crate::transport_layer::IntoTransportLayer;
 
 /// A builder for [`crate::TestServer`]. Inside is a [`crate::TestServerConfig`],
 /// configured by each method, and then turn into a server by [`crate::TestServerBuilder::build`].

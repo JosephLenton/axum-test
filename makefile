@@ -15,8 +15,12 @@ test:
 	cargo +stable test  --features all
 	cargo +stable test
 
+	# Check deprecated old-json-diff still works
+	cargo +stable test  --features "old-json-diff"
+	cargo +stable test  --features "ws,old-json-diff"
+
 	# Check minimum version works, excluding shuttle
-	cargo +1.83 check --features "pretty-assertions,yaml,msgpack,reqwest,typed-routing,ws"
+	cargo +1.85 check --features "pretty-assertions,yaml,msgpack,reqwest,typed-routing,ws"
 
 	# Check nightly also works, see https://github.com/JosephLenton/axum-test/issues/133
 	cargo +nightly check --features all
@@ -31,6 +35,7 @@ test:
 	cargo +stable check --features shuttle
 	cargo +stable check --features typed-routing
 	cargo +stable check --features ws
+	cargo +stable check --features "ws,old-json-diff"
 	cargo +stable check --features reqwest
 	cargo +stable check --features old-json-diff
 

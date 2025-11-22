@@ -1,21 +1,27 @@
 use crate::WsMessage;
-use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
+use anyhow::anyhow;
 use bytes::Bytes;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 use hyper::upgrade::Upgraded;
 use hyper_util::rt::TokioIo;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
+use serde_json::Value;
 use std::fmt::Debug;
 use std::fmt::Display;
-use tokio_tungstenite::tungstenite::protocol::Role;
 use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::tungstenite::protocol::Role;
 
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
+
+#[cfg(not(feature = "old-json-diff"))]
+use expect_json::expect;
+#[cfg(not(feature = "old-json-diff"))]
+use expect_json::expect_json_eq;
 
 #[derive(Debug)]
 pub struct TestWebSocket {
@@ -142,11 +148,71 @@ impl TestWebSocket {
             .expect("No message found on WebSocket stream")
     }
 
+    #[must_use]
+    async fn maybe_receive_message(&mut self) -> Option<WsMessage> {
+        let maybe_message = self.stream.next().await;
+
+        match maybe_message {
+            None => None,
+            Some(message_result) => {
+                let message =
+                    message_result.expect("Failed to receive message from WebSocket stream");
+                Some(message)
+            }
+        }
+    }
+
     pub async fn assert_receive_json<T>(&mut self, expected: &T)
     where
-        T: DeserializeOwned + PartialEq<T> + Debug,
+        T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
-        assert_eq!(*expected, self.receive_json::<T>().await);
+        let received = self.receive_json::<T>().await;
+
+        #[cfg(feature = "old-json-diff")]
+        {
+            assert_eq!(*expected, received);
+        }
+
+        #[cfg(not(feature = "old-json-diff"))]
+        {
+            if *expected != received {
+                if let Err(error) = expect_json_eq(&received, &expected) {
+                    panic!(
+                        "
+{error}
+",
+                    );
+                }
+            }
+        }
+    }
+
+    pub async fn assert_receive_json_contains<T>(&mut self, expected: &T)
+    where
+        T: Serialize,
+    {
+        let received = self.receive_json::<Value>().await;
+
+        #[cfg(feature = "old-json-diff")]
+        {
+            assert_json_diff::assert_json_include!(actual: received, expected: expected);
+        }
+
+        #[cfg(not(feature = "old-json-diff"))]
+        {
+            let expected_value = serde_json::to_value(expected).unwrap();
+            let result = expect_json_eq(
+                &received,
+                &expect::object().propagated_contains(expected_value),
+            );
+            if let Err(error) = result {
+                panic!(
+                    "
+{error}
+",
+                );
+            }
+        }
     }
 
     pub async fn assert_receive_text<C>(&mut self, expected: C)
@@ -186,20 +252,6 @@ impl TestWebSocket {
     {
         assert_eq!(*expected, self.receive_msgpack::<T>().await);
     }
-
-    #[must_use]
-    async fn maybe_receive_message(&mut self) -> Option<WsMessage> {
-        let maybe_message = self.stream.next().await;
-
-        match maybe_message {
-            None => None,
-            Some(message_result) => {
-                let message =
-                    message_result.expect("Failed to receive message from WebSocket stream");
-                Some(message)
-            }
-        }
-    }
 }
 
 fn message_to_text(message: WsMessage) -> Result<String> {
@@ -219,7 +271,7 @@ fn message_to_text(message: WsMessage) -> Result<String> {
         WsMessage::Frame(_) => {
             return Err(anyhow!(
                 "Unexpected Frame, did not expect Frame message whilst reading"
-            ))
+            ));
         }
     };
 
@@ -237,7 +289,7 @@ fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
         WsMessage::Frame(_) => {
             return Err(anyhow!(
                 "Unexpected Frame, did not expect Frame message whilst reading"
-            ))
+            ));
         }
     };
 
@@ -248,12 +300,12 @@ fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
 mod test_assert_receive_text {
     use crate::TestServer;
 
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
-    use axum::extract::WebSocketUpgrade;
     use axum::response::Response;
     use axum::routing::get;
-    use axum::Router;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -348,13 +400,12 @@ mod test_assert_receive_text {
 #[cfg(test)]
 mod test_assert_receive_text_contains {
     use crate::TestServer;
-
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
-    use axum::extract::WebSocketUpgrade;
     use axum::response::Response;
     use axum::routing::get;
-    use axum::Router;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -423,15 +474,19 @@ mod test_assert_receive_text_contains {
 #[cfg(test)]
 mod test_assert_receive_json {
     use crate::TestServer;
-
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
-    use axum::extract::WebSocketUpgrade;
     use axum::response::Response;
     use axum::routing::get;
-    use axum::Router;
-    use serde_json::json;
     use serde_json::Value;
+    use serde_json::json;
+
+    #[cfg(not(feature = "old-json-diff"))]
+    use crate::testing::ExpectStrMinLen;
+    #[cfg(not(feature = "old-json-diff"))]
+    use expect_json::expect;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -505,6 +560,199 @@ mod test_assert_receive_json {
             }))
             .await;
     }
+
+    #[cfg(not(feature = "old-json-diff"))]
+    #[tokio::test]
+    async fn it_should_work_with_custom_expect_op() {
+        let server = new_test_app();
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        // Once for text
+        websocket
+            .assert_receive_json(&json!({
+                "format": "text",
+                "message": {
+                    "hello": ExpectStrMinLen { min: 3 },
+                    "numbers": expect::array().len(3).all(expect::integer()),
+                },
+            }))
+            .await;
+
+        // Again for binary
+        websocket
+            .assert_receive_json(&json!({
+                "format": "binary",
+                "message": {
+                    "hello": ExpectStrMinLen { min: 3 },
+                    "numbers": expect::array().len(3).all(expect::integer()),
+                },
+            }))
+            .await;
+    }
+
+    #[cfg(not(feature = "old-json-diff"))]
+    #[tokio::test]
+    #[should_panic]
+    async fn it_should_panic_if_custom_expect_op_fails() {
+        let server = new_test_app();
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        // Once for text
+        websocket
+            .assert_receive_json(&json!({
+                "format": "text",
+                "message": {
+                    "hello": ExpectStrMinLen { min: 10 },
+                    "numbers": expect::array().len(3).all(expect::integer()),
+                },
+            }))
+            .await;
+    }
+}
+
+#[cfg(test)]
+mod test_assert_receive_json_contains {
+    use crate::TestServer;
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::response::Response;
+    use axum::routing::get;
+    use serde_json::Value;
+    use serde_json::json;
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(maybe_message) = socket.recv().await {
+                    let message_text = maybe_message.unwrap().into_text().unwrap();
+                    let decoded = serde_json::from_str::<Value>(&message_text).unwrap();
+
+                    let encoded_text = serde_json::to_string(&json!({
+                        "format": "text",
+                        "message": decoded
+                    }))
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                    let encoded_data = serde_json::to_vec(&json!({
+                        "format": "binary",
+                        "message": decoded
+                    }))
+                    .unwrap()
+                    .into();
+
+                    socket.send(Message::Text(encoded_text)).await.unwrap();
+                    socket.send(Message::Binary(encoded_data)).await.unwrap();
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
+        TestServer::builder().http_transport().build(app).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_ping_pong_json_in_text_and_binary_with_root_content_missing_in_contains() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        // Once for text
+        websocket
+            .assert_receive_json_contains(&json!({
+                // "format" is missing here
+                "message": {
+                    "hello": "world",
+                    "numbers": [1, 2, 3],
+                },
+            }))
+            .await;
+
+        // Again for binary
+        websocket
+            .assert_receive_json_contains(&json!({
+                "format": "binary",
+                // "message" is missing here
+            }))
+            .await;
+    }
+
+    #[tokio::test]
+    async fn it_should_ping_pong_json_in_text_and_binary_with_nested_content_missing_in_contains() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket
+            .send_json(&json!({
+                "hello": "world",
+                "numbers": [1, 2, 3],
+            }))
+            .await;
+
+        // Once for text
+        websocket
+            .assert_receive_json_contains(&json!({
+                "format": "text",
+                "message": {
+                    // "hello" is missing here
+                    "numbers": [1, 2, 3],
+                },
+            }))
+            .await;
+
+        // Again for binary
+        websocket
+            .assert_receive_json_contains(&json!({
+                "format": "binary",
+                "message": {
+                    "hello": "world",
+                    // "numbers" is missing here
+                },
+            }))
+            .await;
+    }
 }
 
 #[cfg(feature = "yaml")]
@@ -512,14 +760,14 @@ mod test_assert_receive_json {
 mod test_assert_receive_yaml {
     use crate::TestServer;
 
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
-    use axum::extract::WebSocketUpgrade;
     use axum::response::Response;
     use axum::routing::get;
-    use axum::Router;
-    use serde_json::json;
     use serde_json::Value;
+    use serde_json::json;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -600,14 +848,14 @@ mod test_assert_receive_yaml {
 mod test_assert_receive_msgpack {
     use crate::TestServer;
 
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
-    use axum::extract::WebSocketUpgrade;
     use axum::response::Response;
     use axum::routing::get;
-    use axum::Router;
-    use serde_json::json;
     use serde_json::Value;
+    use serde_json::json;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {

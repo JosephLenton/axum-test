@@ -24,9 +24,9 @@ impl IntoTransportLayer for ShuttleAxum {
 mod test_into_http_transport_layer_for_shuttle_axum {
     use super::*;
 
+    use axum::Router;
     use axum::extract::State;
     use axum::routing::get;
-    use axum::Router;
     use shuttle_axum::AxumService;
 
     use crate::TestServer;
@@ -58,9 +58,9 @@ mod test_into_http_transport_layer_for_shuttle_axum {
 mod test_into_mock_transport_layer_for_shuttle_axum {
     use super::*;
 
+    use axum::Router;
     use axum::extract::State;
     use axum::routing::get;
-    use axum::Router;
     use shuttle_axum::AxumService;
 
     use crate::TestServer;
