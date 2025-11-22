@@ -640,13 +640,14 @@ impl TestRequest {
     /// #
     /// use axum::Json;
     /// use axum::Router;
+    /// use axum::http::StatusCode;
     /// use axum::routing::put;
     /// use serde_json::json;
     ///
     /// use axum_test::TestServer;
     ///
     /// let app = Router::new()
-    ///     .route(&"/todo", put(|| async { unimplemented!() }));
+    ///     .route(&"/todo", put(|| async { StatusCode::NOT_FOUND }));
     ///
     /// let server = TestServer::new(app)?;
     ///
