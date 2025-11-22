@@ -48,7 +48,7 @@ or on a random port with real network reqeusts.
 In both cases allowing you to run multiple servers, across multiple tests, all in parallel.
 
 
-## Crate Features
+## 🎁 Crate Features
 
 | Feature             | On by default |                                                                                                                                                      |
 |---------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -69,7 +69,7 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 | `old-json-diff`     | _off_         | Switches back to the old Json diff behaviour before Axum Test 18. If you find yourself needing this, then please raise an issue to let me know why.       |
 
 
-## Axum Compatibility
+## ⚙️ Axum Compatibility
 
 The current version of Axum Test requires at least Axum v0.8.7.
 
@@ -86,7 +86,7 @@ Here is a list of compatability with prior versions:
 | 0.6             | 13.4.1            |
 
 
-## Examples
+## 📺 Examples
 
 You can find examples of writing tests in the [/examples folder](/examples/).
 These include tests for:
@@ -96,7 +96,7 @@ These include tests for:
  * [a simple WebSocket chat application](/examples/example-websocket-chat)
 
 
-## Request Building Features
+## 🚀 Request Building Features
 
 Querying your application on the `TestServer` supports all of the common request building you would expect.
 
@@ -160,7 +160,7 @@ Docs:
 
 ## ❤️ Contributions
 
-A big thanks to all of these who have helped!
+A big thank you to all of these who have helped!
 
 <a href="https://github.com/josephlenton/axum-test/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=josephlenton/axum-test" />
