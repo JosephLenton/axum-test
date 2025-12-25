@@ -251,6 +251,7 @@ impl TestResponse {
     /// ```
     ///
     #[must_use]
+    #[track_caller]
     pub fn json<T>(&self) -> T
     where
         T: DeserializeOwned,
@@ -306,6 +307,7 @@ impl TestResponse {
     /// ```
     #[cfg(feature = "yaml")]
     #[must_use]
+    #[track_caller]
     pub fn yaml<T>(&self) -> T
     where
         T: DeserializeOwned,
@@ -361,6 +363,7 @@ impl TestResponse {
     /// ```
     #[cfg(feature = "msgpack")]
     #[must_use]
+    #[track_caller]
     pub fn msgpack<T>(&self) -> T
     where
         T: DeserializeOwned,
@@ -415,6 +418,7 @@ impl TestResponse {
     /// # }
     /// ```
     #[must_use]
+    #[track_caller]
     pub fn form<T>(&self) -> T
     where
         T: DeserializeOwned,
@@ -483,6 +487,7 @@ impl TestResponse {
     }
 
     #[must_use]
+    #[track_caller]
     pub fn maybe_content_type(&self) -> Option<String> {
         self.headers.get(http::header::CONTENT_TYPE).map(|header| {
             header
@@ -507,6 +512,7 @@ impl TestResponse {
     ///
     /// If no header is found, then this will panic.
     #[must_use]
+    #[track_caller]
     pub fn header<N>(&self, name: N) -> HeaderValue
     where
         N: TryInto<HeaderName> + Display + Clone,
@@ -627,6 +633,7 @@ impl TestResponse {
     ///
     /// If no `Cookie` is found, then this will panic.
     #[must_use]
+    #[track_caller]
     pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
         self.maybe_cookie(cookie_name)
             .with_context(|| {
@@ -653,6 +660,7 @@ impl TestResponse {
     }
 
     /// Iterate over all of the cookies in the response.
+    #[track_caller]
     pub fn iter_cookies(&self) -> impl Iterator<Item = Cookie<'_>> {
         self.iter_headers_by_name(SET_COOKIE).map(|header| {
             let header_str = header
@@ -709,6 +717,7 @@ impl TestResponse {
     ///
     #[cfg(feature = "ws")]
     #[must_use]
+    #[track_caller]
     pub async fn into_websocket(self) -> TestWebSocket {
         use crate::transport_layer::TransportLayerType;
 
