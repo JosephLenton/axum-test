@@ -717,7 +717,6 @@ impl TestResponse {
     ///
     #[cfg(feature = "ws")]
     #[must_use]
-    #[track_caller]
     pub async fn into_websocket(self) -> TestWebSocket {
         use crate::transport_layer::TransportLayerType;
 
