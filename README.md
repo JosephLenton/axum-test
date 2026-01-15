@@ -56,7 +56,6 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 | `pretty-assertions` | **on**        | Uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) on response `assert_*` methods.                                       |
 | `yaml`              | _off_         | Enables support for sending, receiving, and asserting, [yaml content](https://yaml.org/).                                                            |
 | `msgpack`           | _off_         | Enables support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).                                            |
-| `shuttle`           | _off_         | Enables support for building a `TestServer` an [`shuttle_axum::AxumService`](https://docs.rs/shuttle-axum/latest/shuttle_axum/struct.AxumService.html), for use with [Shuttle.rs](https://shuttle.rs). |
 | `typed-routing`     | _off_         | Enables support for using `TypedPath` in requests. See [axum-extra](https://crates.io/crates/axum-extra) for details.                                |
 | `ws`                | _off_         | Enables WebSocket support. See [TestWebSocket](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) for details.                    |
 | `reqwest`           | _off_         | Enables the `TestServer` being able to create [Reqwest](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) requests for querying. |
@@ -91,7 +90,7 @@ Here is a list of compatability with prior versions:
 You can find examples of writing tests in the [/examples folder](/examples/).
 These include tests for:
 
- * [a simple REST Todo application](/examples/example-todo), and [the same using Shuttle](/examples/example-shuttle)
+ * [a simple REST Todo application](/examples/example-todo)
  * [a WebSocket ping pong application](/examples/example-websocket-ping-pong) which sends requests up and down
  * [a simple WebSocket chat application](/examples/example-websocket-chat)
 
