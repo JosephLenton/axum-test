@@ -11,11 +11,6 @@ mod router;
 mod serve;
 mod with_graceful_shutdown;
 
-#[cfg(feature = "shuttle")]
-mod axum_service;
-#[cfg(feature = "shuttle")]
-mod shuttle_axum;
-
 ///
 /// This exists to unify how to send mock or real messages to different services.
 /// This includes differences between [`Router`](::axum::Router),

@@ -47,7 +47,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 /// # Building
 ///
 /// A `TestServer` can be used to run an [`axum::Router`], an [`::axum::routing::IntoMakeService`],
-/// a [`shuttle_axum::ShuttleAxum`], and others.
+/// and others.
 ///
 /// The most straight forward approach is to call [`crate::TestServer::new`],
 /// and pass in your application:
@@ -186,7 +186,6 @@ impl TestServer {
     ///  - [`axum::extract::connect_info::IntoMakeServiceWithConnectInfo`]
     ///  - [`axum::serve::Serve`]
     ///  - [`axum::serve::WithGracefulShutdown`]
-    ///  - [`shuttle_axum::ShuttleAxum`]
     ///
     pub fn new<A>(app: A) -> Result<Self>
     where

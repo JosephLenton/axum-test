@@ -8,7 +8,6 @@ lint:
 
 test:
 	cargo +stable check
-	cargo +stable test --example=example-shuttle --features shuttle
 	cargo +stable test --example=example-todo
 	cargo +stable test --example=example-websocket-ping-pong --features ws
 	cargo +stable test --example=example-websocket-chat --features ws
@@ -19,7 +18,7 @@ test:
 	cargo +stable test  --features "old-json-diff"
 	cargo +stable test  --features "ws,old-json-diff"
 
-	# Check minimum version works, excluding shuttle
+	# Check minimum version works
 	cargo +1.85 check --features "pretty-assertions,yaml,msgpack,reqwest,typed-routing,ws"
 
 	# Check nightly also works, see https://github.com/JosephLenton/axum-test/issues/133
@@ -32,7 +31,6 @@ test:
 	cargo +stable check --features yaml
 	cargo +stable check --features msgpack
 	cargo +stable check --features reqwest
-	cargo +stable check --features shuttle
 	cargo +stable check --features typed-routing
 	cargo +stable check --features ws
 	cargo +stable check --features "ws,old-json-diff"
