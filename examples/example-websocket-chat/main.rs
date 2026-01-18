@@ -5,7 +5,7 @@
 //!
 //! ```bash
 //! # To run it's tests:
-//! cargo test --example=example-websocket-chat --features ws
+//! cargo test --example=websocket-chat --features ws
 //! ```
 //!
 

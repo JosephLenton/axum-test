@@ -17,13 +17,13 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
-name = "example-websocket-chat"
-path = "examples/example-websocket-chat/main.rs"
+name = "websocket-chat"
+path = "examples/websocket-chat/main.rs"
 required-features = ["ws"]
 
 [[example]]
-name = "example-websocket-ping-pong"
-path = "examples/example-websocket-ping-pong/main.rs"
+name = "websocket-ping-pong"
+path = "examples/websocket-ping-pong/main.rs"
 required-features = ["ws"]
 
 [features]

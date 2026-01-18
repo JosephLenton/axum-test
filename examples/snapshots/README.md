@@ -1,6 +1,6 @@
 <div align="center">
   <h1>
-    Snapshots<br/>
+    Example Snapshots<br/>
   </h1>
 
   <h3>
