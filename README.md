@@ -93,6 +93,7 @@ These include tests for:
  * [a simple REST Todo application](/examples/example-todo)
  * [a WebSocket ping pong application](/examples/example-websocket-ping-pong) which sends requests up and down
  * [a simple WebSocket chat application](/examples/example-websocket-chat)
+ * [example snapshot tests](/examples/snapshots) using [Insta](https://crates.io/crates/insta)
 
 
 ## 🚀 Request Building Features

@@ -1,9 +1,6 @@
 ---
 source: examples/snapshots/main.rs
-expression: response
+assertion_line: 137
+expression: "response.yaml::<Value>()"
 ---
-HTTP/1.1 200 OK
-content-type: application/json
-content-length: 85
-
 [{"content":"buy eggs","name":"shopping"},{"content":"buy shoes","name":"afternoon"}]
