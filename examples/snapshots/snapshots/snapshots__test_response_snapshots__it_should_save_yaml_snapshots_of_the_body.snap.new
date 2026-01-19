@@ -1,0 +1,6 @@
+---
+source: examples/snapshots/main.rs
+assertion_line: 137
+expression: "response.yaml::<Value>()"
+---
+[{"content":"buy eggs","name":"shopping"},{"content":"buy shoes","name":"afternoon"}]

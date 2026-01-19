@@ -718,6 +718,7 @@ impl TestRequest {
             }
         };
 
+        let version = http_response.version();
         let (parts, response_body) = http_response.into_parts();
         let response_bytes = response_body.collect().await?.to_bytes();
 
@@ -727,6 +728,7 @@ impl TestRequest {
         }
 
         let test_response = TestResponse::new(
+            version,
             method,
             url,
             parts,

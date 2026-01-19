@@ -20,6 +20,8 @@ use serde_json::Value;
 use std::convert::AsRef;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result as FmtResult;
 use std::fs::File;
 use std::fs::read_to_string;
 use std::io::BufReader;
@@ -39,6 +41,7 @@ use crate::internals::TestResponseWebSocket;
 use expect_json::expect;
 #[cfg(not(feature = "old-json-diff"))]
 use expect_json::expect_json_eq;
+use http::Version;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -138,6 +141,7 @@ use expect_json::expect_json_eq;
 ///
 #[derive(Debug, Clone)]
 pub struct TestResponse {
+    version: Version,
     method: Method,
 
     /// This is the actual url that was used for the request.
@@ -152,6 +156,7 @@ pub struct TestResponse {
 
 impl TestResponse {
     pub(crate) fn new(
+        version: Version,
         method: Method,
         full_request_url: Url,
         parts: Parts,
@@ -160,6 +165,7 @@ impl TestResponse {
         #[cfg(feature = "ws")] websockets: TestResponseWebSocket,
     ) -> Self {
         Self {
+            version,
             method,
             full_request_url,
             headers: parts.headers,
@@ -1318,6 +1324,42 @@ impl TestResponse {
 impl From<TestResponse> for Bytes {
     fn from(response: TestResponse) -> Self {
         response.into_bytes()
+    }
+}
+
+/// Prints out the full response. Including the status code, headers, and the body.
+///
+/// The output is very similar to a standard HTTP response, for use with snapshotting.
+impl Display for TestResponse {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let version_str = version_str(self.version);
+        let status = self.status_code();
+        let status_int = status.as_u16();
+        let status_reason = status.canonical_reason().unwrap_or("");
+
+        writeln!(f, "{version_str} {status_int} {status_reason}",)?;
+
+        for (name, value) in self.headers() {
+            writeln!(f, "{}: {}", name, value.to_str().unwrap_or("<binary>"))?;
+        }
+
+        writeln!(f)?;
+
+        let body_raw = String::from_utf8_lossy(&self.response_body);
+        writeln!(f, "{body_raw}")?;
+
+        Ok(())
+    }
+}
+
+fn version_str(version: Version) -> &'static str {
+    match version {
+        Version::HTTP_09 => "HTTP/0.9",
+        Version::HTTP_10 => "HTTP/1.0",
+        Version::HTTP_11 => "HTTP/1.1",
+        Version::HTTP_2 => "HTTP/2",
+        Version::HTTP_3 => "HTTP/3",
+        _ => "HTTP/?",
     }
 }
 
@@ -2903,5 +2945,47 @@ mod test_into_websocket {
             .unwrap();
 
         let _ = server.get_websocket(&"/ws").await.into_websocket().await;
+    }
+}
+
+#[cfg(test)]
+mod test_fmt {
+    use crate::TestServer;
+    use axum::Json;
+    use axum::Router;
+    use axum::routing::get;
+    use serde::Deserialize;
+    use serde::Serialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct ExampleResponse {
+        name: String,
+        age: u32,
+    }
+
+    async fn route_get_json() -> Json<ExampleResponse> {
+        Json(ExampleResponse {
+            name: "Joe".to_string(),
+            age: 20,
+        })
+    }
+
+    #[tokio::test]
+    async fn it_should_output_json_in_json_format() {
+        let app = Router::new().route(&"/json", get(route_get_json));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/json").await;
+        let output = format!("{response}");
+
+        assert_eq!(
+            output,
+            r#"HTTP/1.1 200 OK
+content-type: application/json
+content-length: 23
+
+{"name":"Joe","age":20}
+"#
+        );
     }
 }

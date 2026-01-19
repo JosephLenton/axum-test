@@ -3,7 +3,7 @@
 //!
 //! ```bash
 //! # To run it's tests:
-//! cargo test --example=example-todo
+//! cargo test --example=todo
 //! ```
 //!
 //! The app includes the end points for ...
@@ -43,7 +43,7 @@ use tokio::net::TcpListener;
 use axum_test::TestServer;
 
 const PORT: u16 = 8080;
-const USER_ID_COOKIE_NAME: &'static str = &"example-todo-user-id";
+const USER_ID_COOKIE_NAME: &'static str = &"todo-user-id";
 
 #[tokio::main]
 async fn main() {

@@ -1,0 +1,13 @@
+---
+source: examples/snapshots/main.rs
+assertion_line: 128
+expression: response
+---
+HTTP/1.1 200 OK
+content-type: application/yaml
+content-length: 76
+
+- content: buy eggs
+  name: shopping
+- content: buy shoes
+  name: afternoon
