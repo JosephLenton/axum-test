@@ -1,6 +1,5 @@
 ---
 source: examples/snapshots/main.rs
-assertion_line: 119
 expression: "response.json::<Value>()"
 ---
 [{"content":"buy eggs","name":"shopping"},{"content":"buy shoes","name":"afternoon"}]
