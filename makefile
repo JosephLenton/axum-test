@@ -8,8 +8,8 @@ lint:
 
 test:
 	cargo +stable check
-	cargo +stable test --example=todo --features yaml
-	cargo +stable test --example=snapshots
+	cargo +stable test --example=todo
+	cargo +stable test --example=snapshots --features yaml
 	cargo +stable test --example=websocket-ping-pong --features ws
 	cargo +stable test --example=websocket-chat --features ws
 	cargo +stable test  --features all
