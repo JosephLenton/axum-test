@@ -11,6 +11,7 @@ use http::HeaderMap;
 use http::HeaderValue;
 use http::Method;
 use http::StatusCode;
+use http::Version;
 use http::header::HeaderName;
 use http::header::SET_COOKIE;
 use http::response::Parts;
@@ -41,7 +42,6 @@ use crate::internals::TestResponseWebSocket;
 use expect_json::expect;
 #[cfg(not(feature = "old-json-diff"))]
 use expect_json::expect_json_eq;
-use http::Version;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -262,13 +262,18 @@ impl TestResponse {
     where
         T: DeserializeOwned,
     {
-        serde_json::from_slice::<T>(self.as_bytes())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
+        serde_json::from_slice::<T>(self.as_bytes()).unwrap_or_else(|err| {
+            let debug_request_format = self.debug_request_format();
+            let response_text = String::from_utf8_lossy(self.as_bytes());
 
-                format!("Deserializing response from Json, for request {debug_request_format}")
-            })
-            .unwrap()
+            panic!(
+                r#"Failed to deserialize Json response, for request {debug_request_format}
+
+{err}
+
+received: {response_text}"#
+            );
+        })
     }
 
     /// Deserializes the response, as Yaml, into the type given.
@@ -318,13 +323,18 @@ impl TestResponse {
     where
         T: DeserializeOwned,
     {
-        serde_yaml::from_slice::<T>(self.as_bytes())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
+        serde_yaml::from_slice::<T>(self.as_bytes()).unwrap_or_else(|err| {
+            let debug_request_format = self.debug_request_format();
+            let response_text = String::from_utf8_lossy(self.as_bytes());
 
-                format!("Deserializing response from YAML, for request {debug_request_format}")
-            })
-            .unwrap()
+            panic!(
+                r#"Failed to deserialize Yaml response, for request {debug_request_format}
+
+{err}
+
+received: {response_text}"#
+            );
+        })
     }
 
     /// Deserializes the response, as MsgPack, into the type given.
@@ -374,13 +384,15 @@ impl TestResponse {
     where
         T: DeserializeOwned,
     {
-        rmp_serde::from_slice::<T>(self.as_bytes())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
+        rmp_serde::from_slice::<T>(self.as_bytes()).unwrap_or_else(|err| {
+            let debug_request_format = self.debug_request_format();
 
-                format!("Deserializing response from MsgPack, for request {debug_request_format}")
-            })
-            .unwrap()
+            panic!(
+                r#"Failed to deserialize Msgpack response, for request {debug_request_format}
+
+{err}"#
+            )
+        })
     }
 
     /// Deserializes the response, as an urlencoded Form, into the type given.
@@ -2083,8 +2095,12 @@ mod test_json {
     use axum::Json;
     use axum::Router;
     use axum::routing::get;
+    use pretty_assertions::assert_eq;
     use serde::Deserialize;
     use serde::Serialize;
+    use serde_json::Value;
+    use std::panic::AssertUnwindSafe;
+    use std::panic::catch_unwind;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2097,6 +2113,10 @@ mod test_json {
             name: "Joe".to_string(),
             age: 20,
         })
+    }
+
+    async fn route_get_fox() -> &'static str {
+        "🦊"
     }
 
     #[tokio::test]
@@ -2115,6 +2135,28 @@ mod test_json {
             }
         );
     }
+
+    #[tokio::test]
+    async fn it_should_display_the_body_when_deserializing_non_json() {
+        let app = Router::new().route(&"/fox", get(route_get_fox));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/fox").await;
+        let error = catch_unwind(AssertUnwindSafe(|| {
+            let _ = response.json::<Value>();
+        }))
+        .unwrap_err();
+
+        let error_message = error.downcast_ref::<String>().unwrap();
+        assert_eq!(
+            error_message,
+            r#"Failed to deserialize Json response, for request GET http://localhost/fox
+
+expected value at line 1 column 1
+
+received: 🦊"#
+        );
+    }
 }
 
 #[cfg(feature = "yaml")]
@@ -2124,8 +2166,11 @@ mod test_yaml {
     use axum::Router;
     use axum::routing::get;
     use axum_yaml::Yaml;
+    use pretty_assertions::assert_eq;
     use serde::Deserialize;
     use serde::Serialize;
+    use std::panic::AssertUnwindSafe;
+    use std::panic::catch_unwind;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2138,6 +2183,10 @@ mod test_yaml {
             name: "Joe".to_string(),
             age: 20,
         })
+    }
+
+    async fn route_get_fox() -> &'static str {
+        "🦊"
     }
 
     #[tokio::test]
@@ -2154,6 +2203,28 @@ mod test_yaml {
                 name: "Joe".to_string(),
                 age: 20,
             }
+        );
+    }
+
+    #[tokio::test]
+    async fn it_should_display_the_body_when_deserializing_non_yaml() {
+        let app = Router::new().route(&"/fox", get(route_get_fox));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/fox").await;
+        let error = catch_unwind(AssertUnwindSafe(|| {
+            let _ = response.yaml::<ExampleResponse>();
+        }))
+        .unwrap_err();
+
+        let error_message = error.downcast_ref::<String>().unwrap();
+        assert_eq!(
+            error_message,
+            r#"Failed to deserialize Yaml response, for request GET http://localhost/fox
+
+invalid type: string "🦊", expected struct ExampleResponse
+
+received: 🦊"#
         );
     }
 }

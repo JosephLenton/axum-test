@@ -55,8 +55,7 @@ impl TestWebSocket {
     where
         J: ?Sized + Serialize,
     {
-        let raw_json =
-            ::serde_json::to_string(body).expect("It should serialize the content into Json");
+        let raw_json = ::serde_json::to_string(body).expect("Failed to serialize into Json");
 
         self.send_message(WsMessage::Text(raw_json.into())).await;
     }
@@ -66,8 +65,7 @@ impl TestWebSocket {
     where
         Y: ?Sized + Serialize,
     {
-        let raw_yaml =
-            ::serde_yaml::to_string(body).expect("It should serialize the content into Yaml");
+        let raw_yaml = ::serde_yaml::to_string(body).expect("Failed to serialize into Yaml");
 
         self.send_message(WsMessage::Text(raw_yaml.into())).await;
     }
@@ -77,8 +75,7 @@ impl TestWebSocket {
     where
         M: ?Sized + Serialize,
     {
-        let body_bytes =
-            ::rmp_serde::to_vec(body).expect("It should serialize the content into MsgPack");
+        let body_bytes = ::rmp_serde::to_vec(body).expect("Failed to serialize into MsgPack");
 
         self.send_message(WsMessage::Binary(body_bytes.into()))
             .await;
