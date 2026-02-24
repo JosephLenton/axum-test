@@ -2042,6 +2042,7 @@ mod test_json {
     use axum::Router;
     use axum::routing::get;
     use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_str_eq;
     use serde::Deserialize;
     use serde::Serialize;
     use serde_json::Value;
@@ -2090,13 +2091,15 @@ mod test_json {
             let _ = response.json::<Value>();
         });
 
-        assert_eq!(
-            error_message,
-            r#"Failed to deserialize Json response, for request GET http://localhost/fox
+        assert_str_eq!(
+            r#"Failed to deserialize Json response,
+    for request GET http://localhost/fox
+    expected value at line 1 column 1
 
-expected value at line 1 column 1
-
-received: 🦊"#
+received:
+    🦊
+"#,
+            error_message
         );
     }
 }
@@ -2110,6 +2113,7 @@ mod test_yaml {
     use axum::routing::get;
     use axum_yaml::Yaml;
     use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_str_eq;
     use serde::Deserialize;
     use serde::Serialize;
 
@@ -2157,13 +2161,15 @@ mod test_yaml {
             let _ = response.yaml::<ExampleResponse>();
         });
 
-        assert_eq!(
-            error_message,
-            r#"Failed to deserialize Yaml response, for request GET http://localhost/fox
+        assert_str_eq!(
+            r#"Failed to deserialize Yaml response,
+    for request GET http://localhost/fox
+    invalid type: string "🦊", expected struct ExampleResponse
 
-invalid type: string "🦊", expected struct ExampleResponse
-
-received: 🦊"#
+received:
+    🦊
+"#,
+            error_message
         );
     }
 }

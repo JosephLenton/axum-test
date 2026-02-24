@@ -915,6 +915,8 @@ mod test_receive_json {
     use axum::extract::ws::WebSocket;
     use axum::response::Response;
     use axum::routing::get;
+    use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_str_eq;
     use serde::Deserialize;
     use serde::Serialize;
 
@@ -953,7 +955,7 @@ mod test_receive_json {
     }
 
     #[tokio::test]
-    async fn it_should_parse_when_correct_strcture() {
+    async fn it_should_parse_when_correct_structure() {
         let server = new_test_app();
 
         let mut websocket = server
@@ -984,19 +986,20 @@ mod test_receive_json {
             .into_websocket()
             .await;
 
-        websocket.send_json(&"good").await;
+        websocket.send_json(&"bad").await;
 
-        let error_message = catch_panic_error_message_async(async || {
-            let _ = websocket.receive_json::<PingPongMessage>().await;
-        });
+        let error_message =
+            catch_panic_error_message_async(websocket.receive_json::<PingPongMessage>()).await;
 
-        assert_eq!(
-            error_message,
-            r#"Failed to deserialize Json response, for request GET http://localhost/fox
+        assert_str_eq!(
+            r#"Failed to deserialize Json response,
+    for request GET http://localhost/fox
+    expected value at line 1 column 1
 
-expected value at line 1 column 1
-
-received: 🦊"#
+received:
+    🦊
+"#,
+            error_message
         );
     }
 }

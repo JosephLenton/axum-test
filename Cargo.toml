@@ -93,6 +93,7 @@ axum = { version = "0.8.8", features = ["multipart", "tokio", "ws"] }
 axum-extra = { version = "0.12.5", features = ["cookie", "typed-routing", "query"] }
 axum-msgpack = "0.5.0"
 axum-yaml = "0.5.0"
+futures = "0.3.32"
 futures-util = "0.3.32"
 insta = { version = "1.46.3", features = ["json"] }
 local-ip-address = "0.6.10"

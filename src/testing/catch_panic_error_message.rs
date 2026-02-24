@@ -1,6 +1,7 @@
+use futures::FutureExt;
+use std::fmt::Debug;
 use std::panic::AssertUnwindSafe;
 use std::panic::catch_unwind;
-use tokio::runtime::Handle;
 
 pub fn catch_panic_error_message<F>(func: F) -> String
 where
@@ -13,14 +14,16 @@ where
         .to_owned()
 }
 
-pub fn catch_panic_error_message_async<F, Fut>(func: F) -> String
+pub async fn catch_panic_error_message_async<Fut, T>(fut: Fut) -> String
 where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = ()>,
+    Fut: Future<Output = T>,
+    T: Debug,
 {
-    catch_panic_error_message(|| {
-        Handle::current().block_on(async {
-            func().await;
-        })
-    })
+    AssertUnwindSafe(fut)
+        .catch_unwind()
+        .await
+        .unwrap_err()
+        .downcast_ref::<String>()
+        .unwrap()
+        .to_owned()
 }

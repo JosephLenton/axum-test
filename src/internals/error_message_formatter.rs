@@ -15,7 +15,7 @@ pub struct ErrorMessageFormatter<'a, E = Infallible> {
 impl<'a> ErrorMessageFormatter<'a> {
     pub fn new(message: &'a str) -> Self {
         Self {
-            message: message.as_ref(),
+            message,
             maybe_request_path: None,
             maybe_error: None,
             maybe_body_bytes: None,
@@ -82,8 +82,8 @@ where
                 &response_text_string
             };
 
-            writeln!(f, "")?;
-            writeln!(f, "")?;
+            writeln!(f)?;
+            writeln!(f)?;
             write!(
                 f,
                 "received:
