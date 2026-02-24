@@ -3,7 +3,6 @@ use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::TryIntoRangeBounds;
 use crate::internals::format_status_code_range;
-use anyhow::Context;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
@@ -38,6 +37,7 @@ use crate::TestWebSocket;
 #[cfg(feature = "ws")]
 use crate::internals::TestResponseWebSocket;
 
+use crate::internals::ResultExt;
 #[cfg(not(feature = "old-json-diff"))]
 use expect_json::expect;
 #[cfg(not(feature = "old-json-diff"))]
@@ -262,18 +262,8 @@ impl TestResponse {
     where
         T: DeserializeOwned,
     {
-        serde_json::from_slice::<T>(self.as_bytes()).unwrap_or_else(|err| {
-            let debug_request_format = self.debug_request_format();
-            let response_text = String::from_utf8_lossy(self.as_bytes());
-
-            panic!(
-                r#"Failed to deserialize Json response, for request {debug_request_format}
-
-{err}
-
-received: {response_text}"#
-            );
-        })
+        serde_json::from_slice::<T>(self.as_bytes())
+            .error_response_with_body("Failed to deserialize Json response", self)
     }
 
     /// Deserializes the response, as Yaml, into the type given.
@@ -323,18 +313,8 @@ received: {response_text}"#
     where
         T: DeserializeOwned,
     {
-        serde_yaml::from_slice::<T>(self.as_bytes()).unwrap_or_else(|err| {
-            let debug_request_format = self.debug_request_format();
-            let response_text = String::from_utf8_lossy(self.as_bytes());
-
-            panic!(
-                r#"Failed to deserialize Yaml response, for request {debug_request_format}
-
-{err}
-
-received: {response_text}"#
-            );
-        })
+        serde_yaml::from_slice::<T>(self.as_bytes())
+            .error_response_with_body("Failed to deserialize Yaml response", self)
     }
 
     /// Deserializes the response, as MsgPack, into the type given.
@@ -384,15 +364,8 @@ received: {response_text}"#
     where
         T: DeserializeOwned,
     {
-        rmp_serde::from_slice::<T>(self.as_bytes()).unwrap_or_else(|err| {
-            let debug_request_format = self.debug_request_format();
-
-            panic!(
-                r#"Failed to deserialize Msgpack response, for request {debug_request_format}
-
-{err}"#
-            )
-        })
+        rmp_serde::from_slice::<T>(self.as_bytes())
+            .error_response("Failed to deserialize Msgpack response", self)
     }
 
     /// Deserializes the response, as an urlencoded Form, into the type given.
@@ -442,12 +415,7 @@ received: {response_text}"#
         T: DeserializeOwned,
     {
         serde_urlencoded::from_bytes::<T>(self.as_bytes())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Deserializing response from Form, for request {debug_request_format}")
-            })
-            .unwrap()
+            .error_response_with_body("Failed to deserialize Form response", self)
     }
 
     /// Returns the raw underlying response as `Bytes`.
@@ -510,10 +478,9 @@ received: {response_text}"#
         self.headers.get(http::header::CONTENT_TYPE).map(|header| {
             header
                 .to_str()
-                .with_context(|| {
+                .error_message_fn(|| {
                     format!("Failed to decode header CONTENT_TYPE, received '{header:?}'")
                 })
-                .unwrap()
                 .to_string()
         })
     }
@@ -543,12 +510,7 @@ received: {response_text}"#
         self.headers
             .get(header_name)
             .map(|h| h.to_owned())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Cannot find header {debug_header}, for request {debug_request_format}",)
-            })
-            .unwrap()
+            .error_response_fn(|| format!("Cannot find header {debug_header}"), self)
     }
 
     /// Iterates over all of the headers contained in the response.
@@ -654,12 +616,7 @@ received: {response_text}"#
     #[track_caller]
     pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
         self.maybe_cookie(cookie_name)
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Cannot find cookie {cookie_name}, for request {debug_request_format}")
-            })
-            .unwrap()
+            .error_response_fn(|| format!("Cannot find cookie {cookie_name}"), self)
     }
 
     /// Returns all of the cookies contained in the response,
@@ -681,24 +638,20 @@ received: {response_text}"#
     #[track_caller]
     pub fn iter_cookies(&self) -> impl Iterator<Item = Cookie<'_>> {
         self.iter_headers_by_name(SET_COOKIE).map(|header| {
-            let header_str = header
-                .to_str()
-                .with_context(|| {
+            let header_str =
+                header.to_str().error_message_fn(|| {
                     let debug_request_format = self.debug_request_format();
 
                     format!(
                         "Reading header 'Set-Cookie' as string, for request {debug_request_format}",
                     )
-                })
-                .unwrap();
+                });
 
-            Cookie::parse(header_str)
-                .with_context(|| {
-                    let debug_request_format = self.debug_request_format();
+            Cookie::parse(header_str).error_message_fn(|| {
+                let debug_request_format = self.debug_request_format();
 
-                    format!("Parsing 'Set-Cookie' header, for request {debug_request_format}",)
-                })
-                .unwrap()
+                format!("Parsing 'Set-Cookie' header, for request {debug_request_format}",)
+            })
         })
     }
 
@@ -747,17 +700,14 @@ received: {response_text}"#
 
         let debug_request_format = self.debug_request_format().to_string();
 
-        let on_upgrade = self.websockets.maybe_on_upgrade.with_context(|| {
-            format!("Expected WebSocket upgrade to be found, it is None, for request {debug_request_format}")
-        })
-        .unwrap();
+        let on_upgrade = self.websockets.maybe_on_upgrade
+            .error_message_fn(|| {
+                format!("Expected WebSocket upgrade to be found, it is None, for request {debug_request_format}")
+            });
 
-        let upgraded = on_upgrade
-            .await
-            .with_context(|| {
-                format!("Failed to upgrade connection for, for request {debug_request_format}")
-            })
-            .unwrap();
+        let upgraded = on_upgrade.await.error_message_fn(|| {
+            format!("Failed to upgrade connection for, for request {debug_request_format}")
+        });
 
         TestWebSocket::new(upgraded).await
     }
@@ -797,8 +747,7 @@ received: {response_text}"#
     {
         let path_ref = path.as_ref();
         let expected = read_to_string(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         self.assert_text(expected);
     }
@@ -978,18 +927,16 @@ received: {response_text}"#
     {
         let path_ref = path.as_ref();
         let file = File::open(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         let reader = BufReader::new(file);
-        let expected = serde_json::from_reader::<_, serde_json::Value>(reader)
-            .with_context(|| {
+        let expected =
+            serde_json::from_reader::<_, serde_json::Value>(reader).error_message_fn(|| {
                 format!(
                     "Failed to deserialize file '{}' as json",
                     path_ref.display()
                 )
-            })
-            .unwrap();
+            });
 
         self.assert_json(&expected);
     }
@@ -1017,18 +964,16 @@ received: {response_text}"#
     {
         let path_ref = path.as_ref();
         let file = File::open(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         let reader = BufReader::new(file);
-        let expected = serde_yaml::from_reader::<_, serde_yaml::Value>(reader)
-            .with_context(|| {
+        let expected =
+            serde_yaml::from_reader::<_, serde_yaml::Value>(reader).error_message_fn(|| {
                 format!(
                     "Failed to deserialize file '{}' as yaml",
                     path_ref.display()
                 )
-            })
-            .unwrap();
+            });
 
         self.assert_yaml(&expected);
     }
@@ -1328,7 +1273,7 @@ received: {response_text}"#
         self.assert_status(StatusCode::SERVICE_UNAVAILABLE)
     }
 
-    fn debug_request_format(&self) -> RequestPathFormatter<'_> {
+    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_> {
         RequestPathFormatter::new(&self.method, self.full_request_url.as_str(), None)
     }
 }
@@ -2092,6 +2037,7 @@ mod test_content_type {
 #[cfg(test)]
 mod test_json {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message;
     use axum::Json;
     use axum::Router;
     use axum::routing::get;
@@ -2099,8 +2045,6 @@ mod test_json {
     use serde::Deserialize;
     use serde::Serialize;
     use serde_json::Value;
-    use std::panic::AssertUnwindSafe;
-    use std::panic::catch_unwind;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2142,12 +2086,10 @@ mod test_json {
         let server = TestServer::new(app).unwrap();
 
         let response = server.get(&"/fox").await;
-        let error = catch_unwind(AssertUnwindSafe(|| {
+        let error_message = catch_panic_error_message(|| {
             let _ = response.json::<Value>();
-        }))
-        .unwrap_err();
+        });
 
-        let error_message = error.downcast_ref::<String>().unwrap();
         assert_eq!(
             error_message,
             r#"Failed to deserialize Json response, for request GET http://localhost/fox
@@ -2163,14 +2105,13 @@ received: 🦊"#
 #[cfg(test)]
 mod test_yaml {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
     use axum_yaml::Yaml;
     use pretty_assertions::assert_eq;
     use serde::Deserialize;
     use serde::Serialize;
-    use std::panic::AssertUnwindSafe;
-    use std::panic::catch_unwind;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2212,12 +2153,10 @@ mod test_yaml {
         let server = TestServer::new(app).unwrap();
 
         let response = server.get(&"/fox").await;
-        let error = catch_unwind(AssertUnwindSafe(|| {
+        let error_message = catch_panic_error_message(|| {
             let _ = response.yaml::<ExampleResponse>();
-        }))
-        .unwrap_err();
+        });
 
-        let error_message = error.downcast_ref::<String>().unwrap();
         assert_eq!(
             error_message,
             r#"Failed to deserialize Yaml response, for request GET http://localhost/fox

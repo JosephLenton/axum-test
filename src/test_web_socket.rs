@@ -1,5 +1,5 @@
 use crate::WsMessage;
-use anyhow::Context;
+use crate::internals::ResultExt;
 use anyhow::Result;
 use anyhow::anyhow;
 use bytes::Bytes;
@@ -40,7 +40,7 @@ impl TestWebSocket {
         self.stream
             .close(None)
             .await
-            .expect("Failed to close WebSocket stream");
+            .error_message("Failed to close WebSocket stream");
     }
 
     pub async fn send_text<T>(&mut self, raw_text: T)
@@ -55,7 +55,7 @@ impl TestWebSocket {
     where
         J: ?Sized + Serialize,
     {
-        let raw_json = ::serde_json::to_string(body).expect("Failed to serialize into Json");
+        let raw_json = ::serde_json::to_string(body).error_message("Failed to serialize into Json");
 
         self.send_message(WsMessage::Text(raw_json.into())).await;
     }
@@ -65,7 +65,7 @@ impl TestWebSocket {
     where
         Y: ?Sized + Serialize,
     {
-        let raw_yaml = ::serde_yaml::to_string(body).expect("Failed to serialize into Yaml");
+        let raw_yaml = ::serde_yaml::to_string(body).error_message("Failed to serialize into Yaml");
 
         self.send_message(WsMessage::Text(raw_yaml.into())).await;
     }
@@ -75,23 +75,25 @@ impl TestWebSocket {
     where
         M: ?Sized + Serialize,
     {
-        let body_bytes = ::rmp_serde::to_vec(body).expect("Failed to serialize into MsgPack");
+        let body_bytes =
+            ::rmp_serde::to_vec(body).error_message("Failed to serialize into MsgPack");
 
         self.send_message(WsMessage::Binary(body_bytes.into()))
             .await;
     }
 
     pub async fn send_message(&mut self, message: WsMessage) {
-        self.stream.send(message).await.unwrap();
+        self.stream
+            .send(message)
+            .await
+            .error_message("Failed to send websocket message")
     }
 
     #[must_use]
     pub async fn receive_text(&mut self) -> String {
         let message = self.receive_message().await;
 
-        message_to_text(message)
-            .context("Failed to read message as a String")
-            .unwrap()
+        message_to_text(message).error_message("Failed to receive websocket response as text")
     }
 
     #[must_use]
@@ -101,8 +103,7 @@ impl TestWebSocket {
     {
         let bytes = self.receive_bytes().await;
         serde_json::from_slice::<T>(&bytes)
-            .context("Failed to deserialize message as Json")
-            .unwrap()
+            .error_message_with_body("Failed to deserialize Json websocket response", &bytes)
     }
 
     #[cfg(feature = "yaml")]
@@ -113,8 +114,7 @@ impl TestWebSocket {
     {
         let bytes = self.receive_bytes().await;
         serde_yaml::from_slice::<T>(&bytes)
-            .context("Failed to deserialize message as Yaml")
-            .unwrap()
+            .error_message_with_body("Failed to deserialize Yaml websocket response", &bytes)
     }
 
     #[cfg(feature = "msgpack")]
@@ -125,17 +125,13 @@ impl TestWebSocket {
     {
         let received_bytes = self.receive_bytes().await;
         rmp_serde::from_slice::<T>(&received_bytes)
-            .context("Failed to deserializing message as MsgPack")
-            .unwrap()
+            .error_message("Failed to deserialize MsgPack websocket response")
     }
 
     #[must_use]
     pub async fn receive_bytes(&mut self) -> Bytes {
         let message = self.receive_message().await;
-
-        message_to_bytes(message)
-            .context("Failed to read message as a Bytes")
-            .unwrap()
+        message_to_bytes(message).error_message("Failed to receive websocket response as bytes")
     }
 
     #[must_use]
@@ -153,7 +149,8 @@ impl TestWebSocket {
             None => None,
             Some(message_result) => {
                 let message =
-                    message_result.expect("Failed to receive message from WebSocket stream");
+                    message_result.error_message("Failed to receive message from WebSocket stream");
+
                 Some(message)
             }
         }
@@ -905,5 +902,101 @@ mod test_assert_receive_msgpack {
                 },
             }))
             .await;
+    }
+}
+
+#[cfg(test)]
+mod test_receive_json {
+    use crate::TestServer;
+    use crate::testing::catch_panic_error_message_async;
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::response::Response;
+    use axum::routing::get;
+    use serde::Deserialize;
+    use serde::Serialize;
+
+    #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+    struct PingPongMessage {
+        ping: String,
+    }
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
+            async fn handle_ping_pong(mut socket: WebSocket) {
+                while let Some(received_message) = socket.recv().await {
+                    let received = received_message.unwrap();
+                    let received_text = received.to_text().unwrap();
+                    let encoded_text = match received_text {
+                        "good" => serde_json::to_string(&PingPongMessage {
+                            ping: "pong".to_string(),
+                        })
+                        .unwrap(),
+                        "bad" => "🦊".to_string(),
+                        _ => panic!("unknown message given {received_text}"),
+                    };
+
+                    socket
+                        .send(Message::Text(encoded_text.into()))
+                        .await
+                        .unwrap();
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_ping_pong(socket))
+        }
+
+        let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
+        TestServer::builder().http_transport().build(app).unwrap()
+    }
+
+    #[tokio::test]
+    async fn it_should_parse_when_correct_strcture() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket.send_json(&"good").await;
+
+        let received = websocket.receive_json::<PingPongMessage>().await;
+
+        assert_eq!(
+            received,
+            PingPongMessage {
+                ping: "pong".to_string(),
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn it_should_display_error_with_body_on_parse_fail() {
+        let server = new_test_app();
+
+        let mut websocket = server
+            .get_websocket(&"/ws-ping-pong")
+            .await
+            .into_websocket()
+            .await;
+
+        websocket.send_json(&"good").await;
+
+        let error_message = catch_panic_error_message_async(async || {
+            let _ = websocket.receive_json::<PingPongMessage>().await;
+        });
+
+        assert_eq!(
+            error_message,
+            r#"Failed to deserialize Json response, for request GET http://localhost/fox
+
+expected value at line 1 column 1
+
+received: 🦊"#
+        );
     }
 }
