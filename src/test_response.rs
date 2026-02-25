@@ -7,6 +7,8 @@ use crate::internals::format_status_code_range;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
+use expect_json::expect;
+use expect_json::expect_json_eq;
 use http::HeaderMap;
 use http::HeaderValue;
 use http::Method;
@@ -37,11 +39,6 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::TestWebSocket;
 #[cfg(feature = "ws")]
 use crate::internals::TestResponseWebSocket;
-
-#[cfg(not(feature = "old-json-diff"))]
-use expect_json::expect;
-#[cfg(not(feature = "old-json-diff"))]
-use expect_json::expect_json_eq;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -818,21 +815,13 @@ impl TestResponse {
     {
         let received = self.json::<T>();
 
-        #[cfg(feature = "old-json-diff")]
-        {
-            assert_eq!(*expected, received);
-        }
-
-        #[cfg(not(feature = "old-json-diff"))]
-        {
-            if *expected != received {
-                if let Err(error) = expect_json_eq(&received, &expected) {
-                    panic!(
-                        "
+        if *expected != received {
+            if let Err(error) = expect_json_eq(&received, &expected) {
+                panic!(
+                    "
 {error}
 ",
-                    );
-                }
+                );
             }
         }
 
@@ -882,26 +871,18 @@ impl TestResponse {
         T: Serialize,
     {
         let received = self.json::<Value>();
+        let expected_value = serde_json::to_value(expected).unwrap();
+        let result = expect_json_eq(
+            &received,
+            &expect::object().propagated_contains(expected_value),
+        );
 
-        #[cfg(feature = "old-json-diff")]
-        {
-            assert_json_diff::assert_json_include!(actual: received, expected: expected);
-        }
-
-        #[cfg(not(feature = "old-json-diff"))]
-        {
-            let expected_value = serde_json::to_value(expected).unwrap();
-            let result = expect_json_eq(
-                &received,
-                &expect::object().propagated_contains(expected_value),
-            );
-            if let Err(error) = result {
-                panic!(
-                    "
+        if let Err(error) = result {
+            panic!(
+                "
 {error}
 ",
-                );
-            }
+            );
         }
 
         self
@@ -2404,15 +2385,13 @@ mod test_assert_text_from_file {
 mod test_assert_json {
     use super::*;
     use crate::TestServer;
+    use crate::testing::ExpectStrMinLen;
     use axum::Form;
     use axum::Json;
     use axum::Router;
     use axum::routing::get;
     use serde::Deserialize;
     use serde_json::json;
-
-    #[cfg(not(feature = "old-json-diff"))]
-    use crate::testing::ExpectStrMinLen;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2484,7 +2463,6 @@ mod test_assert_json {
         });
     }
 
-    #[cfg(not(feature = "old-json-diff"))]
     #[tokio::test]
     async fn it_should_work_with_custom_expect_op() {
         let app = Router::new().route(&"/json", get(route_get_json));
@@ -2496,7 +2474,6 @@ mod test_assert_json {
         }));
     }
 
-    #[cfg(not(feature = "old-json-diff"))]
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_custom_expect_op_fails() {

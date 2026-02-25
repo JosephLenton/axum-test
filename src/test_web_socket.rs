@@ -3,6 +3,8 @@ use crate::internals::ErrorMessage;
 use anyhow::Result;
 use anyhow::anyhow;
 use bytes::Bytes;
+use expect_json::expect;
+use expect_json::expect_json_eq;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 use hyper::upgrade::Upgraded;
@@ -17,11 +19,6 @@ use tokio_tungstenite::tungstenite::protocol::Role;
 
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
-
-#[cfg(not(feature = "old-json-diff"))]
-use expect_json::expect;
-#[cfg(not(feature = "old-json-diff"))]
-use expect_json::expect_json_eq;
 
 #[derive(Debug)]
 pub struct TestWebSocket {
@@ -172,21 +169,13 @@ impl TestWebSocket {
     {
         let received = self.receive_json::<T>().await;
 
-        #[cfg(feature = "old-json-diff")]
-        {
-            assert_eq!(*expected, received);
-        }
-
-        #[cfg(not(feature = "old-json-diff"))]
-        {
-            if *expected != received {
-                if let Err(error) = expect_json_eq(&received, &expected) {
-                    panic!(
-                        "
+        if *expected != received {
+            if let Err(error) = expect_json_eq(&received, &expected) {
+                panic!(
+                    "
 {error}
 ",
-                    );
-                }
+                );
             }
         }
 
@@ -198,26 +187,17 @@ impl TestWebSocket {
         T: Serialize,
     {
         let received = self.receive_json::<Value>().await;
-
-        #[cfg(feature = "old-json-diff")]
-        {
-            assert_json_diff::assert_json_include!(actual: received, expected: expected);
-        }
-
-        #[cfg(not(feature = "old-json-diff"))]
-        {
-            let expected_value = serde_json::to_value(expected).unwrap();
-            let result = expect_json_eq(
-                &received,
-                &expect::object().propagated_contains(expected_value),
-            );
-            if let Err(error) = result {
-                panic!(
-                    "
+        let expected_value = serde_json::to_value(expected).unwrap();
+        let result = expect_json_eq(
+            &received,
+            &expect::object().propagated_contains(expected_value),
+        );
+        if let Err(error) = result {
+            panic!(
+                "
 {error}
 ",
-                );
-            }
+            );
         }
 
         self
@@ -490,19 +470,16 @@ mod test_assert_receive_text_contains {
 #[cfg(test)]
 mod test_assert_receive_json {
     use crate::TestServer;
+    use crate::testing::ExpectStrMinLen;
     use axum::Router;
     use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
     use axum::response::Response;
     use axum::routing::get;
+    use expect_json::expect;
     use serde_json::Value;
     use serde_json::json;
-
-    #[cfg(not(feature = "old-json-diff"))]
-    use crate::testing::ExpectStrMinLen;
-    #[cfg(not(feature = "old-json-diff"))]
-    use expect_json::expect;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -577,7 +554,6 @@ mod test_assert_receive_json {
             .await;
     }
 
-    #[cfg(not(feature = "old-json-diff"))]
     #[tokio::test]
     async fn it_should_work_with_custom_expect_op() {
         let server = new_test_app();
@@ -617,7 +593,6 @@ mod test_assert_receive_json {
             .await;
     }
 
-    #[cfg(not(feature = "old-json-diff"))]
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_custom_expect_op_fails() {

@@ -46,9 +46,6 @@ reqwest = ["dep:reqwest"]
 typed-routing = ["dep:axum-extra"]
 ws = ["axum/ws", "tokio/time", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
 
-# Deprecated, and will be removed in the future.
-old-json-diff = ["dep:assert-json-diff"]
-
 [dependencies]
 axum = { version = "0.8.8", features = [] }
 anyhow = "1.0.102"
