@@ -1722,7 +1722,7 @@ mod test_add_header {
         let response = server.get(&"/header").await;
 
         // Check it sent back the right text
-        response.assert_text(TEST_HEADER_CONTENT)
+        response.assert_text(TEST_HEADER_CONTENT);
     }
 }
 

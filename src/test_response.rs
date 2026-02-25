@@ -547,7 +547,7 @@ impl TestResponse {
     ///
     /// If the header is not present, then the assertion fails.
     #[track_caller]
-    pub fn assert_contains_header<N>(&self, name: N)
+    pub fn assert_contains_header<N>(&self, name: N) -> &Self
     where
         N: TryInto<HeaderName> + Display + Clone,
         N::Error: Debug,
@@ -560,10 +560,12 @@ impl TestResponse {
             has_header,
             "Expected header '{debug_header_name}' to be present in response, header was not found, for request {debug_request_format}"
         );
+
+        self
     }
 
     #[track_caller]
-    pub fn assert_header<N, V>(&self, name: N, value: V)
+    pub fn assert_header<N, V>(&self, name: N, value: V) -> &Self
     where
         N: TryInto<HeaderName> + Display + Clone,
         N::Error: Debug,
@@ -590,6 +592,8 @@ impl TestResponse {
                 assert_eq!(expected_header_value, found_header_value,)
             }
         }
+
+        self
     }
 
     /// Finds a [`Cookie`] with the given name.
@@ -716,17 +720,19 @@ impl TestResponse {
     /// This performs an assertion comparing the whole body of the response,
     /// against the text provided.
     #[track_caller]
-    pub fn assert_text<C>(&self, expected: C)
+    pub fn assert_text<C>(&self, expected: C) -> &Self
     where
         C: AsRef<str>,
     {
         let expected_contents = expected.as_ref();
         assert_eq!(expected_contents, &self.text());
+
+        self
     }
 
     /// This asserts if the text given is contained, somewhere, within the response.
     #[track_caller]
-    pub fn assert_text_contains<C>(&self, expected: C)
+    pub fn assert_text_contains<C>(&self, expected: C) -> &Self
     where
         C: AsRef<str>,
     {
@@ -738,11 +744,13 @@ impl TestResponse {
             is_contained,
             "Failed to find '{expected_contents}', received '{received}'"
         );
+
+        self
     }
 
     /// Asserts the response from the server matches the contents of the file.
     #[track_caller]
-    pub fn assert_text_from_file<P>(&self, path: P)
+    pub fn assert_text_from_file<P>(&self, path: P) -> &Self
     where
         P: AsRef<Path>,
     {
@@ -751,6 +759,8 @@ impl TestResponse {
             .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         self.assert_text(expected);
+
+        self
     }
 
     /// Deserializes the contents of the request as Json,
@@ -802,7 +812,7 @@ impl TestResponse {
     ///
     /// This supports the ability to
     #[track_caller]
-    pub fn assert_json<T>(&self, expected: &T)
+    pub fn assert_json<T>(&self, expected: &T) -> &Self
     where
         T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
@@ -825,6 +835,8 @@ impl TestResponse {
                 }
             }
         }
+
+        self
     }
 
     /// Asserts the content is within the json returned.
@@ -865,7 +877,7 @@ impl TestResponse {
     /// # Ok(()) }
     /// ```
     #[track_caller]
-    pub fn assert_json_contains<T>(&self, expected: &T)
+    pub fn assert_json_contains<T>(&self, expected: &T) -> &Self
     where
         T: Serialize,
     {
@@ -891,6 +903,8 @@ impl TestResponse {
                 );
             }
         }
+
+        self
     }
 
     /// Read json file from given path and assert it with json response.
@@ -922,7 +936,7 @@ impl TestResponse {
     /// ```
     ///
     #[track_caller]
-    pub fn assert_json_from_file<P>(&self, path: P)
+    pub fn assert_json_from_file<P>(&self, path: P) -> &Self
     where
         P: AsRef<Path>,
     {
@@ -940,6 +954,8 @@ impl TestResponse {
             });
 
         self.assert_json(&expected);
+
+        self
     }
 
     /// Deserializes the contents of the request as Yaml,
@@ -949,17 +965,19 @@ impl TestResponse {
     /// then this will panic.
     #[cfg(feature = "yaml")]
     #[track_caller]
-    pub fn assert_yaml<T>(&self, other: &T)
+    pub fn assert_yaml<T>(&self, other: &T) -> &Self
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*other, self.yaml::<T>());
+
+        self
     }
 
     /// Read yaml file from given path and assert it with yaml response.
     #[cfg(feature = "yaml")]
     #[track_caller]
-    pub fn assert_yaml_from_file<P>(&self, path: P)
+    pub fn assert_yaml_from_file<P>(&self, path: P) -> &Self
     where
         P: AsRef<Path>,
     {
@@ -977,6 +995,8 @@ impl TestResponse {
             });
 
         self.assert_yaml(&expected);
+
+        self
     }
 
     /// Deserializes the contents of the request as MsgPack,
@@ -986,11 +1006,13 @@ impl TestResponse {
     /// then this will panic.
     #[cfg(feature = "msgpack")]
     #[track_caller]
-    pub fn assert_msgpack<T>(&self, other: &T)
+    pub fn assert_msgpack<T>(&self, other: &T) -> &Self
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*other, self.msgpack::<T>());
+
+        self
     }
 
     /// Deserializes the contents of the request as an url encoded form,
@@ -999,16 +1021,18 @@ impl TestResponse {
     /// If `other` does not match, or the response cannot be deserialized,
     /// then this will panic.
     #[track_caller]
-    pub fn assert_form<T>(&self, other: &T)
+    pub fn assert_form<T>(&self, other: &T) -> &Self
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*other, self.form::<T>());
+
+        self
     }
 
     /// Assert the response status code matches the one given.
     #[track_caller]
-    pub fn assert_status(&self, expected_status_code: StatusCode) {
+    pub fn assert_status(&self, expected_status_code: StatusCode) -> &Self {
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
         let debug_request_format = self.debug_request_format();
@@ -1018,11 +1042,13 @@ impl TestResponse {
             expected_status_code, self.status_code,
             "Expected status code to be {expected_debug}, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
+
+        self
     }
 
     /// Assert the response status code does **not** match the one given.
     #[track_caller]
-    pub fn assert_not_status(&self, expected_status_code: StatusCode) {
+    pub fn assert_not_status(&self, expected_status_code: StatusCode) -> &Self {
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
         let debug_request_format = self.debug_request_format();
@@ -1032,12 +1058,14 @@ impl TestResponse {
             expected_status_code, self.status_code,
             "Expected status code to not be {expected_debug}, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
+
+        self
     }
 
     /// Assert that the status code is **within** the 2xx range.
     /// i.e. The range from 200-299.
     #[track_caller]
-    pub fn assert_status_success(&self) {
+    pub fn assert_status_success(&self) -> &Self {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let debug_request_format = self.debug_request_format();
@@ -1047,12 +1075,14 @@ impl TestResponse {
             200 <= status_code && status_code <= 299,
             "Expect status code within 2xx range, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
+
+        self
     }
 
     /// Assert that the status code is **outside** the 2xx range.
     /// i.e. A status code less than 200, or 300 or more.
     #[track_caller]
-    pub fn assert_status_failure(&self) {
+    pub fn assert_status_failure(&self) -> &Self {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let debug_request_format = self.debug_request_format();
@@ -1062,6 +1092,8 @@ impl TestResponse {
             status_code < 200 || 299 < status_code,
             "Expect status code outside 2xx range, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
         );
+
+        self
     }
 
     /// Assert the status code is within the range given.
@@ -1102,7 +1134,7 @@ impl TestResponse {
     /// # Ok(()) }
     /// ```
     #[track_caller]
-    pub fn assert_status_in_range<R, S>(&self, expected_status_range: R)
+    pub fn assert_status_in_range<R, S>(&self, expected_status_range: R) -> &Self
     where
         R: RangeBounds<S> + TryIntoRangeBounds<StatusCode> + Debug,
         S: TryInto<StatusCode>,
@@ -1120,6 +1152,8 @@ impl TestResponse {
             "Expected status to be in range {}, received {status_code}, for request {debug_request_format}, with body {debug_body}",
             format_status_code_range(range)
         );
+
+        self
     }
 
     /// Assert the status code is not within the range given.
@@ -1160,7 +1194,7 @@ impl TestResponse {
     /// # Ok(()) }
     /// ```
     #[track_caller]
-    pub fn assert_status_not_in_range<R, S>(&self, expected_status_range: R)
+    pub fn assert_status_not_in_range<R, S>(&self, expected_status_range: R) -> &Self
     where
         R: RangeBounds<S> + TryIntoRangeBounds<StatusCode> + Debug,
         S: TryInto<StatusCode>,
@@ -1178,58 +1212,60 @@ impl TestResponse {
             "Expected status is not in range {}, received {status_code}, for request {debug_request_format}, with body {debug_body}",
             format_status_code_range(range)
         );
+
+        self
     }
 
     /// Assert the response status code is 200.
     #[track_caller]
-    pub fn assert_status_ok(&self) {
+    pub fn assert_status_ok(&self) -> &Self {
         self.assert_status(StatusCode::OK)
     }
 
     /// Assert the response status code is **not** 200.
     #[track_caller]
-    pub fn assert_status_not_ok(&self) {
+    pub fn assert_status_not_ok(&self) -> &Self {
         self.assert_not_status(StatusCode::OK)
     }
 
     /// Assert the response status code is 204.
     #[track_caller]
-    pub fn assert_status_no_content(&self) {
+    pub fn assert_status_no_content(&self) -> &Self {
         self.assert_status(StatusCode::NO_CONTENT)
     }
 
     /// Assert the response status code is 303.
     #[track_caller]
-    pub fn assert_status_see_other(&self) {
+    pub fn assert_status_see_other(&self) -> &Self {
         self.assert_status(StatusCode::SEE_OTHER)
     }
 
     /// Assert the response status code is 400.
     #[track_caller]
-    pub fn assert_status_bad_request(&self) {
+    pub fn assert_status_bad_request(&self) -> &Self {
         self.assert_status(StatusCode::BAD_REQUEST)
     }
 
     /// Assert the response status code is 404.
     #[track_caller]
-    pub fn assert_status_not_found(&self) {
+    pub fn assert_status_not_found(&self) -> &Self {
         self.assert_status(StatusCode::NOT_FOUND)
     }
 
     /// Assert the response status code is 401.
     #[track_caller]
-    pub fn assert_status_unauthorized(&self) {
+    pub fn assert_status_unauthorized(&self) -> &Self {
         self.assert_status(StatusCode::UNAUTHORIZED)
     }
 
     /// Assert the response status code is 403.
     #[track_caller]
-    pub fn assert_status_forbidden(&self) {
+    pub fn assert_status_forbidden(&self) -> &Self {
         self.assert_status(StatusCode::FORBIDDEN)
     }
 
     /// Assert the response status code is 409.
-    pub fn assert_status_conflict(&self) {
+    pub fn assert_status_conflict(&self) -> &Self {
         self.assert_status(StatusCode::CONFLICT)
     }
 
@@ -1237,19 +1273,19 @@ impl TestResponse {
     ///
     /// The payload is too large.
     #[track_caller]
-    pub fn assert_status_payload_too_large(&self) {
+    pub fn assert_status_payload_too_large(&self) -> &Self {
         self.assert_status(StatusCode::PAYLOAD_TOO_LARGE)
     }
 
     /// Assert the response status code is 422.
     #[track_caller]
-    pub fn assert_status_unprocessable_entity(&self) {
+    pub fn assert_status_unprocessable_entity(&self) -> &Self {
         self.assert_status(StatusCode::UNPROCESSABLE_ENTITY)
     }
 
     /// Assert the response status code is 429.
     #[track_caller]
-    pub fn assert_status_too_many_requests(&self) {
+    pub fn assert_status_too_many_requests(&self) -> &Self {
         self.assert_status(StatusCode::TOO_MANY_REQUESTS)
     }
 
@@ -1258,19 +1294,19 @@ impl TestResponse {
     /// This type of code is used in Web Socket connection when
     /// first request.
     #[track_caller]
-    pub fn assert_status_switching_protocols(&self) {
+    pub fn assert_status_switching_protocols(&self) -> &Self {
         self.assert_status(StatusCode::SWITCHING_PROTOCOLS)
     }
 
     /// Assert the response status code is 500.
     #[track_caller]
-    pub fn assert_status_internal_server_error(&self) {
+    pub fn assert_status_internal_server_error(&self) -> &Self {
         self.assert_status(StatusCode::INTERNAL_SERVER_ERROR)
     }
 
     /// Assert the response status code is 503.
     #[track_caller]
-    pub fn assert_status_service_unavailable(&self) {
+    pub fn assert_status_service_unavailable(&self) -> &Self {
         self.assert_status(StatusCode::SERVICE_UNAVAILABLE)
     }
 
@@ -1437,7 +1473,7 @@ mod test_assert_success {
 
         let response = server.get(&"/pass").await;
 
-        response.assert_status_success()
+        response.assert_status_success();
     }
 
     #[tokio::test]
@@ -1451,7 +1487,7 @@ mod test_assert_success {
 
         let response = server.get(&"/fail").expect_failure().await;
 
-        response.assert_status_success()
+        response.assert_status_success();
     }
 }
 
@@ -1479,7 +1515,7 @@ mod test_assert_failure {
         let server = TestServer::new(router);
         let response = server.get(&"/fail").expect_failure().await;
 
-        response.assert_status_failure()
+        response.assert_status_failure();
     }
 
     #[tokio::test]
@@ -1492,7 +1528,7 @@ mod test_assert_failure {
         let server = TestServer::new(router);
         let response = server.get(&"/pass").await;
 
-        response.assert_status_failure()
+        response.assert_status_failure();
     }
 }
 

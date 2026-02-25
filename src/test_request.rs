@@ -729,8 +729,12 @@ impl TestRequest {
 
         // Assert if ok or not.
         match expected_state {
-            ExpectedState::Success => test_response.assert_status_success(),
-            ExpectedState::Failure => test_response.assert_status_failure(),
+            ExpectedState::Success => {
+                test_response.assert_status_success();
+            }
+            ExpectedState::Failure => {
+                test_response.assert_status_failure();
+            }
             ExpectedState::None => {}
         }
 
@@ -2309,16 +2313,15 @@ mod test_add_header {
         let server = TestServer::new(app);
 
         // Send a request with the header
-        let response = server
+        server
             .get(&"/header")
             .add_header(
                 HeaderName::from_static(TEST_HEADER_NAME),
                 HeaderValue::from_static(TEST_HEADER_CONTENT),
             )
-            .await;
-
-        // Check it sent back the right text
-        response.assert_text(TEST_HEADER_CONTENT)
+            .await
+            // Check it sent back the right text
+            .assert_text(TEST_HEADER_CONTENT);
     }
 }
 
@@ -2370,13 +2373,12 @@ mod test_authorization {
         let server = new_test_server();
 
         // Send a request with the header
-        let response = server
+        server
             .get(&"/auth-header")
             .authorization("Bearer abc123")
-            .await;
-
-        // Check it sent back the right text
-        response.assert_text("Bearer abc123")
+            .await
+            // Check it sent back the right text
+            .assert_text("Bearer abc123");
     }
 }
 
@@ -2428,13 +2430,12 @@ mod test_authorization_bearer {
         let server = new_test_server();
 
         // Send a request with the header
-        let response = server
+        server
             .get(&"/auth-header")
             .authorization_bearer("abc123")
-            .await;
-
-        // Check it sent back the right text
-        response.assert_text("abc123")
+            .await
+            // Check it sent back the right text
+            .assert_text("abc123");
     }
 }
 
