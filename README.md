@@ -30,7 +30,7 @@ async fn it_should_ping_pong() {
         .route(&"/ping", get(|| async { "pong!" }));
 
     // Run the application for testing.
-    let server = TestServer::new(app).unwrap();
+    let server = TestServer::new(app);
 
     // Get the request.
     let response = server
@@ -121,7 +121,7 @@ let app = Router::new()
         // ...
     }));
 
-let server = TestServer::new(app)?;
+let server = TestServer::new(app);
 server.get(&"/user/alan")
     .await
     .assert_json(&json!({

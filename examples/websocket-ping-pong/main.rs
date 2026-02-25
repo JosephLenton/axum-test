@@ -77,7 +77,6 @@ fn new_test_app() -> TestServer {
     TestServer::builder()
         .http_transport() // Important! It must be a HTTP Transport here.
         .build(app)
-        .unwrap()
 }
 
 #[cfg(test)]

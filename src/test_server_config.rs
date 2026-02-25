@@ -3,6 +3,7 @@ use anyhow::Result;
 use crate::TestServer;
 use crate::TestServerBuilder;
 use crate::Transport;
+use crate::internals::ResultExt;
 use crate::transport_layer::IntoTransportLayer;
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
@@ -126,7 +127,18 @@ impl TestServerConfig {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn build<A>(self, app: A) -> Result<TestServer>
+    ///
+    /// Note: this will panic if the [`TestServer`] cannot be built.
+    /// To catch the error use [`TestServerConfig::try_build`].
+    pub fn build<A>(self, app: A) -> TestServer
+    where
+        A: IntoTransportLayer,
+    {
+        self.try_build(app)
+            .error_message("Failed to build TestServer")
+    }
+
+    pub fn try_build<A>(self, app: A) -> Result<TestServer>
     where
         A: IntoTransportLayer,
     {

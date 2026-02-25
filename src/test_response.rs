@@ -61,7 +61,7 @@ use expect_json::expect_json_eq;
 /// let app = Router::new()
 ///     .route(&"/test", get(|| async { "hello!" }));
 ///
-/// let server = TestServer::new(app)?;
+/// let server = TestServer::new(app);
 ///
 /// // This builds a `TestResponse`
 /// let response = server.get(&"/todo").await;
@@ -92,7 +92,7 @@ use expect_json::expect_json_eq;
 /// # let app = Router::new()
 /// #     .route(&"/test", get(|| async { "hello!" }));
 /// #
-/// # let server = TestServer::new(app)?;
+/// # let server = TestServer::new(app);
 /// let todo_response = server.get(&"/todo")
 ///         .await
 ///         .json::<Todo>();
@@ -127,7 +127,7 @@ use expect_json::expect_json_eq;
 /// let app = Router::new()
 ///     .route(&"/test", get(|| async { "hello!" }));
 ///
-/// let server = TestServer::new(app)?;
+/// let server = TestServer::new(app);
 ///
 /// let response = server.get(&"/todo").await;
 ///
@@ -201,7 +201,7 @@ impl TestResponse {
     /// let app = Router::new()
     ///     .route(&"/todo", get(route_get_todo));
     ///
-    /// let server = TestServer::new(app)?;
+    /// let server = TestServer::new(app);
     /// let response = server.get(&"/todo").await;
     ///
     /// // Extract the response as a string on it's own.
@@ -246,7 +246,7 @@ impl TestResponse {
     /// let app = Router::new()
     ///     .route(&"/todo", get(route_get_todo));
     ///
-    /// let server = TestServer::new(app)?;
+    /// let server = TestServer::new(app);
     /// let response = server.get(&"/todo").await;
     ///
     /// // Extract the response as a `Todo` item.
@@ -297,7 +297,7 @@ impl TestResponse {
     /// let app = Router::new()
     ///     .route(&"/todo", get(route_get_todo));
     ///
-    /// let server = TestServer::new(app)?;
+    /// let server = TestServer::new(app);
     /// let response = server.get(&"/todo").await;
     ///
     /// // Extract the response as a `Todo` item.
@@ -348,7 +348,7 @@ impl TestResponse {
     /// let app = Router::new()
     ///     .route(&"/todo", get(route_get_todo));
     ///
-    /// let server = TestServer::new(app)?;
+    /// let server = TestServer::new(app);
     /// let response = server.get(&"/todo").await;
     ///
     /// // Extract the response as a `Todo` item.
@@ -399,7 +399,7 @@ impl TestResponse {
     /// let app = Router::new()
     ///     .route(&"/todo", get(route_get_todo));
     ///
-    /// let server = TestServer::new(app)?;
+    /// let server = TestServer::new(app);
     /// let response = server.get(&"/todo").await;
     ///
     /// // Extract the response as a `Todo` item.
@@ -674,7 +674,7 @@ impl TestResponse {
     /// let app = Router::new();
     /// let server = TestServer::builder()
     ///     .http_transport()
-    ///     .build(app)?;
+    ///     .build(app);
     ///
     /// let mut websocket = server
     ///     .get_websocket(&"/my-web-socket-end-point")
@@ -779,7 +779,7 @@ impl TestResponse {
     ///            "age": 20,
     ///        }))
     ///     }));
-    /// let server = TestServer::new(app)?;
+    /// let server = TestServer::new(app);
     ///
     /// // Example 1
     /// server.get(&"/user")
@@ -851,7 +851,7 @@ impl TestResponse {
     ///            "age": 20,
     ///        }))
     ///     }));
-    /// let server = TestServer::new(app)?;
+    /// let server = TestServer::new(app);
     ///
     /// // Checks the response contains _only_ the values listed here,
     /// // and ignores the rest.
@@ -912,7 +912,7 @@ impl TestResponse {
     ///         }))
     ///     }));
     ///
-    /// let server = TestServer::new(app).unwrap();
+    /// let server = TestServer::new(app);
     /// server
     ///     .get(&"/json")
     ///     .await
@@ -1079,7 +1079,7 @@ impl TestResponse {
     ///     .route(&"/json", get(|| async {
     ///         StatusCode::OK
     ///     }));
-    /// let server = TestServer::new(app).unwrap();
+    /// let server = TestServer::new(app);
     ///
     /// // Within success statuses
     /// server
@@ -1137,7 +1137,7 @@ impl TestResponse {
     ///     .route(&"/json", get(|| async {
     ///         StatusCode::NOT_FOUND
     ///     }));
-    /// let server = TestServer::new(app).unwrap();
+    /// let server = TestServer::new(app);
     ///
     /// // Is not success
     /// server
@@ -1338,7 +1338,7 @@ mod test_assert_header {
     async fn it_should_not_panic_if_contains_header_and_content_matches() {
         let router = Router::new().route(&"/header", get(route_get_header));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server
             .get(&"/header")
@@ -1351,7 +1351,7 @@ mod test_assert_header {
     async fn it_should_panic_if_contains_header_and_content_does_not_match() {
         let router = Router::new().route(&"/header", get(route_get_header));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server
             .get(&"/header")
@@ -1364,7 +1364,7 @@ mod test_assert_header {
     async fn it_should_panic_if_not_contains_header() {
         let router = Router::new().route(&"/header", get(route_get_header));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server
             .get(&"/header")
@@ -1390,7 +1390,7 @@ mod test_assert_contains_header {
     async fn it_should_not_panic_if_contains_header() {
         let router = Router::new().route(&"/header", get(route_get_header));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server
             .get(&"/header")
@@ -1403,7 +1403,7 @@ mod test_assert_contains_header {
     async fn it_should_panic_if_not_contains_header() {
         let router = Router::new().route(&"/header", get(route_get_header));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server
             .get(&"/header")
@@ -1433,7 +1433,7 @@ mod test_assert_success {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         let response = server.get(&"/pass").await;
 
@@ -1447,7 +1447,7 @@ mod test_assert_success {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         let response = server.get(&"/fail").expect_failure().await;
 
@@ -1476,7 +1476,7 @@ mod test_assert_failure {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
         let response = server.get(&"/fail").expect_failure().await;
 
         response.assert_status_failure()
@@ -1489,7 +1489,7 @@ mod test_assert_failure {
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
         let response = server.get(&"/pass").await;
 
         response.assert_status_failure()
@@ -1510,7 +1510,7 @@ mod test_assert_status {
     #[tokio::test]
     async fn it_should_pass_if_given_right_status_code() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server.get(&"/ok").await.assert_status(StatusCode::OK);
     }
@@ -1519,7 +1519,7 @@ mod test_assert_status {
     #[should_panic]
     async fn it_should_panic_when_status_code_does_not_match() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server.get(&"/ok").await.assert_status(StatusCode::ACCEPTED);
     }
@@ -1539,7 +1539,7 @@ mod test_assert_not_status {
     #[tokio::test]
     async fn it_should_pass_if_status_code_does_not_match() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server
             .get(&"/ok")
@@ -1551,7 +1551,7 @@ mod test_assert_not_status {
     #[should_panic]
     async fn it_should_panic_if_status_code_matches() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
-        let server = TestServer::new(router).unwrap();
+        let server = TestServer::new(router);
 
         server.get(&"/ok").await.assert_not_status(StatusCode::OK);
     }
@@ -1573,7 +1573,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(200..299);
@@ -1587,7 +1586,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(StatusCode::OK..StatusCode::IM_USED);
@@ -1602,7 +1600,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(200..299);
@@ -1617,7 +1614,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(StatusCode::OK..StatusCode::IM_USED);
@@ -1631,7 +1627,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(200..=299);
@@ -1646,7 +1641,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(200..=299);
@@ -1660,7 +1654,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(..299);
@@ -1675,7 +1668,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(..299);
@@ -1689,7 +1681,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(..=299);
@@ -1704,7 +1695,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(..=299);
@@ -1718,7 +1708,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(200..);
@@ -1733,7 +1722,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range(500..);
@@ -1747,7 +1735,6 @@ mod test_assert_status_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_in_range::<RangeFull, StatusCode>(..);
@@ -1771,7 +1758,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(200..299);
@@ -1786,7 +1772,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(StatusCode::OK..StatusCode::IM_USED);
@@ -1800,7 +1785,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(200..299);
@@ -1814,7 +1798,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(StatusCode::OK..StatusCode::IM_USED);
@@ -1829,7 +1812,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(200..=299);
@@ -1843,7 +1825,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(200..=299);
@@ -1858,7 +1839,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(..299);
@@ -1872,7 +1852,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(..299);
@@ -1887,7 +1866,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(..=299);
@@ -1901,7 +1879,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(..=299);
@@ -1916,7 +1893,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(200..);
@@ -1930,7 +1906,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range(500..);
@@ -1945,7 +1920,6 @@ mod test_assert_status_not_in_range {
         );
 
         TestServer::new(app)
-            .unwrap()
             .get(&"/status")
             .await
             .assert_status_not_in_range::<RangeFull, StatusCode>(..);
@@ -1970,8 +1944,7 @@ mod test_into_bytes {
     #[tokio::test]
     async fn it_should_deserialize_into_json() {
         let app = Router::new().route(&"/json", get(route_get_json));
-
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let bytes = server.get(&"/json").await.into_bytes();
         let text = String::from_utf8_lossy(&bytes);
@@ -2007,7 +1980,7 @@ mod test_content_type {
             }),
         );
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let content_type = server.get(&"/json").await.content_type();
         assert_eq!(content_type, "application/json");
@@ -2028,7 +2001,7 @@ mod test_content_type {
             }),
         );
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let content_type = server.get(&"/yaml").await.content_type();
         assert_eq!(content_type, "application/yaml");
@@ -2069,7 +2042,7 @@ mod test_json {
     async fn it_should_deserialize_into_json() {
         let app = Router::new().route(&"/json", get(route_get_json));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/json").await.json::<ExampleResponse>();
 
@@ -2085,7 +2058,7 @@ mod test_json {
     #[tokio::test]
     async fn it_should_display_the_body_when_deserializing_non_json() {
         let app = Router::new().route(&"/fox", get(route_get_fox));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/fox").await;
         let error_message = catch_panic_error_message(|| {
@@ -2139,7 +2112,7 @@ mod test_yaml {
     async fn it_should_deserialize_into_yaml() {
         let app = Router::new().route(&"/yaml", get(route_get_yaml));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/yaml").await.yaml::<ExampleResponse>();
 
@@ -2155,7 +2128,7 @@ mod test_yaml {
     #[tokio::test]
     async fn it_should_display_the_body_when_deserializing_non_yaml() {
         let app = Router::new().route(&"/fox", get(route_get_fox));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/fox").await;
         let error_message = catch_panic_error_message(|| {
@@ -2202,7 +2175,7 @@ mod test_msgpack {
     async fn it_should_deserialize_into_msgpack() {
         let app = Router::new().route(&"/msgpack", get(route_get_msgpack));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/msgpack").await.msgpack::<ExampleResponse>();
 
@@ -2242,7 +2215,7 @@ mod test_form {
     async fn it_should_deserialize_into_form() {
         let app = Router::new().route(&"/form", get(route_get_form));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/form").await.form::<ExampleResponse>();
 
@@ -2266,7 +2239,7 @@ mod test_from {
     #[tokio::test]
     async fn it_should_turn_into_response_bytes() {
         let app = Router::new().route(&"/text", get(|| async { "This is some example text" }));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/text").await;
         let bytes: Bytes = response.into();
@@ -2287,7 +2260,7 @@ mod test_assert_text {
         }
 
         let app = Router::new().route(&"/text", get(route_get_text));
-        TestServer::new(app).unwrap()
+        TestServer::new(app)
     }
 
     #[tokio::test]
@@ -2329,7 +2302,7 @@ mod test_assert_text_contains {
         }
 
         let app = Router::new().route(&"/text", get(route_get_text));
-        TestServer::new(app).unwrap()
+        TestServer::new(app)
     }
 
     #[tokio::test]
@@ -2370,7 +2343,7 @@ mod test_assert_text_from_file {
     #[tokio::test]
     async fn it_should_match_from_file() {
         let app = Router::new().route(&"/text", get(|| async { "hello!" }));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/text")
@@ -2382,7 +2355,7 @@ mod test_assert_text_from_file {
     #[should_panic]
     async fn it_should_panic_when_not_match_the_file() {
         let app = Router::new().route(&"/text", get(|| async { "🦊" }));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/text")
@@ -2429,7 +2402,7 @@ mod test_assert_json {
     async fn it_should_match_json_returned() {
         let app = Router::new().route(&"/json", get(route_get_json));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/json").await.assert_json(&ExampleResponse {
             name: "Joe".to_string(),
@@ -2441,7 +2414,7 @@ mod test_assert_json {
     async fn it_should_match_json_returned_using_json_value() {
         let app = Router::new().route(&"/json", get(route_get_json));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/json").await.assert_json(&json!({
             "name": "Joe",
@@ -2454,7 +2427,7 @@ mod test_assert_json {
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/json", get(route_get_json));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/json").await.assert_json(&ExampleResponse {
             name: "Julia".to_string(),
@@ -2467,7 +2440,7 @@ mod test_assert_json {
     async fn it_should_panic_if_response_is_form() {
         let app = Router::new().route(&"/form", get(route_get_form));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/form").await.assert_json(&ExampleResponse {
             name: "Joe".to_string(),
@@ -2479,7 +2452,7 @@ mod test_assert_json {
     #[tokio::test]
     async fn it_should_work_with_custom_expect_op() {
         let app = Router::new().route(&"/json", get(route_get_json));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/json").await.assert_json(&json!({
             "name": ExpectStrMinLen { min: 3 },
@@ -2492,7 +2465,7 @@ mod test_assert_json {
     #[should_panic]
     async fn it_should_panic_if_custom_expect_op_fails() {
         let app = Router::new().route(&"/json", get(route_get_json));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/json").await.assert_json(&json!({
             "name": ExpectStrMinLen { min: 10 },
@@ -2539,7 +2512,7 @@ mod test_assert_json_contains {
     #[tokio::test]
     async fn it_should_match_subset_of_json_returned() {
         let app = Router::new().route(&"/json", get(route_get_json));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/json").await.assert_json_contains(&json!({
             "name": "Joe",
@@ -2551,7 +2524,7 @@ mod test_assert_json_contains {
     #[should_panic]
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/json", get(route_get_json));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/json")
@@ -2567,7 +2540,7 @@ mod test_assert_json_contains {
     #[should_panic]
     async fn it_should_panic_if_response_is_form() {
         let app = Router::new().route(&"/form", get(route_get_form));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/form").await.assert_json_contains(&json!({
             "name": "Joe",
@@ -2581,7 +2554,7 @@ mod test_assert_json_contains {
         let json_result = json!({ "a": {"prop1": "value1"} }).to_string();
         let app = Router::new().route(&"/json", get(|| async { json_result }));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
         let response = server.get("/json").await;
 
         response.assert_json_contains(&json!({ "a": {} }));
@@ -2612,7 +2585,7 @@ mod test_assert_json_from_file {
                 ))
             }),
         );
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/json")
@@ -2634,7 +2607,7 @@ mod test_assert_json_from_file {
                 ))
             }),
         );
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/json")
@@ -2660,7 +2633,7 @@ mod test_assert_json_from_file {
                 })
             }),
         );
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/form")
@@ -2704,7 +2677,7 @@ mod test_assert_yaml {
     async fn it_should_match_yaml_returned() {
         let app = Router::new().route(&"/yaml", get(route_get_yaml));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/yaml").await.assert_yaml(&ExampleResponse {
             name: "Joe".to_string(),
@@ -2717,7 +2690,7 @@ mod test_assert_yaml {
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/yaml", get(route_get_yaml));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/yaml").await.assert_yaml(&ExampleResponse {
             name: "Julia".to_string(),
@@ -2730,7 +2703,7 @@ mod test_assert_yaml {
     async fn it_should_panic_if_response_is_form() {
         let app = Router::new().route(&"/form", get(route_get_form));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/form").await.assert_yaml(&ExampleResponse {
             name: "Joe".to_string(),
@@ -2764,7 +2737,7 @@ mod test_assert_yaml_from_file {
                 ))
             }),
         );
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/yaml")
@@ -2786,7 +2759,7 @@ mod test_assert_yaml_from_file {
                 ))
             }),
         );
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/yaml")
@@ -2812,7 +2785,7 @@ mod test_assert_yaml_from_file {
                 })
             }),
         );
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server
             .get(&"/form")
@@ -2855,7 +2828,7 @@ mod test_assert_form {
     async fn it_should_match_form_returned() {
         let app = Router::new().route(&"/form", get(route_get_form));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/form").await.assert_form(&ExampleResponse {
             name: "Joe".to_string(),
@@ -2868,7 +2841,7 @@ mod test_assert_form {
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/form", get(route_get_form));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/form").await.assert_form(&ExampleResponse {
             name: "Julia".to_string(),
@@ -2881,7 +2854,7 @@ mod test_assert_form {
     async fn it_should_panic_if_response_is_json() {
         let app = Router::new().route(&"/json", get(route_get_json));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         server.get(&"/json").await.assert_form(&ExampleResponse {
             name: "Joe".to_string(),
@@ -2904,7 +2877,7 @@ mod test_text {
 
         let app = Router::new().route(&"/text", get(route_get_text));
 
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/text").await.text();
 
@@ -2942,10 +2915,7 @@ mod test_into_websocket {
     #[tokio::test]
     async fn it_should_upgrade_on_http_transport() {
         let router = new_test_router();
-        let server = TestServer::builder()
-            .http_transport()
-            .build(router)
-            .unwrap();
+        let server = TestServer::builder().http_transport().build(router);
 
         let _ = server.get_websocket(&"/ws").await.into_websocket().await;
 
@@ -2956,10 +2926,7 @@ mod test_into_websocket {
     #[should_panic]
     async fn it_should_fail_to_upgrade_on_mock_transport() {
         let router = new_test_router();
-        let server = TestServer::builder()
-            .mock_transport()
-            .build(router)
-            .unwrap();
+        let server = TestServer::builder().mock_transport().build(router);
 
         let _ = server.get_websocket(&"/ws").await.into_websocket().await;
     }
@@ -2990,7 +2957,7 @@ mod test_fmt {
     #[tokio::test]
     async fn it_should_output_json_in_json_format() {
         let app = Router::new().route(&"/json", get(route_get_json));
-        let server = TestServer::new(app).unwrap();
+        let server = TestServer::new(app);
 
         let response = server.get(&"/json").await;
         let output = format!("{response}");

@@ -319,7 +319,7 @@ mod test_assert_receive_text {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -416,7 +416,7 @@ mod test_assert_receive_text_contains {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -512,7 +512,7 @@ mod test_assert_receive_json {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -668,7 +668,7 @@ mod test_assert_receive_json_contains {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -793,7 +793,7 @@ mod test_assert_receive_yaml {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -873,7 +873,7 @@ mod test_assert_receive_msgpack {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -951,7 +951,7 @@ mod test_receive_json {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]

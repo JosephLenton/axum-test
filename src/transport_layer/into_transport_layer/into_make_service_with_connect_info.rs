@@ -75,10 +75,7 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
             .into_make_service_with_connect_info::<SocketAddr>();
 
         // Run the server.
-        let server = TestServer::builder()
-            .http_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().http_transport().build(app);
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -94,10 +91,7 @@ mod test_into_http_transport_layer_for_into_make_service_with_connect_info {
         );
 
         // Run the server.
-        let server = TestServer::builder()
-            .http_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().http_transport().build(app);
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -123,7 +117,7 @@ mod test_into_mock_transport_layer_for_into_make_service_with_connect_info {
             .into_make_service_with_connect_info::<SocketAddr>();
 
         // Build the server.
-        let result = TestServer::builder().mock_transport().build(app);
+        let result = TestServer::builder().mock_transport().try_build(app);
         let err = result.unwrap_err();
         let err_msg = err.to_string();
 

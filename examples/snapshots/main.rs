@@ -103,7 +103,7 @@ mod test_response_snapshots {
 
     #[tokio::test]
     async fn it_should_save_json_snapshots() {
-        let server = TestServer::new(new_app()).unwrap();
+        let server = TestServer::new(new_app());
 
         // Get all example todos out from the server.
         let response = server.get(&"/todo/json").await;
@@ -112,7 +112,7 @@ mod test_response_snapshots {
 
     #[tokio::test]
     async fn it_should_save_json_snapshots_of_the_body() {
-        let server = TestServer::new(new_app()).unwrap();
+        let server = TestServer::new(new_app());
 
         // Get all example todos out from the server.
         let response = server.get(&"/todo/json").await;
@@ -121,7 +121,7 @@ mod test_response_snapshots {
 
     #[tokio::test]
     async fn it_should_save_yaml_snapshots() {
-        let server = TestServer::new(new_app()).unwrap();
+        let server = TestServer::new(new_app());
 
         // Get all example todos out from the server.
         let response = server.get(&"/todo/yaml").await;
@@ -130,7 +130,7 @@ mod test_response_snapshots {
 
     #[tokio::test]
     async fn it_should_save_yaml_snapshots_of_the_body() {
-        let server = TestServer::new(new_app()).unwrap();
+        let server = TestServer::new(new_app());
 
         // Get all example todos out from the server.
         let response = server.get(&"/todo/yaml").await;
@@ -139,7 +139,7 @@ mod test_response_snapshots {
 
     #[tokio::test]
     async fn it_should_save_binary_snapshots() {
-        let server = TestServer::new(new_app()).unwrap();
+        let server = TestServer::new(new_app());
 
         // Get all example todos out from the server.
         let response = server.get(&"/example.png").await;

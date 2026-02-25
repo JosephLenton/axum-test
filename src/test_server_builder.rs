@@ -4,6 +4,7 @@ use std::net::IpAddr;
 use crate::TestServer;
 use crate::TestServerConfig;
 use crate::Transport;
+use crate::internals::ResultExt;
 use crate::transport_layer::IntoTransportLayer;
 
 /// A builder for [`crate::TestServer`]. Inside is a [`crate::TestServerConfig`],
@@ -23,7 +24,7 @@ use crate::transport_layer::IntoTransportLayer;
 /// let server = TestServerBuilder::new()
 ///     .save_cookies()
 ///     .default_content_type(&"application/json")
-///     .build(my_app)?;
+///     .build(my_app);
 /// #
 /// # Ok(())
 /// # }
@@ -156,11 +157,22 @@ impl TestServerBuilder {
     ///
     /// This is the equivalent to building [`crate::TestServerConfig`] yourself,
     /// and calling [`crate::TestServer::new_with_config`].
-    pub fn build<A>(self, app: A) -> Result<TestServer>
+    ///
+    /// Note: this will panic if the [`TestServer`] cannot be built.
+    /// To catch the error use [`TestServerBuilder::try_build`].
+    pub fn build<A>(self, app: A) -> TestServer
     where
         A: IntoTransportLayer,
     {
-        self.into_config().build(app)
+        self.try_build(app)
+            .error_message("Failed to build TestServer")
+    }
+
+    pub fn try_build<A>(self, app: A) -> Result<TestServer>
+    where
+        A: IntoTransportLayer,
+    {
+        self.into_config().try_build(app)
     }
 }
 

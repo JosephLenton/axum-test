@@ -73,10 +73,7 @@ mod test_into_http_transport_layer_for_into_make_service {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::builder()
-            .http_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().http_transport().build(app);
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -91,10 +88,7 @@ mod test_into_http_transport_layer_for_into_make_service {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::builder()
-            .http_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().http_transport().build(app);
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");
@@ -110,10 +104,7 @@ mod test_into_http_transport_layer_for_into_make_service {
         let app = ServiceExt::<Request>::into_make_service(normalized_router);
 
         // Run the server.
-        let server = TestServer::builder()
-            .http_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().http_transport().build(app);
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");
@@ -147,10 +138,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::builder()
-            .mock_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().mock_transport().build(app);
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -165,10 +153,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
             .into_make_service();
 
         // Run the server.
-        let server = TestServer::builder()
-            .mock_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().mock_transport().build(app);
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");
@@ -184,10 +169,7 @@ mod test_into_mock_transport_layer_for_into_make_service {
         let app = ServiceExt::<Request>::into_make_service(normalized_router);
 
         // Run the server.
-        let server = TestServer::builder()
-            .mock_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().mock_transport().build(app);
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");

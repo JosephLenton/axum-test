@@ -14,7 +14,7 @@
 //! use axum_test::multipart::MultipartForm;
 //!
 //! let app = Router::new();
-//! let server = TestServer::new(app)?;
+//! let server = TestServer::new(app);
 //!
 //! let multipart_form = MultipartForm::new()
 //!     .add_text("name", "Joe")
@@ -38,7 +38,7 @@
 //! use axum_test::multipart::Part;
 //!
 //! let app = Router::new();
-//! let server = TestServer::new(app)?;
+//! let server = TestServer::new(app);
 //!
 //! let image_bytes = include_bytes!("../../README.md");
 //! let image_part = Part::bytes(image_bytes.as_slice())

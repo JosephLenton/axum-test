@@ -173,7 +173,6 @@ fn new_test_app() -> TestServer {
         .expect_success_by_default()
         .mock_transport()
         .build(app)
-        .unwrap()
 }
 
 #[cfg(test)]
