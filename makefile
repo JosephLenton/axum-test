@@ -37,6 +37,9 @@ test:
 test-dev:
 	cargo +stable test --features all
 
+test-doc:
+	cargo +stable test --features all --doc
+
 build:
 	cargo +stable build
 

@@ -52,8 +52,6 @@ use crate::internals::TestResponseWebSocket;
 /// use axum::Router;
 /// use axum::routing::get;
 /// use axum_test::TestServer;
-/// use serde::Deserialize;
-/// use serde::Serialize;
 ///
 /// let app = Router::new()
 ///     .route(&"/test", get(|| async { "hello!" }));
@@ -109,7 +107,8 @@ use crate::internals::TestResponseWebSocket;
 ///
 /// # Assertions
 ///
-/// The result of a response can also be asserted using the many assertion functions.
+/// The result of a response can be asserted using the many `assert_*`
+/// methods.
 ///
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -118,8 +117,6 @@ use crate::internals::TestResponseWebSocket;
 /// use axum::Router;
 /// use axum_test::TestServer;
 /// use axum::routing::get;
-/// use serde::Deserialize;
-/// use serde::Serialize;
 ///
 /// let app = Router::new()
 ///     .route(&"/test", get(|| async { "hello!" }));
@@ -131,6 +128,29 @@ use crate::internals::TestResponseWebSocket;
 /// // These assertions will panic if they are not fulfilled by the response.
 /// response.assert_status_ok();
 /// response.assert_text("hello!");
+/// #
+/// # Ok(())
+/// # }
+/// ```
+///
+/// These methods all return `&self` to allow chaining:
+///
+/// ```rust
+/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// #
+/// # use axum::*;
+/// # use axum_test::TestServer;
+/// # use axum::routing::get;
+/// #
+/// # let app = Router::new()
+/// #      .route(&"/test", get(|| async { "hello!" }));
+/// #
+/// # let server = TestServer::new(app);
+/// # let response = server.get(&"/todo").await;
+/// #
+/// response
+///     .assert_status_ok()
+///     .assert_text("hello!");
 /// #
 /// # Ok(())
 /// # }
@@ -764,11 +784,7 @@ impl TestResponse {
     /// and asserts it matches the value given.
     ///
     /// If `other` does not match, or the response is not Json,
-    /// then this will panic.
-    ///
-    /// This includes all of the abilities from [`crate::expect_json`],
-    /// to allow you to check if things partially match. See that module
-    /// for more information.
+    /// then this will panic. Failing the assertion.
     ///
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -788,15 +804,39 @@ impl TestResponse {
     ///     }));
     /// let server = TestServer::new(app);
     ///
-    /// // Example 1
     /// server.get(&"/user")
     ///     .await
     ///     .assert_json(&json!({
     ///         "name": "Joe",
     ///         "age": 20,
     ///     }));
+    /// #
+    /// # Ok(()) }
+    /// ```
     ///
-    /// // Example 2
+    /// This includes all of the abilities from [`crate::expect_json`],
+    /// to allow you to check if things partially match.
+    /// See that module for more information.
+    ///
+    /// ```rust
+    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// #
+    /// # use axum::Router;
+    /// # use axum::extract::Json;
+    /// # use axum::routing::get;
+    /// # use axum_test::TestServer;
+    /// # use serde_json::json;
+    /// #
+    /// # let app = Router::new()
+    /// #     .route(&"/user", get(|| async {
+    /// #         Json(json!({
+    /// #            "name": "Joe",
+    /// #            "age": 20,
+    /// #        }))
+    /// #     }));
+    /// # let server = TestServer::new(app);
+    /// #
+    /// // Validate aspects of the data, without needing the exact values
     /// server.get(&"/user")
     ///     .await
     ///     .assert_json(&json!({
@@ -806,8 +846,6 @@ impl TestResponse {
     /// #
     /// # Ok(()) }
     /// ```
-    ///
-    /// This supports the ability to
     #[track_caller]
     pub fn assert_json<T>(&self, expected: &T) -> &Self
     where
