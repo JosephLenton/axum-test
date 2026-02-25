@@ -1,10 +1,9 @@
-use anyhow::Result;
-
 use crate::TestServer;
 use crate::TestServerBuilder;
 use crate::Transport;
-use crate::internals::ResultExt;
+use crate::internals::ErrorMessage;
 use crate::transport_layer::IntoTransportLayer;
+use anyhow::Result;
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
 /// It implements [`Default`] to ease building.

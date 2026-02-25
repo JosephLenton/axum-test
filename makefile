@@ -34,6 +34,9 @@ test:
 
 	cargo +stable clippy --features all
 
+test-dev:
+	cargo +stable test --features all
+
 build:
 	cargo +stable build
 

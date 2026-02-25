@@ -4,6 +4,7 @@ use crate::TestServerBuilder;
 use crate::TestServerConfig;
 use crate::Transport;
 use crate::internals::AtomicCrossCookieJar;
+use crate::internals::ErrorMessage;
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
@@ -39,7 +40,6 @@ use std::cell::OnceCell;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-use crate::internals::ResultExt;
 
 const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 
