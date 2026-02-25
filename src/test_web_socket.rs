@@ -932,12 +932,12 @@ mod test_receive_json {
                     let received = received_message.unwrap();
                     let received_text = received.to_text().unwrap();
                     let encoded_text = match received_text {
-                        "good" => serde_json::to_string(&PingPongMessage {
+                        r#""good""# => serde_json::to_string(&PingPongMessage {
                             ping: "pong".to_string(),
                         })
                         .unwrap(),
-                        "bad" => "🦊".to_string(),
-                        _ => panic!("unknown message given {received_text}"),
+                        r#""bad""# => "🦊".to_string(),
+                        _ => panic!("unknown message given '{received_text}'"),
                     };
 
                     socket
@@ -992,8 +992,7 @@ mod test_receive_json {
             catch_panic_error_message_async(websocket.receive_json::<PingPongMessage>()).await;
 
         assert_str_eq!(
-            r#"Failed to deserialize Json response,
-    for request GET http://localhost/fox
+            r#"Failed to deserialize Json websocket response,
     expected value at line 1 column 1
 
 received:
