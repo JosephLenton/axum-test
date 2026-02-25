@@ -43,35 +43,41 @@ impl TestWebSocket {
             .error_message("Failed to close WebSocket stream");
     }
 
-    pub async fn send_text<T>(&mut self, raw_text: T)
+    pub async fn send_text<T>(&mut self, raw_text: T) -> &mut Self
     where
         T: Display,
     {
         let text = raw_text.to_string();
         self.send_message(WsMessage::Text(text.into())).await;
+
+        self
     }
 
-    pub async fn send_json<J>(&mut self, body: &J)
+    pub async fn send_json<J>(&mut self, body: &J) -> &mut Self
     where
         J: ?Sized + Serialize,
     {
         let raw_json = ::serde_json::to_string(body).error_message("Failed to serialize into Json");
 
         self.send_message(WsMessage::Text(raw_json.into())).await;
+
+        self
     }
 
     #[cfg(feature = "yaml")]
-    pub async fn send_yaml<Y>(&mut self, body: &Y)
+    pub async fn send_yaml<Y>(&mut self, body: &Y) -> &mut Self
     where
         Y: ?Sized + Serialize,
     {
         let raw_yaml = ::serde_yaml::to_string(body).error_message("Failed to serialize into Yaml");
 
         self.send_message(WsMessage::Text(raw_yaml.into())).await;
+
+        self
     }
 
     #[cfg(feature = "msgpack")]
-    pub async fn send_msgpack<M>(&mut self, body: &M)
+    pub async fn send_msgpack<M>(&mut self, body: &M) -> &mut Self
     where
         M: ?Sized + Serialize,
     {
@@ -80,13 +86,17 @@ impl TestWebSocket {
 
         self.send_message(WsMessage::Binary(body_bytes.into()))
             .await;
+
+        self
     }
 
-    pub async fn send_message(&mut self, message: WsMessage) {
+    pub async fn send_message(&mut self, message: WsMessage) -> &mut Self {
         self.stream
             .send(message)
             .await
-            .error_message("Failed to send websocket message")
+            .error_message("Failed to send websocket message");
+
+        self
     }
 
     #[must_use]
@@ -156,7 +166,7 @@ impl TestWebSocket {
         }
     }
 
-    pub async fn assert_receive_json<T>(&mut self, expected: &T)
+    pub async fn assert_receive_json<T>(&mut self, expected: &T) -> &mut Self
     where
         T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
@@ -179,9 +189,11 @@ impl TestWebSocket {
                 }
             }
         }
+
+        self
     }
 
-    pub async fn assert_receive_json_contains<T>(&mut self, expected: &T)
+    pub async fn assert_receive_json_contains<T>(&mut self, expected: &T) -> &mut Self
     where
         T: Serialize,
     {
@@ -207,17 +219,21 @@ impl TestWebSocket {
                 );
             }
         }
+
+        self
     }
 
-    pub async fn assert_receive_text<C>(&mut self, expected: C)
+    pub async fn assert_receive_text<C>(&mut self, expected: C) -> &mut Self
     where
         C: AsRef<str>,
     {
         let expected_contents = expected.as_ref();
         assert_eq!(expected_contents, &self.receive_text().await);
+
+        self
     }
 
-    pub async fn assert_receive_text_contains<C>(&mut self, expected: C)
+    pub async fn assert_receive_text_contains<C>(&mut self, expected: C) -> &mut Self
     where
         C: AsRef<str>,
     {
@@ -229,22 +245,28 @@ impl TestWebSocket {
             is_contained,
             "Failed to find '{expected_contents}', received '{received}'"
         );
+
+        self
     }
 
     #[cfg(feature = "yaml")]
-    pub async fn assert_receive_yaml<T>(&mut self, expected: &T)
+    pub async fn assert_receive_yaml<T>(&mut self, expected: &T) -> &mut Self
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*expected, self.receive_yaml::<T>().await);
+
+        self
     }
 
     #[cfg(feature = "msgpack")]
-    pub async fn assert_receive_msgpack<T>(&mut self, expected: &T)
+    pub async fn assert_receive_msgpack<T>(&mut self, expected: &T) -> &mut Self
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*expected, self.receive_msgpack::<T>().await);
+
+        self
     }
 }
 

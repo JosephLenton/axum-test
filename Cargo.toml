@@ -5,7 +5,7 @@ version = "19.0.0"
 rust-version = "1.85"
 edition = "2024"
 license = "MIT"
-description = "For spinning up and testing Axum servers"
+description = "Easy E2E testing for Axum"
 keywords = ["testing", "test", "axum"]
 categories = ["web-programming::http-server", "development-tools::testing"]
 repository = "https://github.com/JosephLenton/axum-test"
@@ -15,6 +15,14 @@ readme = "README.md"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "snapshots"
+path = "examples/snapshots/main.rs"
+
+[[example]]
+name = "todo"
+path = "examples/todo/main.rs"
 
 [[example]]
 name = "websocket-chat"

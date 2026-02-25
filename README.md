@@ -37,9 +37,10 @@ async fn it_should_ping_pong() {
         .get("/ping")
         .await;
 
-    // Assertions.
-    response.assert_status_ok();
-    response.assert_text("pong!");
+    // Assert!
+    response
+        .assert_status_ok()
+        .assert_text("pong!");
 }
 ```
 
