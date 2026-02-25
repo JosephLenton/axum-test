@@ -1,4 +1,5 @@
 use crate::internals::DebugResponseBody;
+use crate::internals::ErrorMessage;
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::TryIntoRangeBounds;
@@ -37,7 +38,6 @@ use crate::TestWebSocket;
 #[cfg(feature = "ws")]
 use crate::internals::TestResponseWebSocket;
 
-use crate::internals::ErrorMessage;
 #[cfg(not(feature = "old-json-diff"))]
 use expect_json::expect;
 #[cfg(not(feature = "old-json-diff"))]
