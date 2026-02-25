@@ -179,7 +179,6 @@ fn new_test_app() -> TestServer {
 #[cfg(test)]
 mod test_post_login {
     use super::*;
-
     use serde_json::json;
 
     #[tokio::test]
@@ -218,7 +217,6 @@ mod test_post_login {
 #[cfg(test)]
 mod test_route_put_user_todos {
     use super::*;
-
     use serde_json::json;
 
     #[tokio::test]
@@ -273,7 +271,6 @@ mod test_route_put_user_todos {
 #[cfg(test)]
 mod test_route_get_user_todos {
     use super::*;
-
     use serde_json::json;
 
     #[tokio::test]

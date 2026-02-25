@@ -1148,7 +1148,6 @@ mod test_new {
 #[cfg(test)]
 mod test_get {
     use super::*;
-
     use axum::Router;
     use axum::routing::get;
     use reserve_port::ReservedSocketAddr;
@@ -1289,7 +1288,6 @@ mod test_get {
 #[cfg(test)]
 mod test_reqwest_get {
     use super::*;
-
     use axum::Router;
     use axum::routing::get;
 
@@ -1322,7 +1320,6 @@ mod test_reqwest_get {
 #[cfg(test)]
 mod test_reqwest_post {
     use super::*;
-
     use axum::Json;
     use axum::Router;
     use axum::routing::post;
@@ -1377,16 +1374,15 @@ mod test_reqwest_post {
 #[cfg(test)]
 mod test_server_address {
     use super::*;
-
     use axum::Router;
-    use local_ip_address::local_ip;
     use regex::Regex;
     use reserve_port::ReservedPort;
+    use std::net::Ipv4Addr;
 
     #[tokio::test]
     async fn it_should_return_address_used_from_config() {
         let reserved_port = ReservedPort::random().unwrap();
-        let ip = local_ip().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
         let port = reserved_port.port();
 
         // Build an application with a route.
@@ -1432,16 +1428,15 @@ mod test_server_address {
 #[cfg(test)]
 mod test_server_url {
     use super::*;
-
     use axum::Router;
-    use local_ip_address::local_ip;
     use regex::Regex;
     use reserve_port::ReservedPort;
+    use std::net::Ipv4Addr;
 
     #[tokio::test]
     async fn it_should_return_address_with_url_on_http_ip_port() {
         let reserved_port = ReservedPort::random().unwrap();
-        let ip = local_ip().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
         let port = reserved_port.port();
 
         // Build an application with a route.
@@ -1492,7 +1487,7 @@ mod test_server_url {
     #[tokio::test]
     async fn it_should_include_path_query_params() {
         let reserved_port = ReservedPort::random().unwrap();
-        let ip = local_ip().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
         let port = reserved_port.port();
 
         // Build an application with a route.
@@ -1519,7 +1514,7 @@ mod test_server_url {
     #[tokio::test]
     async fn it_should_include_server_query_params() {
         let reserved_port = ReservedPort::random().unwrap();
-        let ip = local_ip().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
         let port = reserved_port.port();
 
         // Build an application with a route.
@@ -1545,7 +1540,7 @@ mod test_server_url {
     #[tokio::test]
     async fn it_should_include_server_and_path_query_params() {
         let reserved_port = ReservedPort::random().unwrap();
-        let ip = local_ip().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
         let port = reserved_port.port();
 
         // Build an application with a route.
@@ -2144,7 +2139,6 @@ mod test_clear_query_params {
 #[cfg(test)]
 mod test_expect_success_by_default {
     use super::*;
-
     use axum::Router;
     use axum::routing::get;
 
@@ -2191,7 +2185,6 @@ mod test_expect_success_by_default {
 #[cfg(test)]
 mod test_content_type {
     use super::*;
-
     use axum::Router;
     use axum::routing::get;
     use http::HeaderMap;
@@ -2369,7 +2362,6 @@ mod test_scheme {
 #[cfg(test)]
 mod test_typed_get {
     use super::*;
-
     use axum::Router;
     use axum_extra::routing::RouterExt;
     use serde::Deserialize;
@@ -2403,7 +2395,6 @@ mod test_typed_get {
 #[cfg(test)]
 mod test_typed_post {
     use super::*;
-
     use axum::Router;
     use axum_extra::routing::RouterExt;
     use serde::Deserialize;
@@ -2437,7 +2428,6 @@ mod test_typed_post {
 #[cfg(test)]
 mod test_typed_patch {
     use super::*;
-
     use axum::Router;
     use axum_extra::routing::RouterExt;
     use serde::Deserialize;
@@ -2471,7 +2461,6 @@ mod test_typed_patch {
 #[cfg(test)]
 mod test_typed_put {
     use super::*;
-
     use axum::Router;
     use axum_extra::routing::RouterExt;
     use serde::Deserialize;
@@ -2505,7 +2494,6 @@ mod test_typed_put {
 #[cfg(test)]
 mod test_typed_delete {
     use super::*;
-
     use axum::Router;
     use axum_extra::routing::RouterExt;
     use serde::Deserialize;
@@ -2539,7 +2527,6 @@ mod test_typed_delete {
 #[cfg(test)]
 mod test_typed_method {
     use super::*;
-
     use axum::Router;
     use axum_extra::routing::RouterExt;
     use serde::Deserialize;

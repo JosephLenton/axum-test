@@ -117,7 +117,6 @@ mod testing;
 #[cfg(test)]
 mod integrated_test_cookie_saving {
     use super::*;
-
     use axum::Router;
     use axum::extract::Request;
     use axum::routing::get;
@@ -346,7 +345,6 @@ mod integrated_test_cookie_saving {
 #[cfg(test)]
 mod integrated_test_typed_routing_and_query {
     use super::*;
-
     use axum::Router;
     use axum::extract::Query;
     use axum_extra::routing::RouterExt;

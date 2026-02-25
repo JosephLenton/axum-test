@@ -96,7 +96,7 @@ axum-yaml = "0.5.0"
 futures = "0.3.32"
 futures-util = "0.3.32"
 insta = { version = "1.46.3", features = ["json"] }
-local-ip-address = "0.6.10"
+local-ip-address = "0.6.10" # TODO: delete this. It is no longer in use.
 rand = "0.10.0"
 regex = "1.12.3"
 serde-email = { version = "3.2.0", features = ["serde"] }
