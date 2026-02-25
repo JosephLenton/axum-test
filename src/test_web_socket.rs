@@ -1,5 +1,5 @@
 use crate::WsMessage;
-use crate::internals::ResultExt;
+use crate::internals::ErrorMessage;
 use anyhow::Result;
 use anyhow::anyhow;
 use bytes::Bytes;

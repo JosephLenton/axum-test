@@ -24,8 +24,8 @@ pub use self::status_code_formatter::*;
 mod request_path_formatter;
 pub use self::request_path_formatter::*;
 
-mod result_ext;
-pub use self::result_ext::*;
+mod error_message;
+pub use self::error_message::*;
 
 mod query_params_store;
 pub use self::query_params_store::*;

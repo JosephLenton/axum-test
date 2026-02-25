@@ -37,7 +37,7 @@ use crate::TestWebSocket;
 #[cfg(feature = "ws")]
 use crate::internals::TestResponseWebSocket;
 
-use crate::internals::ResultExt;
+use crate::internals::ErrorMessage;
 #[cfg(not(feature = "old-json-diff"))]
 use expect_json::expect;
 #[cfg(not(feature = "old-json-diff"))]
@@ -463,6 +463,7 @@ impl TestResponse {
         let header_name = name
             .try_into()
             .expect("Failed to build HeaderName from name given");
+
         self.headers.get(header_name).map(|h| h.to_owned())
     }
 

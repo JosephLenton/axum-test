@@ -1,19 +1,18 @@
 use anyhow::Result;
 use serde::Serialize;
-use smallvec::SmallVec;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueryParamsStore {
-    query_params: SmallVec<[String; 0]>,
+    query_params: Vec<String>,
 }
 
 impl QueryParamsStore {
     pub fn new() -> Self {
         Self {
-            query_params: SmallVec::new(),
+            query_params: Vec::new(),
         }
     }
 
