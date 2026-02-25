@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::internals::QueryParamsStore;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct RequestPathFormatter<'a> {
     method: &'a Method,
 

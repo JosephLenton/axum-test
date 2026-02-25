@@ -83,7 +83,6 @@ fn new_test_app() -> TestServer {
 #[cfg(test)]
 mod test_websockets_ping_pong {
     use super::*;
-
     use serde_json::json;
 
     #[tokio::test]

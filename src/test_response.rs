@@ -1,9 +1,9 @@
 use crate::internals::DebugResponseBody;
+use crate::internals::ErrorMessage;
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::TryIntoRangeBounds;
 use crate::internals::format_status_code_range;
-use anyhow::Context;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
@@ -11,6 +11,7 @@ use http::HeaderMap;
 use http::HeaderValue;
 use http::Method;
 use http::StatusCode;
+use http::Version;
 use http::header::HeaderName;
 use http::header::SET_COOKIE;
 use http::response::Parts;
@@ -41,7 +42,6 @@ use crate::internals::TestResponseWebSocket;
 use expect_json::expect;
 #[cfg(not(feature = "old-json-diff"))]
 use expect_json::expect_json_eq;
-use http::Version;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -263,12 +263,7 @@ impl TestResponse {
         T: DeserializeOwned,
     {
         serde_json::from_slice::<T>(self.as_bytes())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Deserializing response from Json, for request {debug_request_format}")
-            })
-            .unwrap()
+            .error_response_with_body("Failed to deserialize Json response", self)
     }
 
     /// Deserializes the response, as Yaml, into the type given.
@@ -319,12 +314,7 @@ impl TestResponse {
         T: DeserializeOwned,
     {
         serde_yaml::from_slice::<T>(self.as_bytes())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Deserializing response from YAML, for request {debug_request_format}")
-            })
-            .unwrap()
+            .error_response_with_body("Failed to deserialize Yaml response", self)
     }
 
     /// Deserializes the response, as MsgPack, into the type given.
@@ -375,12 +365,7 @@ impl TestResponse {
         T: DeserializeOwned,
     {
         rmp_serde::from_slice::<T>(self.as_bytes())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Deserializing response from MsgPack, for request {debug_request_format}")
-            })
-            .unwrap()
+            .error_response("Failed to deserialize Msgpack response", self)
     }
 
     /// Deserializes the response, as an urlencoded Form, into the type given.
@@ -430,12 +415,7 @@ impl TestResponse {
         T: DeserializeOwned,
     {
         serde_urlencoded::from_bytes::<T>(self.as_bytes())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Deserializing response from Form, for request {debug_request_format}")
-            })
-            .unwrap()
+            .error_response_with_body("Failed to deserialize Form response", self)
     }
 
     /// Returns the raw underlying response as `Bytes`.
@@ -483,6 +463,7 @@ impl TestResponse {
         let header_name = name
             .try_into()
             .expect("Failed to build HeaderName from name given");
+
         self.headers.get(header_name).map(|h| h.to_owned())
     }
 
@@ -498,10 +479,9 @@ impl TestResponse {
         self.headers.get(http::header::CONTENT_TYPE).map(|header| {
             header
                 .to_str()
-                .with_context(|| {
+                .error_message_fn(|| {
                     format!("Failed to decode header CONTENT_TYPE, received '{header:?}'")
                 })
-                .unwrap()
                 .to_string()
         })
     }
@@ -531,12 +511,7 @@ impl TestResponse {
         self.headers
             .get(header_name)
             .map(|h| h.to_owned())
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Cannot find header {debug_header}, for request {debug_request_format}",)
-            })
-            .unwrap()
+            .error_response_fn(|| format!("Cannot find header {debug_header}"), self)
     }
 
     /// Iterates over all of the headers contained in the response.
@@ -642,12 +617,7 @@ impl TestResponse {
     #[track_caller]
     pub fn cookie(&self, cookie_name: &str) -> Cookie<'static> {
         self.maybe_cookie(cookie_name)
-            .with_context(|| {
-                let debug_request_format = self.debug_request_format();
-
-                format!("Cannot find cookie {cookie_name}, for request {debug_request_format}")
-            })
-            .unwrap()
+            .error_response_fn(|| format!("Cannot find cookie {cookie_name}"), self)
     }
 
     /// Returns all of the cookies contained in the response,
@@ -669,24 +639,20 @@ impl TestResponse {
     #[track_caller]
     pub fn iter_cookies(&self) -> impl Iterator<Item = Cookie<'_>> {
         self.iter_headers_by_name(SET_COOKIE).map(|header| {
-            let header_str = header
-                .to_str()
-                .with_context(|| {
+            let header_str =
+                header.to_str().error_message_fn(|| {
                     let debug_request_format = self.debug_request_format();
 
                     format!(
                         "Reading header 'Set-Cookie' as string, for request {debug_request_format}",
                     )
-                })
-                .unwrap();
+                });
 
-            Cookie::parse(header_str)
-                .with_context(|| {
-                    let debug_request_format = self.debug_request_format();
+            Cookie::parse(header_str).error_message_fn(|| {
+                let debug_request_format = self.debug_request_format();
 
-                    format!("Parsing 'Set-Cookie' header, for request {debug_request_format}",)
-                })
-                .unwrap()
+                format!("Parsing 'Set-Cookie' header, for request {debug_request_format}",)
+            })
         })
     }
 
@@ -735,17 +701,14 @@ impl TestResponse {
 
         let debug_request_format = self.debug_request_format().to_string();
 
-        let on_upgrade = self.websockets.maybe_on_upgrade.with_context(|| {
-            format!("Expected WebSocket upgrade to be found, it is None, for request {debug_request_format}")
-        })
-        .unwrap();
+        let on_upgrade = self.websockets.maybe_on_upgrade
+            .error_message_fn(|| {
+                format!("Expected WebSocket upgrade to be found, it is None, for request {debug_request_format}")
+            });
 
-        let upgraded = on_upgrade
-            .await
-            .with_context(|| {
-                format!("Failed to upgrade connection for, for request {debug_request_format}")
-            })
-            .unwrap();
+        let upgraded = on_upgrade.await.error_message_fn(|| {
+            format!("Failed to upgrade connection for, for request {debug_request_format}")
+        });
 
         TestWebSocket::new(upgraded).await
     }
@@ -785,8 +748,7 @@ impl TestResponse {
     {
         let path_ref = path.as_ref();
         let expected = read_to_string(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         self.assert_text(expected);
     }
@@ -966,18 +928,16 @@ impl TestResponse {
     {
         let path_ref = path.as_ref();
         let file = File::open(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         let reader = BufReader::new(file);
-        let expected = serde_json::from_reader::<_, serde_json::Value>(reader)
-            .with_context(|| {
+        let expected =
+            serde_json::from_reader::<_, serde_json::Value>(reader).error_message_fn(|| {
                 format!(
                     "Failed to deserialize file '{}' as json",
                     path_ref.display()
                 )
-            })
-            .unwrap();
+            });
 
         self.assert_json(&expected);
     }
@@ -1005,18 +965,16 @@ impl TestResponse {
     {
         let path_ref = path.as_ref();
         let file = File::open(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         let reader = BufReader::new(file);
-        let expected = serde_yaml::from_reader::<_, serde_yaml::Value>(reader)
-            .with_context(|| {
+        let expected =
+            serde_yaml::from_reader::<_, serde_yaml::Value>(reader).error_message_fn(|| {
                 format!(
                     "Failed to deserialize file '{}' as yaml",
                     path_ref.display()
                 )
-            })
-            .unwrap();
+            });
 
         self.assert_yaml(&expected);
     }
@@ -1316,7 +1274,7 @@ impl TestResponse {
         self.assert_status(StatusCode::SERVICE_UNAVAILABLE)
     }
 
-    fn debug_request_format(&self) -> RequestPathFormatter<'_> {
+    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_> {
         RequestPathFormatter::new(&self.method, self.full_request_url.as_str(), None)
     }
 }
@@ -2080,11 +2038,15 @@ mod test_content_type {
 #[cfg(test)]
 mod test_json {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message;
     use axum::Json;
     use axum::Router;
     use axum::routing::get;
+    use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_str_eq;
     use serde::Deserialize;
     use serde::Serialize;
+    use serde_json::Value;
 
     #[derive(Serialize, Deserialize, PartialEq, Debug)]
     struct ExampleResponse {
@@ -2097,6 +2059,10 @@ mod test_json {
             name: "Joe".to_string(),
             age: 20,
         })
+    }
+
+    async fn route_get_fox() -> &'static str {
+        "🦊"
     }
 
     #[tokio::test]
@@ -2115,15 +2081,40 @@ mod test_json {
             }
         );
     }
+
+    #[tokio::test]
+    async fn it_should_display_the_body_when_deserializing_non_json() {
+        let app = Router::new().route(&"/fox", get(route_get_fox));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/fox").await;
+        let error_message = catch_panic_error_message(|| {
+            let _ = response.json::<Value>();
+        });
+
+        assert_str_eq!(
+            r#"Failed to deserialize Json response,
+    for request GET http://localhost/fox
+    expected value at line 1 column 1
+
+received:
+    🦊
+"#,
+            error_message
+        );
+    }
 }
 
 #[cfg(feature = "yaml")]
 #[cfg(test)]
 mod test_yaml {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
     use axum_yaml::Yaml;
+    use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_str_eq;
     use serde::Deserialize;
     use serde::Serialize;
 
@@ -2140,6 +2131,10 @@ mod test_yaml {
         })
     }
 
+    async fn route_get_fox() -> &'static str {
+        "🦊"
+    }
+
     #[tokio::test]
     async fn it_should_deserialize_into_yaml() {
         let app = Router::new().route(&"/yaml", get(route_get_yaml));
@@ -2154,6 +2149,28 @@ mod test_yaml {
                 name: "Joe".to_string(),
                 age: 20,
             }
+        );
+    }
+
+    #[tokio::test]
+    async fn it_should_display_the_body_when_deserializing_non_yaml() {
+        let app = Router::new().route(&"/fox", get(route_get_fox));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server.get(&"/fox").await;
+        let error_message = catch_panic_error_message(|| {
+            let _ = response.yaml::<ExampleResponse>();
+        });
+
+        assert_str_eq!(
+            r#"Failed to deserialize Yaml response,
+    for request GET http://localhost/fox
+    invalid type: string "🦊", expected struct ExampleResponse
+
+received:
+    🦊
+"#,
+            error_message
         );
     }
 }
