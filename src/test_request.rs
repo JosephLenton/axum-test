@@ -1,3 +1,9 @@
+use crate::TestResponse;
+use crate::internals::ExpectedState;
+use crate::internals::QueryParamsStore;
+use crate::internals::RequestPathFormatter;
+use crate::multipart::MultipartForm;
+use crate::transport_layer::TransportLayer;
 use anyhow::Context;
 use anyhow::Error as AnyhowError;
 use anyhow::Result;
@@ -25,16 +31,7 @@ use std::io::BufReader;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::Mutex;
 use url::Url;
-
-use crate::ServerSharedState;
-use crate::TestResponse;
-use crate::internals::ExpectedState;
-use crate::internals::QueryParamsStore;
-use crate::internals::RequestPathFormatter;
-use crate::multipart::MultipartForm;
-use crate::transport_layer::TransportLayer;
 
 mod test_request_config;
 pub(crate) use self::test_request_config::*;
@@ -111,26 +108,17 @@ pub(crate) use self::test_request_config::*;
 #[must_use = "futures do nothing unless polled"]
 pub struct TestRequest {
     config: TestRequestConfig,
-
-    server_state: Arc<Mutex<ServerSharedState>>,
     transport: Arc<Box<dyn TransportLayer>>,
-
     body: Option<Body>,
-
     expected_state: ExpectedState,
 }
 
 impl TestRequest {
-    pub(crate) fn new(
-        server_state: Arc<Mutex<ServerSharedState>>,
-        transport: Arc<Box<dyn TransportLayer>>,
-        config: TestRequestConfig,
-    ) -> Self {
+    pub(crate) fn new(transport: Arc<Box<dyn TransportLayer>>, config: TestRequestConfig) -> Self {
         let expected_state = config.expected_state;
 
         Self {
             config,
-            server_state,
             transport,
             body: None,
             expected_state,
@@ -724,7 +712,9 @@ impl TestRequest {
 
         if save_cookies {
             let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
-            ServerSharedState::add_cookies_by_header(&self.server_state, cookie_headers)?;
+            self.config
+                .atomic_cookie_jar
+                .add_cookies_by_headers(cookie_headers)?;
         }
 
         let test_response = TestResponse::new(
@@ -2019,46 +2009,9 @@ mod test_save_cookies {
 
     const TEST_COOKIE_NAME: &'static str = &"test-cookie";
 
-    async fn put_cookie_with_attributes(
-        mut cookies: AxumCookieJar,
-        request: Request,
-    ) -> (AxumCookieJar, &'static str) {
-        let body_bytes = request
-            .into_body()
-            .collect()
-            .await
-            .expect("Should turn the body into bytes")
-            .to_bytes();
-
-        let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
-        let cookie = Cookie::build((TEST_COOKIE_NAME, body_text))
-            .http_only(true)
-            .secure(true)
-            .same_site(SameSite::Strict)
-            .path("/cookie")
-            .build();
-        cookies = cookies.add(cookie);
-
-        (cookies, &"done")
-    }
-
-    async fn get_cookie_headers_joined(headers: HeaderMap) -> String {
-        let cookies: String = headers
-            .get_all("cookie")
-            .into_iter()
-            .map(|c| c.to_str().unwrap_or("").to_string())
-            .reduce(|a, b| a + "; " + &b)
-            .unwrap_or_else(|| String::new());
-
-        cookies
-    }
-
     #[tokio::test]
-    async fn it_should_strip_cookies_from_their_attributes() {
-        let app = Router::new()
-            .route("/cookie", put(put_cookie_with_attributes))
-            .route("/cookie", get(get_cookie_headers_joined));
-        let server = TestServer::new(app).expect("Should create test server");
+    async fn it_should_save_cookies_across_requests_when_enabled() {
+        let server = TestServer::new(app()).expect("Should create test server");
 
         // Create a cookie.
         server
@@ -2071,6 +2024,46 @@ mod test_save_cookies {
         let response_text = server.get(&"/cookie").await.text();
 
         assert_eq!(response_text, format!("{}=cookie-found!", TEST_COOKIE_NAME));
+    }
+
+    fn app() -> Router {
+        async fn put_cookie_with_attributes(
+            mut cookies: AxumCookieJar,
+            request: Request,
+        ) -> (AxumCookieJar, &'static str) {
+            let body_bytes = request
+                .into_body()
+                .collect()
+                .await
+                .expect("Should turn the body into bytes")
+                .to_bytes();
+
+            let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
+            let cookie = Cookie::build((TEST_COOKIE_NAME, body_text))
+                .http_only(true)
+                .secure(true)
+                .same_site(SameSite::Strict)
+                .path("/cookie")
+                .build();
+            cookies = cookies.add(cookie);
+
+            (cookies, &"done")
+        }
+
+        async fn get_cookie_headers_joined(headers: HeaderMap) -> String {
+            let cookies: String = headers
+                .get_all("cookie")
+                .into_iter()
+                .map(|c| c.to_str().unwrap_or("").to_string())
+                .reduce(|a, b| a + "; " + &b)
+                .unwrap_or_else(|| String::new());
+
+            cookies
+        }
+
+        Router::new()
+            .route("/cookie", put(put_cookie_with_attributes))
+            .route("/cookie", get(get_cookie_headers_joined))
     }
 }
 

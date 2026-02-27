@@ -4,11 +4,15 @@ use http::HeaderValue;
 use http::Method;
 use url::Url;
 
+use crate::internals::AtomicCrossCookieJar;
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct TestRequestConfig {
+    pub atomic_cookie_jar: Arc<AtomicCrossCookieJar>,
+
     pub is_saving_cookies: bool,
     pub expected_state: ExpectedState,
     pub content_type: Option<String>,

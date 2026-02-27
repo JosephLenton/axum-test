@@ -1,3 +1,15 @@
+use crate::TestRequest;
+use crate::TestRequestConfig;
+use crate::TestServerBuilder;
+use crate::TestServerConfig;
+use crate::Transport;
+use crate::internals::AtomicCrossCookieJar;
+use crate::internals::ExpectedState;
+use crate::internals::QueryParamsStore;
+use crate::internals::RequestPathFormatter;
+use crate::transport_layer::IntoTransportLayer;
+use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerBuilder;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
@@ -22,18 +34,8 @@ use crate::transport_layer::TransportLayerType;
 use reqwest::Client;
 #[cfg(feature = "reqwest")]
 use reqwest::RequestBuilder;
-
-use crate::TestRequest;
-use crate::TestRequestConfig;
-use crate::TestServerBuilder;
-use crate::TestServerConfig;
-use crate::Transport;
-use crate::internals::ExpectedState;
-use crate::internals::QueryParamsStore;
-use crate::internals::RequestPathFormatter;
-use crate::transport_layer::IntoTransportLayer;
-use crate::transport_layer::TransportLayer;
-use crate::transport_layer::TransportLayerBuilder;
+#[cfg(feature = "reqwest")]
+use std::cell::OnceCell;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
@@ -141,14 +143,14 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 #[derive(Debug)]
 pub struct TestServer {
     state: Arc<Mutex<ServerSharedState>>,
+    cookie_jar: Arc<AtomicCrossCookieJar>,
     transport: Arc<Box<dyn TransportLayer>>,
-    save_cookies: bool,
     expected_state: ExpectedState,
     default_content_type: Option<String>,
     is_http_path_restricted: bool,
 
     #[cfg(feature = "reqwest")]
-    maybe_reqwest_client: Option<Client>,
+    maybe_reqwest_client: OnceCell<Client>,
 }
 
 impl TestServer {
@@ -241,30 +243,16 @@ impl TestServer {
             false => ExpectedState::None,
         };
 
-        #[cfg(feature = "reqwest")]
-        let maybe_reqwest_client = match transport.transport_layer_type() {
-            TransportLayerType::Http => {
-                let reqwest_client = reqwest::Client::builder()
-                    .redirect(reqwest::redirect::Policy::none())
-                    .cookie_store(config.save_cookies)
-                    .build()
-                    .expect("Failed to build Reqwest Client");
-
-                Some(reqwest_client)
-            }
-            TransportLayerType::Mock => None,
-        };
-
         Ok(Self {
             state,
+            cookie_jar: Arc::new(AtomicCrossCookieJar::new(config.save_cookies)),
             transport,
-            save_cookies: config.save_cookies,
             expected_state,
             default_content_type: config.default_content_type,
             is_http_path_restricted: config.restrict_requests_with_http_schema,
 
             #[cfg(feature = "reqwest")]
-            maybe_reqwest_client,
+            maybe_reqwest_client: Default::default(),
         })
     }
 
@@ -300,14 +288,22 @@ impl TestServer {
             .with_context(|| format!("Failed to build, for request {method} {path}"))
             .unwrap();
 
-        TestRequest::new(self.state.clone(), self.transport.clone(), config)
+        TestRequest::new(self.transport.clone(), config)
     }
 
     #[cfg(feature = "reqwest")]
     fn reqwest_client(&self) -> &Client {
-        self.maybe_reqwest_client
-            .as_ref()
-            .expect("Reqwest client is not available, TestServer must be build with HTTP transport for Reqwest to be available")
+        self.maybe_reqwest_client.get_or_init(|| {
+            if self.transport.transport_layer_type() == TransportLayerType::Mock {
+                panic!("Reqwest client is not available, TestServer must be build with HTTP transport for Reqwest to be available");
+            }
+
+            reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .cookie_provider(self.cookie_jar.clone())
+                .build()
+                .expect("Failed to build Reqwest Client")
+        })
     }
 
     #[cfg(feature = "reqwest")]
@@ -612,9 +608,7 @@ impl TestServer {
     /// If a cookie with the same name already exists,
     /// then it will be replaced.
     pub fn add_cookie(&mut self, cookie: Cookie) {
-        ServerSharedState::add_cookie(&self.state, cookie)
-            .context("Trying to call add_cookie")
-            .unwrap()
+        self.cookie_jar.add_cookie(cookie);
     }
 
     /// Adds extra cookies to be used on *all* future requests.
@@ -622,30 +616,28 @@ impl TestServer {
     /// Any cookies which have the same name as the new cookies,
     /// will get replaced.
     pub fn add_cookies(&mut self, cookies: CookieJar) {
-        ServerSharedState::add_cookies(&self.state, cookies)
-            .context("Trying to call add_cookies")
-            .unwrap()
+        self.cookie_jar.add_cookies_by_jar(cookies);
     }
 
     /// Clears all of the cookies stored internally.
     pub fn clear_cookies(&mut self) {
-        ServerSharedState::clear_cookies(&self.state)
-            .context("Trying to call clear_cookies")
-            .unwrap()
+        self.cookie_jar.clear_cookies();
     }
 
     /// Requests made using this `TestServer` will save their cookies for future requests to send.
+    /// Including sharing cookies with requests made using the `reqwest` feature.
     ///
     /// This behaviour is off by default.
     pub fn save_cookies(&mut self) {
-        self.save_cookies = true;
+        self.cookie_jar.enable_saving();
     }
 
     /// Requests made using this `TestServer` will _not_ save their cookies for future requests to send up.
+    /// Including sharing cookies with requests made using the `reqwest` feature.
     ///
     /// This is the default behaviour.
     pub fn do_not_save_cookies(&mut self) {
-        self.save_cookies = false;
+        self.cookie_jar.disable_saving();
     }
 
     /// Requests made using this `TestServer` will assert a HTTP status in the 2xx range will be returned, unless marked otherwise.
@@ -791,7 +783,6 @@ impl TestServer {
             )
         })?;
 
-        let cookies = server_locked.cookies().clone();
         let mut query_params = server_locked.query_params().clone();
         let headers = server_locked.headers().clone();
         let mut full_request_url =
@@ -807,13 +798,18 @@ impl TestServer {
         ::std::mem::drop(server_locked);
 
         Ok(TestRequestConfig {
-            is_saving_cookies: self.save_cookies,
+            atomic_cookie_jar: self.cookie_jar.clone(),
+
+            // These are copied over from the cookie jar,
+            // as the server could change it's save state after the request is made.
+            is_saving_cookies: self.cookie_jar.is_saving(),
+            cookies: self.cookie_jar.to_cookie_jar(),
+
             expected_state: self.expected_state,
             content_type: self.default_content_type.clone(),
             method,
 
             full_request_url,
-            cookies,
             query_params,
             headers,
         })
@@ -1570,7 +1566,6 @@ mod test_server_url {
 #[cfg(test)]
 mod test_add_cookie {
     use crate::TestServer;
-
     use axum::Router;
     use axum::routing::get;
     use axum_extra::extract::cookie::CookieJar;
@@ -2684,5 +2679,199 @@ mod test_is_running {
 
         assert!(!server.is_running());
         server.get("/ping").await.assert_status_ok();
+    }
+}
+
+#[cfg(test)]
+mod test_save_cookies {
+    use crate::TestServer;
+    use axum::Router;
+    use axum::extract::Request;
+    use axum::http::header::HeaderMap;
+    use axum::routing::get;
+    use axum::routing::put;
+    use axum_extra::extract::cookie::CookieJar as AxumCookieJar;
+    use cookie::Cookie;
+    use cookie::SameSite;
+    use http_body_util::BodyExt;
+
+    const TEST_COOKIE_NAME: &'static str = &"test-cookie";
+
+    #[tokio::test]
+    async fn it_should_save_cookies_across_requests_when_enabled() {
+        let mut server = TestServer::new(app()).expect("Should create test server");
+
+        server.save_cookies();
+
+        save_cookie_using_axum_test(&server).await;
+        assert_cookie_using_axum_test(&server).await;
+    }
+
+    #[cfg(feature = "reqwest")]
+    #[tokio::test]
+    async fn it_should_save_cookies_across_reqwest_requests_when_enabled() {
+        let mut server = TestServer::builder()
+            .http_transport()
+            .build(app())
+            .expect("Should create test server");
+
+        server.save_cookies();
+
+        save_cookie_using_reqwest(&server).await;
+        save_cookie_using_reqwest(&server).await;
+    }
+
+    #[tokio::test]
+    async fn it_should_save_cookies_across_axum_test_requests_when_enabled_for_second_request() {
+        let mut server = TestServer::builder()
+            .http_transport()
+            .build(app())
+            .expect("Should create test server");
+
+        save_cookie_using_axum_test(&server).await;
+        assert_no_cookie_using_axum_test(&server).await;
+
+        server.save_cookies();
+
+        save_cookie_using_axum_test(&server).await;
+        assert_cookie_using_axum_test(&server).await;
+    }
+
+    #[cfg(feature = "reqwest")]
+    #[tokio::test]
+    async fn it_should_save_cookies_across_reqwest_requests_when_enabled_for_second_request() {
+        let mut server = TestServer::builder()
+            .http_transport()
+            .build(app())
+            .expect("Should create test server");
+
+        save_cookie_using_reqwest(&server).await;
+        assert_no_cookie_using_reqwest(&server).await;
+
+        server.save_cookies();
+
+        save_cookie_using_reqwest(&server).await;
+        assert_cookie_using_reqwest(&server).await;
+    }
+
+    #[cfg(feature = "reqwest")]
+    #[tokio::test]
+    async fn it_should_save_cookies_when_set_by_reqwest_and_read_by_axum_test() {
+        let mut server = TestServer::builder()
+            .http_transport()
+            .build(app())
+            .expect("Should create test server");
+
+        server.save_cookies();
+
+        save_cookie_using_reqwest(&server).await;
+        assert_cookie_using_axum_test(&server).await;
+    }
+
+    #[cfg(feature = "reqwest")]
+    #[tokio::test]
+    async fn it_should_save_cookies_when_set_by_axum_test_and_read_by_reqwest() {
+        let mut server = TestServer::builder()
+            .http_transport()
+            .build(app())
+            .expect("Should create test server");
+
+        server.save_cookies();
+
+        save_cookie_using_axum_test(&server).await;
+        assert_cookie_using_reqwest(&server).await;
+    }
+
+    fn app() -> Router {
+        async fn put_cookie_with_attributes(
+            mut cookies: AxumCookieJar,
+            request: Request,
+        ) -> (AxumCookieJar, &'static str) {
+            let body_bytes = request
+                .into_body()
+                .collect()
+                .await
+                .expect("Should turn the body into bytes")
+                .to_bytes();
+
+            let body_text: String = String::from_utf8_lossy(&body_bytes).to_string();
+            let cookie = Cookie::build((TEST_COOKIE_NAME, body_text))
+                .http_only(true)
+                .secure(true)
+                .same_site(SameSite::Strict)
+                .path("/cookie")
+                .build();
+            cookies = cookies.add(cookie);
+
+            (cookies, &"done")
+        }
+
+        async fn get_cookie_headers_joined(headers: HeaderMap) -> String {
+            let cookies: String = headers
+                .get_all("cookie")
+                .into_iter()
+                .map(|c| c.to_str().unwrap_or("").to_string())
+                .reduce(|a, b| a + "; " + &b)
+                .unwrap_or_else(|| String::new());
+
+            cookies
+        }
+
+        Router::new()
+            .route("/cookie", put(put_cookie_with_attributes))
+            .route("/cookie", get(get_cookie_headers_joined))
+    }
+
+    async fn save_cookie_using_axum_test(server: &TestServer) {
+        server.put(&"/cookie").text(&"cookie-found!").await;
+    }
+
+    #[cfg(feature = "reqwest")]
+    async fn save_cookie_using_reqwest(server: &TestServer) {
+        server
+            .reqwest_put(&"/cookie")
+            .body("cookie-found!".to_string())
+            .send()
+            .await
+            .unwrap();
+    }
+
+    async fn assert_cookie_using_axum_test(server: &TestServer) {
+        server
+            .get(&"/cookie")
+            .await
+            .assert_text("test-cookie=cookie-found!");
+    }
+
+    #[cfg(feature = "reqwest")]
+    async fn assert_cookie_using_reqwest(server: &TestServer) {
+        let response_text = server
+            .reqwest_get(&"/cookie")
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+
+        assert_eq!("test-cookie=cookie-found!", response_text);
+    }
+
+    async fn assert_no_cookie_using_axum_test(server: &TestServer) {
+        server.get(&"/cookie").await.assert_text("");
+    }
+
+    #[cfg(feature = "reqwest")]
+    async fn assert_no_cookie_using_reqwest(server: &TestServer) {
+        let response_text = server
+            .reqwest_get(&"/cookie")
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+
+        assert_eq!("", response_text);
     }
 }
