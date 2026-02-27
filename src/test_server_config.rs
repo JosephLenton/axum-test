@@ -34,7 +34,7 @@ use anyhow::Result;
 /// };
 ///
 /// // Build the Test Server
-/// let server = TestServer::new_with_config(my_app, config)?;
+/// let server = TestServer::new_with_config(my_app, config);
 /// #
 /// # Ok(())
 /// # }
@@ -100,13 +100,15 @@ pub struct TestServerConfig {
 }
 
 impl TestServerConfig {
-    /// Creates a default `TestServerConfig`.
+    /// Creates a default [`TestServerConfig`].
     pub fn new() -> Self {
         Default::default()
     }
 
-    /// This is shorthand for calling [`crate::TestServer::new_with_config`],
-    /// and passing this config.
+    /// Builds a [`TestServer`] configured by this config.
+    ///
+    /// It is shorthand for calling [`TestServer::new_with_config`],
+    /// with config passed in.
     ///
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -121,7 +123,7 @@ impl TestServerConfig {
     ///     default_content_type: Some("application/json".to_string()),
     ///     ..Default::default()
     /// };
-    /// let server = TestServer::new_with_config(app, config)?;
+    /// let server = config.build(app);
     /// #
     /// # Ok(())
     /// # }
@@ -137,11 +139,13 @@ impl TestServerConfig {
             .error_message("Failed to build TestServer")
     }
 
+    /// Attempts to build a [`TestServer`] from this config,
+    /// and returns an error if this fails.
     pub fn try_build<A>(self, app: A) -> Result<TestServer>
     where
         A: IntoTransportLayer,
     {
-        TestServer::new_with_config(app, self)
+        TestServer::try_new_with_config(app, self)
     }
 }
 
@@ -185,7 +189,7 @@ mod test_scheme {
             default_scheme: Some("https".to_string()),
             ..Default::default()
         };
-        let server = TestServer::new_with_config(router, config).unwrap();
+        let server = TestServer::try_new_with_config(router, config).unwrap();
 
         server.get("/scheme").await.assert_text("https");
     }

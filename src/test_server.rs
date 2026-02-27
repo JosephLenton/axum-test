@@ -52,7 +52,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 /// A `TestServer` can be used to run an [`axum::Router`], an [`::axum::routing::IntoMakeService`],
 /// and others.
 ///
-/// The most straight forward approach is to call [`crate::TestServer::new`],
+/// The most straight forward approach is to call [`TestServer::new`],
 /// and pass in your application:
 ///
 /// ```rust
@@ -110,7 +110,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 ///
 /// # Customising
 ///
-/// A `TestServer` can be built from a builder, by calling [`crate::TestServer::builder`],
+/// A `TestServer` can be built from a builder, by calling [`TestServer::builder`],
 /// and customising settings. This allows one to set **mocked** (default when possible)
 /// or **real http** networking for your service.
 ///
@@ -164,7 +164,10 @@ impl TestServer {
     /// allowing you to make requests against it.
     ///
     /// This is the same as creating a new `TestServer` with a configuration,
-    /// and passing [`crate::TestServerConfig::default()`].
+    /// and passing [`TestServerConfig::default()`].
+    ///
+    /// Note: this will panic if the `TestServer` cannot be built.
+    /// To catch the error use [`TestServer::try_new`].
     ///
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -182,16 +185,13 @@ impl TestServer {
     /// # }
     /// ```
     ///
-    /// The of applications that can be passed in include:
+    /// The type of applications that can be passed in include:
     ///
     ///  - [`axum::Router`]
     ///  - [`axum::routing::IntoMakeService`]
     ///  - [`axum::extract::connect_info::IntoMakeServiceWithConnectInfo`]
     ///  - [`axum::serve::Serve`]
     ///  - [`axum::serve::WithGracefulShutdown`]
-    ///
-    /// Note: this will panic if the `TestServer` cannot be built.
-    /// To catch the error use [`TestServer::try_new`].
     ///
     pub fn new<A>(app: A) -> Self
     where
@@ -200,20 +200,30 @@ impl TestServer {
         Self::try_new(app).error_message("Failed to build TestServer")
     }
 
+    /// Attempts to create a [`TestServer`], and returns an error if this fails.
     pub fn try_new<A>(app: A) -> Result<Self>
     where
         A: IntoTransportLayer,
     {
-        Self::new_with_config(app, TestServerConfig::default())
+        Self::try_new_with_config(app, TestServerConfig::default())
     }
 
     /// Similar to [`TestServer::new()`], with a customised configuration.
     /// This includes type of transport in use (i.e. specify a specific port),
     /// or change default settings (like the default content type for requests).
     ///
-    /// This can take a [`crate::TestServerConfig`] or a [`crate::TestServerBuilder`].
+    /// This can take a [`TestServerConfig`] or a [`TestServerBuilder`].
     /// See those for more information on configuration settings.
-    pub fn new_with_config<A, C>(app: A, config: C) -> Result<Self>
+    pub fn new_with_config<A, C>(app: A, config: C) -> Self
+    where
+        A: IntoTransportLayer,
+        C: Into<TestServerConfig>,
+    {
+        Self::try_new_with_config(app, config).error_message("Failed to build TestServer")
+    }
+
+    /// Attempts to create a [`TestServer`], and returns an error if this fails.
+    pub fn try_new_with_config<A, C>(app: A, config: C) -> Result<Self>
     where
         A: IntoTransportLayer,
         C: Into<TestServerConfig>,
