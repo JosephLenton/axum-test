@@ -1,6 +1,9 @@
 mod transport_layer;
 pub use self::transport_layer::*;
 
+mod cookies;
+pub use self::cookies::*;
+
 #[cfg(feature = "ws")]
 mod websockets;
 #[cfg(feature = "ws")]
