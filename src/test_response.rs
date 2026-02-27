@@ -2329,6 +2329,17 @@ mod test_assert_text {
     }
 
     #[tokio::test]
+    async fn it_should_allow_chaining_direct_off_server() {
+        let server = new_test_server();
+
+        server
+            .get(&"/text")
+            .await
+            .assert_status_ok()
+            .assert_text("This is some example text");
+    }
+
+    #[tokio::test]
     #[should_panic]
     async fn it_should_not_match_partial_text() {
         let server = new_test_server();
