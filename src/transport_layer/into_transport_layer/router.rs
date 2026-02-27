@@ -40,10 +40,7 @@ mod test_into_http_transport_layer {
         let app: Router = Router::new().route("/ping", get(get_ping));
 
         // Run the server.
-        let server = TestServer::builder()
-            .http_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().http_transport().build(app);
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -57,10 +54,7 @@ mod test_into_http_transport_layer {
             .with_state(123);
 
         // Run the server.
-        let server = TestServer::builder()
-            .http_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().http_transport().build(app);
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");
@@ -89,10 +83,7 @@ mod test_into_mock_transport_layer_for_router {
         let app: Router = Router::new().route("/ping", get(get_ping));
 
         // Run the server.
-        let server = TestServer::builder()
-            .mock_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().mock_transport().build(app);
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
@@ -106,10 +97,7 @@ mod test_into_mock_transport_layer_for_router {
             .with_state(123);
 
         // Run the server.
-        let server = TestServer::builder()
-            .mock_transport()
-            .build(app)
-            .expect("Should create test server");
+        let server = TestServer::builder().mock_transport().build(app);
 
         // Get the request.
         server.get(&"/count").await.assert_text(&"count is 123");

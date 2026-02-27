@@ -30,16 +30,17 @@ async fn it_should_ping_pong() {
         .route(&"/ping", get(|| async { "pong!" }));
 
     // Run the application for testing.
-    let server = TestServer::new(app).unwrap();
+    let server = TestServer::new(app);
 
     // Get the request.
     let response = server
         .get("/ping")
         .await;
 
-    // Assertions.
-    response.assert_status_ok();
-    response.assert_text("pong!");
+    // Assert!
+    response
+        .assert_status_ok()
+        .assert_text("pong!");
 }
 ```
 
@@ -59,13 +60,6 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 | `typed-routing`     | _off_         | Enables support for using `TypedPath` in requests. See [axum-extra](https://crates.io/crates/axum-extra) for details.                                |
 | `ws`                | _off_         | Enables WebSocket support. See [TestWebSocket](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) for details.                    |
 | `reqwest`           | _off_         | Enables the `TestServer` being able to create [Reqwest](https://docs.rs/axum-test/latest/axum_test/struct.TestWebSocket.html) requests for querying. |
-
-
-### Deprecated
-
-| Feature             | On by default |                                                                                                                                                      |
-|---------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `old-json-diff`     | _off_         | Switches back to the old Json diff behaviour before Axum Test 18. If you find yourself needing this, then please raise an issue to let me know why.       |
 
 
 ## ⚙️ Axum Compatibility
@@ -121,7 +115,7 @@ let app = Router::new()
         // ...
     }));
 
-let server = TestServer::new(app)?;
+let server = TestServer::new(app);
 server.get(&"/user/alan")
     .await
     .assert_json(&json!({

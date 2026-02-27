@@ -94,7 +94,7 @@ impl Part {
     /// use axum_test::multipart::Part;
     ///
     /// let app = Router::new();
-    /// let server = TestServer::new(app)?;
+    /// let server = TestServer::new(app);
     ///
     /// let readme_bytes = include_bytes!("../../README.md");
     /// let readme_part = Part::bytes(readme_bytes.as_slice())

@@ -7,6 +7,8 @@ use http::HeaderValue;
 #[cfg(feature = "reqwest")]
 use reqwest::cookie::CookieStore;
 use std::sync::Mutex;
+#[cfg(feature = "reqwest")]
+use url::Url;
 
 #[derive(Debug)]
 pub struct AtomicCrossCookieJar {

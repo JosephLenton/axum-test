@@ -1,11 +1,11 @@
 [package]
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
-version = "18.7.0"
+version = "19.0.0"
 rust-version = "1.85"
 edition = "2024"
 license = "MIT"
-description = "For spinning up and testing Axum servers"
+description = "Easy E2E testing for Axum"
 keywords = ["testing", "test", "axum"]
 categories = ["web-programming::http-server", "development-tools::testing"]
 repository = "https://github.com/JosephLenton/axum-test"
@@ -15,6 +15,14 @@ readme = "README.md"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "snapshots"
+path = "examples/snapshots/main.rs"
+
+[[example]]
+name = "todo"
+path = "examples/todo/main.rs"
 
 [[example]]
 name = "websocket-chat"
@@ -37,9 +45,6 @@ msgpack = ["dep:rmp-serde"]
 reqwest = ["dep:reqwest"]
 typed-routing = ["dep:axum-extra"]
 ws = ["axum/ws", "tokio/time", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
-
-# Deprecated, and will be removed in the future.
-old-json-diff = ["dep:assert-json-diff"]
 
 [dependencies]
 axum = { version = "0.8.8", features = [] }

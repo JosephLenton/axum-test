@@ -1,57 +1,33 @@
-use anyhow::Result;
-use std::net::IpAddr;
-
 use crate::TestServer;
 use crate::TestServerConfig;
 use crate::Transport;
+use crate::internals::ErrorMessage;
 use crate::transport_layer::IntoTransportLayer;
+use anyhow::Result;
+use std::net::IpAddr;
 
-/// A builder for [`crate::TestServer`]. Inside is a [`crate::TestServerConfig`],
-/// configured by each method, and then turn into a server by [`crate::TestServerBuilder::build`].
+/// A builder for [`TestServer`]. Inside is a [`TestServerConfig`],
+/// configured by each method, and then turn into a server by [`TestServerBuilder::build`].
 ///
-/// The recommended way to make instances is to call [`crate::TestServer::builder`].
+/// The recommended way to make instances is to call [`TestServer::builder`].
 ///
-/// # Creating a [`crate::TestServer`]
-///
-/// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
-/// #
-/// use axum::Router;
-/// use axum_test::TestServerBuilder;
-///
-/// let my_app = Router::new();
-/// let server = TestServerBuilder::new()
-///     .save_cookies()
-///     .default_content_type(&"application/json")
-///     .build(my_app)?;
-/// #
-/// # Ok(())
-/// # }
-/// ```
-///
-/// # Creating a [`crate::TestServerConfig`]
+/// # Creating a [`TestServer`]
 ///
 /// ```rust
 /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum_test::TestServer;
-/// use axum_test::TestServerBuilder;
 ///
 /// let my_app = Router::new();
-/// let config = TestServerBuilder::new()
+/// let server = TestServer::builder()
 ///     .save_cookies()
 ///     .default_content_type(&"application/json")
-///     .into_config();
-///
-/// // Build the Test Server
-/// let server = TestServer::new_with_config(my_app, config)?;
+///     .build(my_app);
 /// #
 /// # Ok(())
 /// # }
 /// ```
-///
-/// These can be passed to [`crate::TestServer::new_with_config`].
 ///
 #[derive(Debug, Clone)]
 pub struct TestServerBuilder {
@@ -115,8 +91,44 @@ impl TestServerBuilder {
         self
     }
 
-    /// For turning this into a [`crate::TestServerConfig`] object,
-    /// with can be passed to [`crate::TestServer::new_with_config`].
+    /// Creates a new [`TestServer`], running the application given,
+    /// and with all settings from this `TestServerBuilder` applied.
+    ///
+    /// ```rust
+    /// use axum::Router;
+    /// use axum_test::TestServer;
+    ///
+    /// let app = Router::new();
+    /// let server = TestServer::builder()
+    ///     .save_cookies()
+    ///     .default_content_type(&"application/json")
+    ///     .build(app);
+    /// ```
+    ///
+    /// This is the equivalent to building [`TestServerConfig`] yourself,
+    /// and calling [`TestServer::new_with_config`].
+    ///
+    /// Note: this will panic if the [`TestServer`] cannot be built.
+    /// To catch the error use [`TestServerBuilder::try_build`].
+    pub fn build<A>(self, app: A) -> TestServer
+    where
+        A: IntoTransportLayer,
+    {
+        self.try_build(app)
+            .error_message("Failed to build TestServer")
+    }
+
+    /// Attempts to build a [`TestServer`] from this builder,
+    /// and returns an error if this fails.
+    pub fn try_build<A>(self, app: A) -> Result<TestServer>
+    where
+        A: IntoTransportLayer,
+    {
+        self.into_config().try_build(app)
+    }
+
+    /// For turning this into a [`TestServerConfig`] object,
+    /// with can be passed to [`TestServer::new_with_config`].
     ///
     /// ```rust
     /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
@@ -131,36 +143,13 @@ impl TestServerBuilder {
     ///     .into_config();
     ///
     /// // Build the Test Server
-    /// let server = TestServer::new_with_config(my_app, config)?;
+    /// let server = TestServer::new_with_config(my_app, config);
     /// #
     /// # Ok(())
     /// # }
     /// ```
     pub fn into_config(self) -> TestServerConfig {
         self.config
-    }
-
-    /// Creates a new [`crate::TestServer`], running the application given,
-    /// and with all settings from this `TestServerBuilder` applied.
-    ///
-    /// ```rust
-    /// use axum::Router;
-    /// use axum_test::TestServer;
-    ///
-    /// let app = Router::new();
-    /// let server = TestServer::builder()
-    ///     .save_cookies()
-    ///     .default_content_type(&"application/json")
-    ///     .build(app);
-    /// ```
-    ///
-    /// This is the equivalent to building [`crate::TestServerConfig`] yourself,
-    /// and calling [`crate::TestServer::new_with_config`].
-    pub fn build<A>(self, app: A) -> Result<TestServer>
-    where
-        A: IntoTransportLayer,
-    {
-        self.into_config().build(app)
     }
 }
 

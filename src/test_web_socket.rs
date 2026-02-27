@@ -3,6 +3,8 @@ use crate::internals::ErrorMessage;
 use anyhow::Result;
 use anyhow::anyhow;
 use bytes::Bytes;
+use expect_json::expect;
+use expect_json::expect_json_eq;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 use hyper::upgrade::Upgraded;
@@ -17,11 +19,6 @@ use tokio_tungstenite::tungstenite::protocol::Role;
 
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
-
-#[cfg(not(feature = "old-json-diff"))]
-use expect_json::expect;
-#[cfg(not(feature = "old-json-diff"))]
-use expect_json::expect_json_eq;
 
 #[derive(Debug)]
 pub struct TestWebSocket {
@@ -43,35 +40,41 @@ impl TestWebSocket {
             .error_message("Failed to close WebSocket stream");
     }
 
-    pub async fn send_text<T>(&mut self, raw_text: T)
+    pub async fn send_text<T>(&mut self, raw_text: T) -> &mut Self
     where
         T: Display,
     {
         let text = raw_text.to_string();
         self.send_message(WsMessage::Text(text.into())).await;
+
+        self
     }
 
-    pub async fn send_json<J>(&mut self, body: &J)
+    pub async fn send_json<J>(&mut self, body: &J) -> &mut Self
     where
         J: ?Sized + Serialize,
     {
         let raw_json = ::serde_json::to_string(body).error_message("Failed to serialize into Json");
 
         self.send_message(WsMessage::Text(raw_json.into())).await;
+
+        self
     }
 
     #[cfg(feature = "yaml")]
-    pub async fn send_yaml<Y>(&mut self, body: &Y)
+    pub async fn send_yaml<Y>(&mut self, body: &Y) -> &mut Self
     where
         Y: ?Sized + Serialize,
     {
         let raw_yaml = ::serde_yaml::to_string(body).error_message("Failed to serialize into Yaml");
 
         self.send_message(WsMessage::Text(raw_yaml.into())).await;
+
+        self
     }
 
     #[cfg(feature = "msgpack")]
-    pub async fn send_msgpack<M>(&mut self, body: &M)
+    pub async fn send_msgpack<M>(&mut self, body: &M) -> &mut Self
     where
         M: ?Sized + Serialize,
     {
@@ -80,13 +83,17 @@ impl TestWebSocket {
 
         self.send_message(WsMessage::Binary(body_bytes.into()))
             .await;
+
+        self
     }
 
-    pub async fn send_message(&mut self, message: WsMessage) {
+    pub async fn send_message(&mut self, message: WsMessage) -> &mut Self {
         self.stream
             .send(message)
             .await
-            .error_message("Failed to send websocket message")
+            .error_message("Failed to send websocket message");
+
+        self
     }
 
     #[must_use]
@@ -156,50 +163,14 @@ impl TestWebSocket {
         }
     }
 
-    pub async fn assert_receive_json<T>(&mut self, expected: &T)
+    pub async fn assert_receive_json<T>(&mut self, expected: &T) -> &mut Self
     where
         T: Serialize + DeserializeOwned + PartialEq<T> + Debug,
     {
         let received = self.receive_json::<T>().await;
 
-        #[cfg(feature = "old-json-diff")]
-        {
-            assert_eq!(*expected, received);
-        }
-
-        #[cfg(not(feature = "old-json-diff"))]
-        {
-            if *expected != received {
-                if let Err(error) = expect_json_eq(&received, &expected) {
-                    panic!(
-                        "
-{error}
-",
-                    );
-                }
-            }
-        }
-    }
-
-    pub async fn assert_receive_json_contains<T>(&mut self, expected: &T)
-    where
-        T: Serialize,
-    {
-        let received = self.receive_json::<Value>().await;
-
-        #[cfg(feature = "old-json-diff")]
-        {
-            assert_json_diff::assert_json_include!(actual: received, expected: expected);
-        }
-
-        #[cfg(not(feature = "old-json-diff"))]
-        {
-            let expected_value = serde_json::to_value(expected).unwrap();
-            let result = expect_json_eq(
-                &received,
-                &expect::object().propagated_contains(expected_value),
-            );
-            if let Err(error) = result {
+        if *expected != received {
+            if let Err(error) = expect_json_eq(&received, &expected) {
                 panic!(
                     "
 {error}
@@ -207,17 +178,42 @@ impl TestWebSocket {
                 );
             }
         }
+
+        self
     }
 
-    pub async fn assert_receive_text<C>(&mut self, expected: C)
+    pub async fn assert_receive_json_contains<T>(&mut self, expected: &T) -> &mut Self
+    where
+        T: Serialize,
+    {
+        let received = self.receive_json::<Value>().await;
+        let expected_value = serde_json::to_value(expected).unwrap();
+        let result = expect_json_eq(
+            &received,
+            &expect::object().propagated_contains(expected_value),
+        );
+        if let Err(error) = result {
+            panic!(
+                "
+{error}
+",
+            );
+        }
+
+        self
+    }
+
+    pub async fn assert_receive_text<C>(&mut self, expected: C) -> &mut Self
     where
         C: AsRef<str>,
     {
         let expected_contents = expected.as_ref();
         assert_eq!(expected_contents, &self.receive_text().await);
+
+        self
     }
 
-    pub async fn assert_receive_text_contains<C>(&mut self, expected: C)
+    pub async fn assert_receive_text_contains<C>(&mut self, expected: C) -> &mut Self
     where
         C: AsRef<str>,
     {
@@ -229,22 +225,28 @@ impl TestWebSocket {
             is_contained,
             "Failed to find '{expected_contents}', received '{received}'"
         );
+
+        self
     }
 
     #[cfg(feature = "yaml")]
-    pub async fn assert_receive_yaml<T>(&mut self, expected: &T)
+    pub async fn assert_receive_yaml<T>(&mut self, expected: &T) -> &mut Self
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*expected, self.receive_yaml::<T>().await);
+
+        self
     }
 
     #[cfg(feature = "msgpack")]
-    pub async fn assert_receive_msgpack<T>(&mut self, expected: &T)
+    pub async fn assert_receive_msgpack<T>(&mut self, expected: &T) -> &mut Self
     where
         T: DeserializeOwned + PartialEq<T> + Debug,
     {
         assert_eq!(*expected, self.receive_msgpack::<T>().await);
+
+        self
     }
 }
 
@@ -319,7 +321,7 @@ mod test_assert_receive_text {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -416,7 +418,7 @@ mod test_assert_receive_text_contains {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -468,19 +470,16 @@ mod test_assert_receive_text_contains {
 #[cfg(test)]
 mod test_assert_receive_json {
     use crate::TestServer;
+    use crate::testing::ExpectStrMinLen;
     use axum::Router;
     use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
     use axum::response::Response;
     use axum::routing::get;
+    use expect_json::expect;
     use serde_json::Value;
     use serde_json::json;
-
-    #[cfg(not(feature = "old-json-diff"))]
-    use crate::testing::ExpectStrMinLen;
-    #[cfg(not(feature = "old-json-diff"))]
-    use expect_json::expect;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -512,7 +511,7 @@ mod test_assert_receive_json {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -555,7 +554,6 @@ mod test_assert_receive_json {
             .await;
     }
 
-    #[cfg(not(feature = "old-json-diff"))]
     #[tokio::test]
     async fn it_should_work_with_custom_expect_op() {
         let server = new_test_app();
@@ -595,7 +593,6 @@ mod test_assert_receive_json {
             .await;
     }
 
-    #[cfg(not(feature = "old-json-diff"))]
     #[tokio::test]
     #[should_panic]
     async fn it_should_panic_if_custom_expect_op_fails() {
@@ -668,7 +665,7 @@ mod test_assert_receive_json_contains {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -793,7 +790,7 @@ mod test_assert_receive_yaml {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -873,7 +870,7 @@ mod test_assert_receive_msgpack {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]
@@ -951,7 +948,7 @@ mod test_receive_json {
         }
 
         let app = Router::new().route(&"/ws-ping-pong", get(route_get_websocket_ping_pong));
-        TestServer::builder().http_transport().build(app).unwrap()
+        TestServer::builder().http_transport().build(app)
     }
 
     #[tokio::test]

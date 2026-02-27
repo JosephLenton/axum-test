@@ -142,7 +142,7 @@ mod test_fmt {
     #[tokio::test]
     async fn it_should_display_text_response_as_text() {
         let router = Router::new().route("/text", get(|| async { "Blah blah" }));
-        let response = TestServer::new(router).unwrap().get("/text").await;
+        let response = TestServer::new(router).get("/text").await;
 
         let debug_body = DebugResponseBody(&response);
         let output = format!("{debug_body}");
@@ -159,7 +159,7 @@ mod test_fmt {
                 (0..max_len).map(|_| "🦊").collect::<String>()
             }),
         );
-        let response = TestServer::new(router).unwrap().get("/text").await;
+        let response = TestServer::new(router).get("/text").await;
 
         let debug_body = DebugResponseBody(&response);
         let output = format!("{debug_body}");
@@ -181,7 +181,7 @@ mod test_fmt {
                 })
             }),
         );
-        let response = TestServer::new(router).unwrap().get("/json").await;
+        let response = TestServer::new(router).get("/json").await;
 
         let debug_body = DebugResponseBody(&response);
         let output = format!("{debug_body}");
@@ -210,7 +210,7 @@ mod test_fmt {
                     .into_response()
             }),
         );
-        let response = TestServer::new(router).unwrap().get("/json").await;
+        let response = TestServer::new(router).get("/json").await;
 
         let debug_body = DebugResponseBody(&response);
         let output = format!("{debug_body}");
@@ -234,7 +234,7 @@ Body: '{ "name": "Joe" '"###;
                 })
             }),
         );
-        let response = TestServer::new(router).unwrap().get("/yaml").await;
+        let response = TestServer::new(router).get("/yaml").await;
 
         let debug_body = DebugResponseBody(&response);
         let output = format!("{debug_body}");
@@ -263,7 +263,7 @@ age: 20
                     .into_response()
             }),
         );
-        let response = TestServer::new(router).unwrap().get("/yaml").await;
+        let response = TestServer::new(router).get("/yaml").await;
 
         let debug_body = DebugResponseBody(&response);
         let output = format!("{debug_body}");

@@ -90,10 +90,7 @@ mod test_into_http_transport_layer {
         let application = serve(port, app).with_graceful_shutdown(pending());
 
         // Run the server.
-        TestServer::builder()
-            .http_transport()
-            .build(application)
-            .expect("Should create test server");
+        TestServer::builder().http_transport().build(application);
     }
 }
 
@@ -122,10 +119,7 @@ mod test_into_mock_transport_layer {
         let application = serve(port, app).with_graceful_shutdown(pending());
 
         // Run the server.
-        TestServer::builder()
-            .mock_transport()
-            .build(application)
-            .expect("Should create test server");
+        TestServer::builder().mock_transport().build(application);
     }
 }
 
@@ -153,9 +147,7 @@ mod test_into_default_transport {
         let application = serve(port, app).with_graceful_shutdown(pending());
 
         // Run the server.
-        let server = TestServer::builder()
-            .build(application)
-            .expect("Should create test server");
+        let server = TestServer::builder().build(application);
 
         // Get the request.
         server.get(&"/ping").await.assert_text(&"pong!");
