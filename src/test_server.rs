@@ -2693,7 +2693,7 @@ mod test_save_cookies {
 
     #[tokio::test]
     async fn it_should_save_cookies_across_requests_when_enabled() {
-        let mut server = TestServer::new(app()).expect("Should create test server");
+        let mut server = TestServer::new(app());
 
         server.save_cookies();
 
@@ -2704,10 +2704,7 @@ mod test_save_cookies {
     #[cfg(feature = "reqwest")]
     #[tokio::test]
     async fn it_should_save_cookies_across_reqwest_requests_when_enabled() {
-        let mut server = TestServer::builder()
-            .http_transport()
-            .build(app())
-            .expect("Should create test server");
+        let mut server = TestServer::builder().http_transport().build(app());
 
         server.save_cookies();
 
@@ -2717,10 +2714,7 @@ mod test_save_cookies {
 
     #[tokio::test]
     async fn it_should_save_cookies_across_axum_test_requests_when_enabled_for_second_request() {
-        let mut server = TestServer::builder()
-            .http_transport()
-            .build(app())
-            .expect("Should create test server");
+        let mut server = TestServer::builder().http_transport().build(app());
 
         save_cookie_using_axum_test(&server).await;
         assert_no_cookie_using_axum_test(&server).await;
@@ -2734,10 +2728,7 @@ mod test_save_cookies {
     #[cfg(feature = "reqwest")]
     #[tokio::test]
     async fn it_should_save_cookies_across_reqwest_requests_when_enabled_for_second_request() {
-        let mut server = TestServer::builder()
-            .http_transport()
-            .build(app())
-            .expect("Should create test server");
+        let mut server = TestServer::builder().http_transport().build(app());
 
         save_cookie_using_reqwest(&server).await;
         assert_no_cookie_using_reqwest(&server).await;
@@ -2751,10 +2742,7 @@ mod test_save_cookies {
     #[cfg(feature = "reqwest")]
     #[tokio::test]
     async fn it_should_save_cookies_when_set_by_reqwest_and_read_by_axum_test() {
-        let mut server = TestServer::builder()
-            .http_transport()
-            .build(app())
-            .expect("Should create test server");
+        let mut server = TestServer::builder().http_transport().build(app());
 
         server.save_cookies();
 
@@ -2765,10 +2753,7 @@ mod test_save_cookies {
     #[cfg(feature = "reqwest")]
     #[tokio::test]
     async fn it_should_save_cookies_when_set_by_axum_test_and_read_by_reqwest() {
-        let mut server = TestServer::builder()
-            .http_transport()
-            .build(app())
-            .expect("Should create test server");
+        let mut server = TestServer::builder().http_transport().build(app());
 
         server.save_cookies();
 

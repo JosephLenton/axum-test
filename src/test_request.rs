@@ -2007,7 +2007,7 @@ mod test_save_cookies {
 
     #[tokio::test]
     async fn it_should_save_cookies_across_requests_when_enabled() {
-        let server = TestServer::new(app);
+        let server = TestServer::new(app());
 
         // Create a cookie.
         server
