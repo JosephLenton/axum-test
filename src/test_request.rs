@@ -3095,3 +3095,33 @@ mod test_multipart {
             ]));
     }
 }
+
+#[cfg(test)]
+mod test_request_method {
+    use super::*;
+    use crate::TestServer;
+    use axum::Router;
+
+    #[tokio::test]
+    async fn it_should_return_same_method_as_the_request() {
+        let server = TestServer::new(Router::new());
+
+        let method = server.get("/").await.request_method();
+        assert_eq!(Method::GET, method);
+
+        let method = server.post("/").await.request_method();
+        assert_eq!(Method::POST, method);
+
+        let method = server.put("/").await.request_method();
+        assert_eq!(Method::PUT, method);
+
+        let method = server.patch("/").await.request_method();
+        assert_eq!(Method::PATCH, method);
+
+        let method = server.delete("/").await.request_method();
+        assert_eq!(Method::DELETE, method);
+
+        let method = server.method(Method::OPTIONS, "/").await.request_method();
+        assert_eq!(Method::OPTIONS, method);
+    }
+}
