@@ -18,8 +18,8 @@ pub use self::error_message_formatter::*;
 mod expected_state;
 pub use self::expected_state::*;
 
-mod format_status_code_range;
-pub use self::format_status_code_range::*;
+mod status_code_range_formatter;
+pub use self::status_code_range_formatter::*;
 
 mod status_code_formatter;
 pub use self::status_code_formatter::*;

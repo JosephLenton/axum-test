@@ -2,8 +2,8 @@ use crate::internals::DebugResponseBody;
 use crate::internals::ErrorMessage;
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
+use crate::internals::StatusCodeRangeFormatter;
 use crate::internals::TryIntoRangeBounds;
-use crate::internals::format_status_code_range;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
@@ -1169,7 +1169,7 @@ impl TestResponse {
         assert!(
             is_in_range,
             "Expected status to be in range {}, received {status_code}, for request {debug_request_format}, with body {debug_body}",
-            format_status_code_range(range)
+            StatusCodeRangeFormatter(range)
         );
 
         self
@@ -1229,7 +1229,7 @@ impl TestResponse {
         assert!(
             is_not_in_range,
             "Expected status is not in range {}, received {status_code}, for request {debug_request_format}, with body {debug_body}",
-            format_status_code_range(range)
+            StatusCodeRangeFormatter(range)
         );
 
         self
