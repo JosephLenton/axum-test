@@ -1564,6 +1564,31 @@ mod test_server_url {
 
         assert_eq!(received_url, expected_url);
     }
+
+    #[tokio::test]
+    async fn it_should_include_both_server_and_path_queries() {
+        let reserved_port = ReservedPort::random().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
+        let port = reserved_port.port();
+
+        // Build an application with a route.
+        let app = Router::new();
+        let mut server = TestServer::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .try_build(app)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        server.add_query_param("query", "server");
+
+        let expected_url = format!("http://{}:{}/users?query=path", ip, reserved_port.port());
+        let received_url = server
+            .server_url("/users?query=server&query=path")
+            .unwrap()
+            .to_string();
+
+        assert_eq!(received_url, expected_url);
+    }
 }
 
 #[cfg(test)]
