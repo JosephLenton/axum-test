@@ -19,7 +19,7 @@ use url::Url;
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Uri2 {
     scheme: Option<Scheme>,
-    host: Option<Authority>,
+    authority: Option<Authority>,
     path: String,
     query: QueryParamsStore,
 }
@@ -36,7 +36,7 @@ impl Uri2 {
     pub fn from_uri(uri: &Uri) -> Self {
         Self {
             scheme: uri.scheme().cloned(),
-            host: uri.authority().cloned(),
+            authority: uri.authority().cloned(),
             path: uri.path().to_string(),
             query: QueryParamsStore::from_uri(uri),
         }
@@ -49,7 +49,7 @@ impl Uri2 {
                     .parse()
                     .expect("The given url should have a valid scheme"),
             ),
-            host: Some(
+            authority: Some(
                 url.authority()
                     .parse()
                     .expect("The given url should have a valid authority"),
@@ -106,8 +106,25 @@ impl Uri2 {
             uri_builder = uri_builder.scheme(scheme.clone());
         }
 
-        if let Some(authority) = &self.host {
+        if let Some(authority) = &self.authority {
             uri_builder = uri_builder.authority(authority.clone());
+        }
+
+        let path_and_query = format!("{}?{}", self.path, self.query);
+        uri_builder = uri_builder.path_and_query(path_and_query);
+
+        uri_builder.build()
+    }
+
+    pub fn into_uri(self) -> Result<Uri, UriError> {
+        let mut uri_builder = Uri::builder();
+
+        if let Some(scheme) = self.scheme {
+            uri_builder = uri_builder.scheme(scheme);
+        }
+
+        if let Some(authority) = self.authority {
+            uri_builder = uri_builder.authority(authority);
         }
 
         let path_and_query = format!("{}?{}", self.path, self.query);
@@ -129,25 +146,36 @@ impl TryFrom<Uri2> for Uri {
     type Error = UriError;
 
     fn try_from(uri2: Uri2) -> Result<Self, Self::Error> {
-        let mut uri_builder = Uri::builder();
-
-        if let Some(scheme) = uri2.scheme {
-            uri_builder = uri_builder.scheme(scheme);
-        }
-
-        if let Some(authority) = uri2.host {
-            uri_builder = uri_builder.authority(authority);
-        }
-
-        let path_and_query = format!("{}?{}", uri2.path, uri2.query);
-        uri_builder = uri_builder.path_and_query(path_and_query);
-
-        uri_builder.build()
+        uri2.into_uri()
     }
 }
 
 impl Display for Uri2 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        if let Some(scheme) = &self.scheme {
+            write!(f, "{scheme}:")?;
+        }
+
+        if let Some(authority) = &self.authority {
+            write!(f, "{authority}:")?;
+        }
+
+        write!(f, "{}", self.path)?;
+
+        if self.query.has_content() {
+            write!(f, "?{}", self.query)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test_fmt {
+    use super::*;
+
+    #[test]
+    fn it_should_format_the_example_url() {
         todo!()
     }
 }

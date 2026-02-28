@@ -465,10 +465,7 @@ impl TestRequest {
     where
         V: Serialize,
     {
-        self.config
-            .request_uri
-            .add_query_params(query_params)
-            .error_request("It should serialize query parameters", &self);
+        self.config.request_uri.add_query_params(query_params);
 
         self
     }
