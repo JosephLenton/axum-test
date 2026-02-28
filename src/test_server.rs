@@ -1454,7 +1454,7 @@ mod test_server_url {
 
         let expected_ip_port_url = format!("http://{}:{}/users", ip, reserved_port.port());
         let absolute_url = server.server_url("/users").unwrap().to_string();
-        assert_eq!(absolute_url, expected_ip_port_url);
+        assert_eq!(expected_ip_port_url, absolute_url);
     }
 
     #[tokio::test]
@@ -1507,7 +1507,7 @@ mod test_server_url {
             .unwrap()
             .to_string();
 
-        assert_eq!(received_url, expected_url);
+        assert_eq!(expected_url, received_url);
     }
 
     #[tokio::test]
@@ -1533,7 +1533,7 @@ mod test_server_url {
         );
         let received_url = server.server_url("/users").unwrap().to_string();
 
-        assert_eq!(received_url, expected_url);
+        assert_eq!(expected_url, received_url);
     }
 
     #[tokio::test]
@@ -1562,7 +1562,72 @@ mod test_server_url {
             .unwrap()
             .to_string();
 
-        assert_eq!(received_url, expected_url);
+        assert_eq!(expected_url, received_url);
+    }
+
+    #[tokio::test]
+    async fn it_should_include_both_server_and_path_queries() {
+        let reserved_port = ReservedPort::random().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
+        let port = reserved_port.port();
+
+        // Build an application with a route.
+        let app = Router::new();
+        let mut server = TestServer::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .try_build(app)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        server.add_query_param("query", "server");
+
+        let expected_url = format!("http://{}:{}/users?query=path", ip, reserved_port.port());
+        let received_url = server
+            .server_url("/users?query=server&query=path")
+            .unwrap()
+            .to_string();
+
+        assert_eq!(expected_url, received_url);
+    }
+
+    #[tokio::test]
+    async fn it_should_work_for_paths_with_leading_slash() {
+        let reserved_port = ReservedPort::random().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
+        let port = reserved_port.port();
+
+        // Build an application with a route.
+        let app = Router::new();
+        let server = TestServer::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .try_build(app)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        let expected_url = format!("http://{}:{}/users", ip, reserved_port.port());
+        let received_url = server.server_url("users").unwrap().to_string();
+
+        assert_eq!(expected_url, received_url);
+    }
+
+    #[tokio::test]
+    async fn it_should_provide_for_empty_path() {
+        let reserved_port = ReservedPort::random().unwrap();
+        let ip = Ipv4Addr::LOCALHOST.into();
+        let port = reserved_port.port();
+
+        // Build an application with a route.
+        let app = Router::new();
+        let server = TestServer::builder()
+            .http_transport_with_ip_port(Some(ip), Some(port))
+            .try_build(app)
+            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
+            .unwrap();
+
+        let expected_url = format!("http://{}:{}", ip, reserved_port.port());
+        let received_url = server.server_url("").unwrap().to_string();
+
+        assert_eq!(expected_url, received_url);
     }
 }
 
