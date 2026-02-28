@@ -30,7 +30,6 @@ use std::fs::read_to_string;
 use std::io::BufReader;
 use std::ops::RangeBounds;
 use std::path::Path;
-use url::Url;
 
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::{assert_eq, assert_ne};
@@ -39,6 +38,7 @@ use pretty_assertions::{assert_eq, assert_ne};
 use crate::TestWebSocket;
 #[cfg(feature = "ws")]
 use crate::internals::TestResponseWebSocket;
+use http::Uri;
 
 ///
 /// The `TestResponse` is the result of a request created using a [`TestServer`](crate::TestServer).
@@ -162,7 +162,7 @@ pub struct TestResponse {
     method: Method,
 
     /// This is the actual url that was used for the request.
-    full_request_url: Url,
+    full_request_url: Uri,
     headers: HeaderMap<HeaderValue>,
     status_code: StatusCode,
     response_body: Bytes,
@@ -175,18 +175,17 @@ impl TestResponse {
     pub(crate) fn new(
         version: Version,
         method: Method,
-        full_request_url: Url,
-        parts: Parts,
+        full_request_url: Uri,
+        response_parts: Parts,
         response_body: Bytes,
-
         #[cfg(feature = "ws")] websockets: TestResponseWebSocket,
     ) -> Self {
         Self {
             version,
             method,
             full_request_url,
-            headers: parts.headers,
-            status_code: parts.status,
+            headers: response_parts.headers,
+            status_code: response_parts.status,
             response_body,
 
             #[cfg(feature = "ws")]
@@ -460,9 +459,9 @@ impl TestResponse {
         self.method.clone()
     }
 
-    /// The full URL that was used to produce this response.
+    /// The URI that was used to produce this response.
     #[must_use]
-    pub fn request_url(&self) -> Url {
+    pub fn request_uri(&self) -> Uri {
         self.full_request_url.clone()
     }
 
@@ -1330,8 +1329,8 @@ impl TestResponse {
         self.assert_status(StatusCode::SERVICE_UNAVAILABLE)
     }
 
-    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_, Url> {
-        RequestPathFormatter::new(&self.method, &self.full_request_url, None)
+    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_, Uri> {
+        RequestPathFormatter::new(&self.method, &self.full_request_url)
     }
 }
 
@@ -3357,5 +3356,36 @@ mod test_request_method {
 
         let method = server.method(Method::OPTIONS, "/").await.request_method();
         assert_eq!(Method::OPTIONS, method);
+    }
+}
+
+#[cfg(test)]
+mod test_request_uri {
+    use crate::TestServer;
+    use axum::Router;
+    use pretty_assertions::assert_str_eq;
+
+    #[tokio::test]
+    async fn it_should_include_domain_for_random_http_transport() {
+        let server = TestServer::builder().http_transport().build(Router::new());
+
+        let url = server.get("/my-path").await.request_uri();
+        assert_str_eq!("/my-path", url.to_string());
+    }
+
+    #[tokio::test]
+    async fn it_should_not_include_domain_for_mock_transport() {
+        let server = TestServer::builder().mock_transport().build(Router::new());
+
+        let url = server.get("/my-path").await.request_uri();
+        assert_str_eq!("/my-path", url.to_string());
+    }
+
+    #[tokio::test]
+    async fn it_should_make_non_slash_path_into_slash_path_for_mock_transport() {
+        let server = TestServer::builder().mock_transport().build(Router::new());
+
+        let url = server.get("my-path").await.request_uri();
+        assert_str_eq!("/my-path", url.to_string());
     }
 }

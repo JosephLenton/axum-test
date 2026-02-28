@@ -1,25 +1,27 @@
-use crate::internals::QueryParamsStore;
+use crate::internals::Uri2;
 use anyhow::Result;
 use http::HeaderName;
 use http::HeaderValue;
 use serde::Serialize;
+use std::error::Error as StdError;
+use std::fmt::Debug;
 
 #[derive(Debug)]
 pub(crate) struct ServerSharedState {
-    query_params: QueryParamsStore,
+    server_uri: Uri2,
     headers: Vec<(HeaderName, HeaderValue)>,
 }
 
 impl ServerSharedState {
     pub(crate) fn new() -> Self {
         Self {
-            query_params: QueryParamsStore::new(),
+            server_uri: Default::default(),
             headers: Vec::new(),
         }
     }
 
-    pub(crate) fn query_params(&self) -> &QueryParamsStore {
-        &self.query_params
+    pub(crate) fn uri(&self) -> &Uri2 {
+        &self.server_uri
     }
 
     pub(crate) fn headers(&self) -> &Vec<(HeaderName, HeaderValue)> {
@@ -30,29 +32,33 @@ impl ServerSharedState {
     where
         V: Serialize,
     {
-        self.query_params.add(query_params)
-    }
-
-    pub(crate) fn add_query_param<V>(&mut self, key: &str, value: V) -> Result<()>
-    where
-        V: Serialize,
-    {
-        self.query_params.add(&[(key, value)])
+        self.server_uri.add_query_params(query_params)
     }
 
     pub(crate) fn add_raw_query_param(&mut self, raw_value: &str) {
-        self.query_params.add_raw(raw_value.to_string());
+        self.server_uri.add_raw_query_param(raw_value);
     }
 
     pub(crate) fn clear_query_params(&mut self) {
-        self.query_params.clear();
+        self.server_uri.clear_query_params();
+    }
+
+    pub fn add_header<N, V>(&mut self, name: N, value: V) -> Result<()>
+    where
+        N: TryInto<HeaderName>,
+        N::Error: StdError + Send + Sync + 'static,
+        V: TryInto<HeaderValue>,
+        V::Error: StdError + Send + Sync + 'static,
+    {
+        let header_name = name.try_into()?;
+        let header_value = value.try_into()?;
+
+        self.headers.push((header_name, header_value));
+
+        Ok(())
     }
 
     pub(crate) fn clear_headers(&mut self) {
-        self.headers.clear();
-    }
-
-    pub(crate) fn add_header(&mut self, name: HeaderName, value: HeaderValue) {
-        self.headers.push((name, value));
+        self.headers.clear()
     }
 }

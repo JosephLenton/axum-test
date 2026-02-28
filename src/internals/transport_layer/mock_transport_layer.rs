@@ -51,6 +51,7 @@ where
         Box::pin(async {
             let body: Body = Bytes::new().into();
             let empty_request = Request::builder()
+                .uri(request.uri())
                 .body(body)
                 .expect("should build empty request");
 

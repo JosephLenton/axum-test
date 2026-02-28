@@ -7,6 +7,8 @@ use crate::internals::AtomicCrossCookieJar;
 use crate::internals::ErrorMessage;
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
+use crate::internals::RequestPathFormatter;
+use crate::internals::Uri2;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
@@ -19,6 +21,7 @@ use http::HeaderValue;
 use http::Method;
 use http::Uri;
 use serde::Serialize;
+use std::error::Error as StdError;
 use std::fmt::Debug;
 use std::sync::Arc;
 use url::Url;
@@ -37,8 +40,6 @@ use std::cell::OnceCell;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-
-const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 
 ///
 /// The `TestServer` runs your Axum application,
@@ -595,18 +596,7 @@ impl TestServer {
                 )
             )?;
 
-        let mut query_params = self.state.query_params().clone();
-        let mut full_server_url = build_url(
-            server_url,
-            path,
-            &mut query_params,
-            self.is_http_path_restricted,
-        )?;
-
-        // Ensure the query params are present
-        if query_params.has_content() {
-            full_server_url.set_query(Some(&query_params.to_string()));
-        }
+        let full_server_url = build_url(server_url, path, self.is_http_path_restricted)?;
 
         Ok(full_server_url)
     }
@@ -668,7 +658,7 @@ impl TestServer {
         V: Serialize,
     {
         self.state
-            .add_query_param(key, value)
+            .add_query_params(&[(key, value)]);
             .error_message("Failed to add query parameter");
     }
 
@@ -716,18 +706,13 @@ impl TestServer {
     pub fn add_header<N, V>(&mut self, name: N, value: V)
     where
         N: TryInto<HeaderName>,
-        N::Error: Debug,
+        N::Error: StdError + Send + Sync + 'static,
         V: TryInto<HeaderValue>,
-        V::Error: Debug,
+        V::Error: StdError + Send + Sync + 'static,
     {
-        let header_name: HeaderName = name
-            .try_into()
-            .expect("Failed to convert header name to HeaderName");
-        let header_value: HeaderValue = value
-            .try_into()
-            .expect("Failed to convert header vlue to HeaderValue");
-
-        self.state.add_header(header_name, header_value);
+        self.state
+            .add_header(name, value)
+            .error_message("Failed to set header");
     }
 
     /// Clears all headers set so far.
@@ -744,14 +729,9 @@ impl TestServer {
         method: Method,
         path: &str,
     ) -> Result<TestRequestConfig> {
-        let url = self
-            .url()
-            .unwrap_or_else(|| DEFAULT_URL_ADDRESS.parse().unwrap());
-
-        let mut query_params = self.state.query_params().clone();
-        let headers = self.state.headers().clone();
-        let full_request_url =
-            build_url(url, path, &mut query_params, self.is_http_path_restricted)?;
+        let url = self.url();
+        let headers = self.headers.clone();
+        let request_uri = build_url(url, path, self.is_http_path_restricted)?;
 
         Ok(TestRequestConfig {
             atomic_cookie_jar: self.cookie_jar.clone(),
@@ -765,8 +745,7 @@ impl TestServer {
             content_type: self.default_content_type.clone(),
             method,
 
-            full_request_url,
-            query_params,
+            request_uri: request_uri,
             headers,
         })
     }
@@ -781,12 +760,7 @@ impl TestServer {
     }
 }
 
-fn build_url(
-    mut url: Url,
-    path: &str,
-    query_params: &mut QueryParamsStore,
-    is_http_restricted: bool,
-) -> Result<Url> {
+fn build_url(mut url: Uri2, path: &str, is_http_restricted: bool) -> Result<Uri2> {
     let path_uri = path.parse::<Uri>()?;
 
     // If there is a scheme, then this is an absolute path.
