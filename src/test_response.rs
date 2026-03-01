@@ -1611,7 +1611,13 @@ mod test_assert_status {
         let message = catch_panic_error_message(|| {
             response.assert_status(StatusCode::ACCEPTED);
         });
-        assert_error_message("", message);
+        assert_error_message("assertion failed: `(left == right)`: Expected status code to be 202 (Accepted), received 200 (OK), for request GET http://localhost/ok, with body ''
+
+Diff < left / right > :
+<202
+>200
+
+", message);
     }
 }
 
@@ -1648,7 +1654,12 @@ mod test_assert_not_status {
         let message = catch_panic_error_message(|| {
             response.assert_not_status(StatusCode::OK);
         });
-        assert_error_message("", message);
+        assert_error_message("assertion failed: `(left != right)`: Expected status code to not be 200 (OK), received 200 (OK), for request GET http://localhost/ok, with body ''
+
+Both sides:
+200
+
+", message);
     }
 }
 
@@ -1699,7 +1710,10 @@ mod test_assert_status_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_in_range(200..299);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status to be in range 200..299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1713,7 +1727,10 @@ mod test_assert_status_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_in_range(StatusCode::OK..StatusCode::IM_USED);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status to be in range 200..226, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1740,7 +1757,10 @@ mod test_assert_status_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_in_range(200..=299);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status to be in range 200..=299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1767,7 +1787,10 @@ mod test_assert_status_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_in_range(..299);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status to be in range ..299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1794,7 +1817,10 @@ mod test_assert_status_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_in_range(..=299);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status to be in range ..=299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1821,7 +1847,10 @@ mod test_assert_status_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_in_range(500..);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status to be in range 500.., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1859,7 +1888,10 @@ mod test_assert_status_not_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_not_in_range(200..299);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status is not in range 200..299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1873,7 +1905,10 @@ mod test_assert_status_not_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_not_in_range(StatusCode::OK..StatusCode::IM_USED);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status is not in range 200..226, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1913,7 +1948,10 @@ mod test_assert_status_not_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_not_in_range(200..=299);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status is not in range 200..=299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1940,7 +1978,10 @@ mod test_assert_status_not_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_not_in_range(..299);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status is not in range ..299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1967,7 +2008,10 @@ mod test_assert_status_not_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_not_in_range(..=299);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status is not in range ..=299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1994,7 +2038,10 @@ mod test_assert_status_not_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_not_in_range(200..);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status is not in range 200.., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -2021,7 +2068,10 @@ mod test_assert_status_not_in_range {
         let message = catch_panic_error_message(|| {
             response.assert_status_not_in_range::<RangeFull, StatusCode>(..);
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected status is not in range .., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 }
 
@@ -2452,7 +2502,10 @@ mod test_assert_text_contains {
         let message = catch_panic_error_message(|| {
             response.assert_text_contains("🦊");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Failed to find '🦊', received 'This is some example text'",
+            message,
+        );
     }
 }
 
