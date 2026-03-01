@@ -1,4 +1,4 @@
-use anyhow::Context;
+use crate::internals::ErrorMessage;
 use bytes::Bytes;
 use http::HeaderName;
 use http::HeaderValue;
@@ -75,8 +75,7 @@ impl Part {
         let raw_mime_type = mime_type.as_ref();
         let parsed_mime_type = raw_mime_type
             .parse()
-            .with_context(|| format!("Failed to parse '{raw_mime_type}' as a Mime type"))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to parse '{raw_mime_type}' as a Mime type"));
 
         self.mime_type = parsed_mime_type;
 
@@ -189,6 +188,8 @@ mod test_file_name {
 #[cfg(test)]
 mod test_mime_type {
     use super::*;
+    use crate::testing::catch_panic_error_message;
+    use pretty_assertions::assert_str_eq;
 
     #[test]
     fn it_should_use_mime_type_set() {
@@ -200,11 +201,17 @@ mod test_mime_type {
     }
 
     #[test]
-    #[should_panic]
     fn it_should_error_if_invalid_mime_type() {
         let part = Part::text("some_text");
-        part.mime_type("🦊");
 
-        assert!(false);
+        let message = catch_panic_error_message(|| {
+            part.mime_type("🦊");
+        });
+        assert_str_eq!(
+            "Failed to parse '🦊' as a Mime type,
+    mime parse error: an invalid token was encountered, F0 at position 0
+",
+            message
+        );
     }
 }
