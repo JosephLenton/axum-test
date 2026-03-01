@@ -8,3 +8,6 @@ pub use self::catch_panic_error_message::*;
 
 mod expect_json_ops;
 pub use self::expect_json_ops::*;
+
+mod strip_ansi_codes;
+pub use self::strip_ansi_codes::*;

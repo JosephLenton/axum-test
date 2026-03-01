@@ -173,7 +173,7 @@ impl TestWebSocket {
             if let Err(error) = expect_json_eq(&received, &expected) {
                 panic!(
                     "
-{error}
+{error:?}
 ",
                 );
             }
@@ -295,13 +295,15 @@ fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
 #[cfg(test)]
 mod test_assert_receive_text {
     use crate::TestServer;
-
+    use crate::testing::catch_panic_error_message_async;
+    use crate::testing::strip_ansi_codes;
     use axum::Router;
     use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
     use axum::response::Response;
     use axum::routing::get;
+    use pretty_assertions::assert_str_eq;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -363,7 +365,6 @@ mod test_assert_receive_text {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_not_match_partial_text_match() {
         let server = new_test_app();
 
@@ -374,11 +375,23 @@ mod test_assert_receive_text {
             .await;
 
         websocket.send_text("Hello World!").await;
-        websocket.assert_receive_text("Hello World!").await;
+
+        let message = strip_ansi_codes(
+            catch_panic_error_message_async(websocket.assert_receive_text("Hello World!")).await,
+        );
+        assert_str_eq!(
+            "assertion failed: `(left == right)`
+
+Diff < left / right > :
+<Hello World!
+>Text: Hello World!
+
+",
+            message
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_not_match_different_text() {
         let server = new_test_app();
 
@@ -389,19 +402,34 @@ mod test_assert_receive_text {
             .await;
 
         websocket.send_text("Hello World!").await;
-        websocket.assert_receive_text("🦊").await;
+
+        let message = strip_ansi_codes(
+            catch_panic_error_message_async(websocket.assert_receive_text("🦊")).await,
+        );
+        assert_str_eq!(
+            "assertion failed: `(left == right)`
+
+Diff < left / right > :
+<🦊
+>Text: Hello World!
+
+",
+            message
+        );
     }
 }
 
 #[cfg(test)]
 mod test_assert_receive_text_contains {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
     use axum::response::Response;
     use axum::routing::get;
+    use pretty_assertions::assert_str_eq;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -452,7 +480,6 @@ mod test_assert_receive_text_contains {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_not_match_different_text() {
         let server = new_test_app();
 
@@ -463,7 +490,13 @@ mod test_assert_receive_text_contains {
             .await;
 
         websocket.send_text("Hello World!").await;
-        websocket.assert_receive_text_contains("🦊").await;
+
+        let message =
+            catch_panic_error_message_async(websocket.assert_receive_text_contains("🦊")).await;
+        assert_str_eq!(
+            "Failed to find '🦊', received 'Text: Hello World!'",
+            message
+        );
     }
 }
 
@@ -471,6 +504,7 @@ mod test_assert_receive_text_contains {
 mod test_assert_receive_json {
     use crate::TestServer;
     use crate::testing::ExpectStrMinLen;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
@@ -478,6 +512,7 @@ mod test_assert_receive_json {
     use axum::response::Response;
     use axum::routing::get;
     use expect_json::expect;
+    use pretty_assertions::assert_str_eq;
     use serde_json::Value;
     use serde_json::json;
 
@@ -594,7 +629,6 @@ mod test_assert_receive_json {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_custom_expect_op_fails() {
         let server = new_test_app();
         let mut websocket = server
@@ -611,15 +645,15 @@ mod test_assert_receive_json {
             .await;
 
         // Once for text
-        websocket
-            .assert_receive_json(&json!({
-                "format": "text",
-                "message": {
-                    "hello": ExpectStrMinLen { min: 10 },
-                    "numbers": expect::array().len(3).all(expect::integer()),
-                },
-            }))
-            .await;
+        let message = catch_panic_error_message_async(websocket.assert_receive_json(&json!({
+            "format": "text",
+            "message": {
+                "hello": ExpectStrMinLen { min: 10 },
+                "numbers": expect::array().len(3).all(expect::integer()),
+            },
+        })))
+        .await;
+        assert_str_eq!("String is too short, received: world", message);
     }
 }
 
