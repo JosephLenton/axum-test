@@ -1,4 +1,5 @@
 use crate::TestResponse;
+use crate::internals::ErrorMessage;
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
@@ -833,7 +834,41 @@ impl IntoFuture for TestRequest {
     type IntoFuture = Pin<Box<dyn Future<Output = TestResponse> + Send>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(async { self.send().await.context("Sending request failed").unwrap() })
+        Box::pin(async {
+            let debug_request_format = self.debug_request_format().to_string();
+
+            self.send()
+                .await
+                .map_err(|err| {
+                    use std::fmt::Write;
+                    let mut output = err.to_string();
+                    if let Some(inner) = err.source() {
+                        write!(
+                            output,
+                            "
+    {inner}"
+                        )
+                        .unwrap();
+
+                        // TODO: get rid of this hack and do this properly.
+                        // It exists to ensure the 'connection refused' part of an error shows up when the server isn't running.
+                        // See: test `it_should_panic_when_run_with_mock_http`
+                        if let Some(inner_2) = inner.source() {
+                            write!(
+                                output,
+                                "
+    {inner_2}"
+                            )
+                            .unwrap();
+                        }
+                    }
+
+                    output
+                })
+                .error_message_fn(|| {
+                    format!("Sending request failed, for request {debug_request_format}")
+                })
+        })
     }
 }
 

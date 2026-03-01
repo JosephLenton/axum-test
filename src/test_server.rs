@@ -2213,8 +2213,10 @@ mod test_clear_query_params {
 #[cfg(test)]
 mod test_expect_success_by_default {
     use super::*;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::routing::get;
+    use pretty_assertions::assert_str_eq;
 
     #[tokio::test]
     async fn it_should_not_panic_by_default_if_accessing_404_route() {
@@ -2233,12 +2235,15 @@ mod test_expect_success_by_default {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_by_default_if_accessing_404_route_and_expect_success_on() {
         let app = Router::new();
         let server = TestServer::builder().expect_success_by_default().build(app);
 
-        server.get(&"/some_unknown_route").await;
+        let message = catch_panic_error_message_async(server.get(&"/some_unknown_route")).await;
+        assert_str_eq!(
+            "Expect status code within 2xx range, received 404 (Not Found), for request GET http://localhost/some_unknown_route, with body ''",
+            message
+        );
     }
 
     #[tokio::test]
@@ -2285,9 +2290,11 @@ mod test_content_type {
 #[cfg(test)]
 mod test_expect_success {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::routing::get;
     use http::StatusCode;
+    use pretty_assertions::assert_str_eq;
 
     #[tokio::test]
     async fn it_should_not_panic_if_success_is_returned() {
@@ -2324,7 +2331,6 @@ mod test_expect_success {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_on_404() {
         // Build an application with a route.
         let app = Router::new();
@@ -2334,16 +2340,22 @@ mod test_expect_success {
         server.expect_success();
 
         // Get the request.
-        server.get(&"/some_unknown_route").await;
+        let message = catch_panic_error_message_async(server.get(&"/some_unknown_route")).await;
+        assert_str_eq!(
+            "Expect status code within 2xx range, received 404 (Not Found), for request GET http://localhost/some_unknown_route, with body ''",
+            message
+        );
     }
 }
 
 #[cfg(test)]
 mod test_expect_failure {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::routing::get;
     use http::StatusCode;
+    use pretty_assertions::assert_str_eq;
 
     #[tokio::test]
     async fn it_should_not_panic_if_expect_failure_on_404() {
@@ -2359,7 +2371,6 @@ mod test_expect_failure {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_success_is_returned() {
         async fn get_ping() -> &'static str {
             "pong!"
@@ -2373,11 +2384,14 @@ mod test_expect_failure {
         server.expect_failure();
 
         // Get the request.
-        server.get(&"/ping").await;
+        let message = catch_panic_error_message_async(server.get(&"/ping")).await;
+        assert_str_eq!(
+            "Expect status code outside 2xx range, received 200 (OK), for request GET http://localhost/ping, with body 'pong!'",
+            message
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_on_other_2xx_status_code() {
         async fn get_accepted() -> StatusCode {
             StatusCode::ACCEPTED
@@ -2391,7 +2405,11 @@ mod test_expect_failure {
         server.expect_failure();
 
         // Get the request.
-        server.get(&"/accepted").await;
+        let message = catch_panic_error_message_async(server.get(&"/accepted")).await;
+        assert_str_eq!(
+            "Expect status code outside 2xx range, received 202 (Accepted), for request GET http://localhost/accepted, with body ''",
+            message
+        );
     }
 }
 
@@ -2711,11 +2729,13 @@ mod test_sync {
 #[cfg(test)]
 mod test_is_running {
     use super::*;
-    use crate::util::new_random_tokio_tcp_listener;
+    use crate::testing::catch_panic_error_message_async;
+    use crate::util::new_random_tokio_tcp_listener_with_socket_addr;
     use axum::Router;
     use axum::routing::IntoMakeService;
     use axum::routing::get;
     use axum::serve;
+    use pretty_assertions::assert_str_eq;
     use std::time::Duration;
     use tokio::sync::Notify;
     use tokio::time::sleep;
@@ -2725,7 +2745,6 @@ mod test_is_running {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_run_with_mock_http() {
         let shutdown_notification = Arc::new(Notify::new());
         let waiting_notification = shutdown_notification.clone();
@@ -2734,8 +2753,8 @@ mod test_is_running {
         let app: IntoMakeService<Router> = Router::new()
             .route("/ping", get(get_ping))
             .into_make_service();
-        let port = new_random_tokio_tcp_listener().unwrap();
-        let application = serve(port, app)
+        let (listener, ip_port) = new_random_tokio_tcp_listener_with_socket_addr().unwrap();
+        let application = serve(listener, app)
             .with_graceful_shutdown(async move { waiting_notification.notified().await });
 
         // Run the server.
@@ -2748,7 +2767,18 @@ mod test_is_running {
         sleep(Duration::from_millis(10)).await;
 
         assert!(!server.is_running());
-        server.get("/ping").await.assert_status_ok();
+
+        let ip = ip_port.ip();
+        let port = ip_port.port();
+        let expected = format!(
+            "Sending request failed, for request GET http://{ip}:{port}/ping,
+    client error (Connect)
+    tcp connect error
+    Connection refused (os error 61)
+"
+        );
+        let message = catch_panic_error_message_async(server.get("/ping")).await;
+        assert_str_eq!(expected, message);
     }
 }
 
