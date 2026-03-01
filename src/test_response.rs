@@ -1380,6 +1380,8 @@ fn version_str(version: Version) -> &'static str {
 #[cfg(test)]
 mod test_assert_header {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::http::HeaderMap;
     use axum::routing::get;
@@ -1403,29 +1405,39 @@ mod test_assert_header {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_contains_header_and_content_does_not_match() {
         let router = Router::new().route(&"/header", get(route_get_header));
-
         let server = TestServer::new(router);
 
-        server
-            .get(&"/header")
-            .await
-            .assert_header("x-my-custom-header", "different-content");
+        let response = server.get(&"/header").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_header("x-my-custom-header", "different-content");
+        });
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+<"different-content"
+>"content"
+
+"#,
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_not_contains_header() {
         let router = Router::new().route(&"/header", get(route_get_header));
-
         let server = TestServer::new(router);
 
-        server
-            .get(&"/header")
-            .await
-            .assert_header("x-custom-header-not-found", "content");
+        let response = server.get(&"/header").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_header("x-custom-header-not-found", "content");
+        });
+        assert_error_message(
+            "Expected header 'x-custom-header-not-found' to be present in response, header was not found, for request GET http://localhost/header",
+            message,
+        );
     }
 }
 

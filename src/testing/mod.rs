@@ -3,6 +3,9 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+mod assert_error_message;
+pub use self::assert_error_message::*;
+
 mod catch_panic_error_message;
 pub use self::catch_panic_error_message::*;
 

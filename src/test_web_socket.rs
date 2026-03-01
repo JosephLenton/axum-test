@@ -295,15 +295,14 @@ fn message_to_bytes(message: WsMessage) -> Result<Bytes> {
 #[cfg(test)]
 mod test_assert_receive_text {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
     use crate::testing::catch_panic_error_message_async;
-    use crate::testing::strip_ansi_codes;
     use axum::Router;
     use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::Message;
     use axum::extract::ws::WebSocket;
     use axum::response::Response;
     use axum::routing::get;
-    use pretty_assertions::assert_str_eq;
 
     fn new_test_app() -> TestServer {
         pub async fn route_get_websocket_ping_pong(ws: WebSocketUpgrade) -> Response {
@@ -376,10 +375,9 @@ mod test_assert_receive_text {
 
         websocket.send_text("Hello World!").await;
 
-        let message = strip_ansi_codes(
-            catch_panic_error_message_async(websocket.assert_receive_text("Hello World!")).await,
-        );
-        assert_str_eq!(
+        let message =
+            catch_panic_error_message_async(websocket.assert_receive_text("Hello World!")).await;
+        assert_error_message(
             "assertion failed: `(left == right)`
 
 Diff < left / right > :
@@ -387,7 +385,7 @@ Diff < left / right > :
 >Text: Hello World!
 
 ",
-            message
+            message,
         );
     }
 
@@ -403,10 +401,8 @@ Diff < left / right > :
 
         websocket.send_text("Hello World!").await;
 
-        let message = strip_ansi_codes(
-            catch_panic_error_message_async(websocket.assert_receive_text("🦊")).await,
-        );
-        assert_str_eq!(
+        let message = catch_panic_error_message_async(websocket.assert_receive_text("🦊")).await;
+        assert_error_message(
             "assertion failed: `(left == right)`
 
 Diff < left / right > :
@@ -414,7 +410,7 @@ Diff < left / right > :
 >Text: Hello World!
 
 ",
-            message
+            message,
         );
     }
 }
