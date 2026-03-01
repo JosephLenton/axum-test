@@ -1477,7 +1477,10 @@ mod test_assert_contains_header {
         let message = catch_panic_error_message(|| {
             response.assert_contains_header("x-custom-header-not-found");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expected header 'x-custom-header-not-found' to be present in response, header was not found, for request GET http://localhost/header",
+            message,
+        );
     }
 }
 
@@ -1523,7 +1526,10 @@ mod test_assert_success {
         let message = catch_panic_error_message(|| {
             response.assert_status_success();
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expect status code within 2xx range, received 503 (Service Unavailable), for request GET http://localhost/fail, with body ''",
+            message,
+        );
     }
 }
 
@@ -1568,7 +1574,10 @@ mod test_assert_failure {
         let message = catch_panic_error_message(|| {
             response.assert_status_failure();
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Expect status code outside 2xx range, received 200 (OK), for request GET http://localhost/pass, with body ''",
+            message,
+        );
     }
 }
 
@@ -2475,7 +2484,16 @@ mod test_assert_text_from_file {
         let message = catch_panic_error_message(|| {
             response.assert_text_from_file("files/example.txt");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "assertion failed: `(left == right)`
+
+Diff < left / right > :
+<hello!
+>🦊
+
+",
+            message,
+        );
     }
 }
 
@@ -2549,7 +2567,20 @@ mod test_assert_json {
                 age: 25,
             });
         });
-        assert_error_message("", message);
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+ ExampleResponse {
+<    name: "Julia",
+<    age: 25,
+>    name: "Joe",
+>    age: 20,
+ }
+
+"#,
+            message,
+        );
     }
 
     #[tokio::test]
@@ -2984,7 +3015,21 @@ mod test_assert_form {
                 age: 25,
             });
         });
-        assert_error_message("", message);
+
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+ ExampleResponse {
+<    name: "Julia",
+<    age: 25,
+>    name: "Joe",
+>    age: 20,
+ }
+
+"#,
+            message,
+        );
     }
 
     #[tokio::test]
@@ -2999,7 +3044,16 @@ mod test_assert_form {
                 age: 20,
             });
         });
-        assert_error_message("", message);
+        assert_error_message(
+            r#"Failed to deserialize Form response,
+    for request GET http://localhost/json
+    missing field `name`
+
+received:
+    {"name":"Joe","age":20}
+"#,
+            message,
+        );
     }
 }
 
