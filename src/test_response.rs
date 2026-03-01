@@ -2442,7 +2442,16 @@ mod test_assert_text {
         let message = catch_panic_error_message(|| {
             response.assert_text("some example");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "assertion failed: `(left == right)`
+
+Diff < left / right > :
+<some example
+>This is some example text
+
+",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -2453,7 +2462,16 @@ mod test_assert_text {
         let message = catch_panic_error_message(|| {
             response.assert_text("🦊");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "assertion failed: `(left == right)`
+
+Diff < left / right > :
+<🦊
+>This is some example text
+
+",
+            message,
+        );
     }
 }
 
@@ -2621,17 +2639,11 @@ mod test_assert_json {
             });
         });
         assert_error_message(
-            r#"assertion failed: `(left == right)`
-
-Diff < left / right > :
- ExampleResponse {
-<    name: "Julia",
-<    age: 25,
->    name: "Joe",
->    age: 20,
- }
-
-"#,
+            "
+Json integers at root.age are not equal:
+    expected 25
+    received 20
+",
             message,
         );
     }
@@ -2648,7 +2660,16 @@ Diff < left / right > :
                 age: 20,
             });
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Failed to deserialize Json response,
+    for request GET http://localhost/form
+    expected ident at line 1 column 2
+
+received:
+    name=Joe&age=20
+",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -2674,7 +2695,7 @@ Diff < left / right > :
                 "age": 20,
             }));
         });
-        assert_error_message("", message);
+        assert_error_message("String is too short, received: Joe", message);
     }
 }
 
@@ -2739,7 +2760,14 @@ mod test_assert_json_contains {
                 age: 25,
             });
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "
+Json integers at root.age are not equal:
+    expected 25
+    received 20
+",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -2754,7 +2782,16 @@ mod test_assert_json_contains {
                 "age": 20,
             }));
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Failed to deserialize Json response,
+    for request GET http://localhost/form
+    expected ident at line 1 column 2
+
+received:
+    time=0&name=Joe&age=20
+",
+            message,
+        );
     }
 
     /// See: https://github.com/JosephLenton/axum-test/issues/151
@@ -2823,7 +2860,14 @@ mod test_assert_json_from_file {
         let message = catch_panic_error_message(|| {
             response.assert_json_from_file("files/example.json");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "
+Json integers at root.age are not equal:
+    expected 20
+    received 25
+",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -2849,7 +2893,16 @@ mod test_assert_json_from_file {
         let message = catch_panic_error_message(|| {
             response.assert_json_from_file("files/example.json");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "Failed to deserialize Json response,
+    for request GET http://localhost/form
+    expected ident at line 1 column 2
+
+received:
+    name=Joe&age=20
+",
+            message,
+        );
     }
 }
 
@@ -2909,7 +2962,14 @@ mod test_assert_yaml {
                 age: 25,
             });
         });
-        assert_error_message("", message);
+        assert_error_message(
+            "
+Json integers at root.age are not equal:
+    expected 25
+    received 20
+",
+            message,
+        );
     }
 
     #[tokio::test]
