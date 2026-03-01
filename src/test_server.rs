@@ -1271,9 +1271,10 @@ mod test_get {
             let _ = server.get(&absolute_url);
         });
 
-        assert_str_eq!("Failed to build request, for GET http://127.0.0.1:8001/ping,
-    Request disallowed for path 'http://127.0.0.1:8001/ping', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this.
-", message);
+        let expected = format!("Failed to build request, for GET http://{ip}:{port}/ping,
+    Request disallowed for path 'http://{ip}:{port}/ping', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this.
+");
+        assert_str_eq!(expected, message);
     }
 
     #[tokio::test]
