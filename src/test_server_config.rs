@@ -72,7 +72,7 @@ pub struct TestServerConfig {
     /// **Defaults** to false (being turned off).
     pub expect_success_by_default: bool,
 
-    /// If you make a request with a 'http://' schema,
+    /// If you make a request with a 'http://' scheme,
     /// then it will ignore the Test Server's address.
     ///
     /// For example if the test server is running at `http://localhost:1234`,
@@ -86,7 +86,7 @@ pub struct TestServerConfig {
     /// `http://localhost:1234/http://google.com`.
     ///
     /// **Defaults** to false (being turned off).
-    pub restrict_requests_with_http_schema: bool,
+    pub restrict_requests_with_http_scheme: bool,
 
     /// Set the default content type for all requests created by the `TestServer`.
     ///
@@ -155,7 +155,7 @@ impl Default for TestServerConfig {
             transport: None,
             save_cookies: false,
             expect_success_by_default: false,
-            restrict_requests_with_http_schema: false,
+            restrict_requests_with_http_scheme: false,
             default_content_type: None,
             default_scheme: None,
         }

@@ -86,8 +86,8 @@ impl TestServerBuilder {
         self
     }
 
-    pub fn restrict_requests_with_http_schema(mut self) -> Self {
-        self.config.restrict_requests_with_http_schema = true;
+    pub fn restrict_requests_with_http_scheme(mut self) -> Self {
+        self.config.restrict_requests_with_http_scheme = true;
         self
     }
 
@@ -249,11 +249,11 @@ mod test_build {
     }
 
     #[test]
-    fn it_should_set_restrict_requests_with_http_schema_when_set() {
+    fn it_should_set_restrict_requests_with_http_scheme_when_set() {
         let config = TestServer::builder()
-            .restrict_requests_with_http_schema()
+            .restrict_requests_with_http_scheme()
             .into_config();
 
-        assert_eq!(config.restrict_requests_with_http_schema, true);
+        assert_eq!(config.restrict_requests_with_http_scheme, true);
     }
 }
