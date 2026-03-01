@@ -2963,11 +2963,17 @@ mod test_assert_yaml {
             });
         });
         assert_error_message(
-            "
-Json integers at root.age are not equal:
-    expected 25
-    received 20
-",
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+ ExampleResponse {
+<    name: "Julia",
+<    age: 25,
+>    name: "Joe",
+>    age: 20,
+ }
+
+"#,
             message,
         );
     }
@@ -2984,7 +2990,16 @@ Json integers at root.age are not equal:
                 age: 20,
             });
         });
-        assert_error_message("", message);
+        assert_error_message(
+            r#"Failed to deserialize Yaml response,
+    for request GET http://localhost/form
+    invalid type: string "name=Joe&age=20", expected struct ExampleResponse
+
+received:
+    name=Joe&age=20
+"#,
+            message,
+        );
     }
 }
 
@@ -3042,7 +3057,20 @@ mod test_assert_yaml_from_file {
         let message = catch_panic_error_message(|| {
             response.assert_yaml_from_file("files/example.yaml");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+ Mapping {
+<    "name": String("Joe"),
+<    "age": Number(20),
+>    "age": Number(25),
+>    "name": String("Julia"),
+ }
+
+"#,
+            message,
+        );
     }
 
     #[tokio::test]
@@ -3068,7 +3096,19 @@ mod test_assert_yaml_from_file {
         let message = catch_panic_error_message(|| {
             response.assert_yaml_from_file("files/example.yaml");
         });
-        assert_error_message("", message);
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+<Mapping {
+<    "name": String("Joe"),
+<    "age": Number(20),
+<}
+>String("name=Joe&age=20")
+
+"#,
+            message,
+        );
     }
 }
 
