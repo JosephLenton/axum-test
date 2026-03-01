@@ -68,11 +68,13 @@ where
 #[cfg(test)]
 mod test_into_http_transport_layer {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message;
     use crate::util::new_random_tokio_tcp_listener;
     use axum::Router;
     use axum::routing::IntoMakeService;
     use axum::routing::get;
     use axum::serve;
+    use pretty_assertions::assert_str_eq;
     use std::future::pending;
 
     async fn get_ping() -> &'static str {
@@ -80,7 +82,6 @@ mod test_into_http_transport_layer {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_run_with_http() {
         // Build an application with a route.
         let app: IntoMakeService<Router> = Router::new()
@@ -90,18 +91,25 @@ mod test_into_http_transport_layer {
         let application = serve(port, app).with_graceful_shutdown(pending());
 
         // Run the server.
-        TestServer::builder().http_transport().build(application);
+        let message = catch_panic_error_message(|| {
+            TestServer::builder().http_transport().build(application);
+        });
+        assert_str_eq!("Failed to build TestServer,
+    `WithGracefulShutdown` must be started with http or mock transport. Do not set any transport on `TestServerConfig`.
+", message);
     }
 }
 
 #[cfg(test)]
 mod test_into_mock_transport_layer {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message;
     use crate::util::new_random_tokio_tcp_listener;
     use axum::Router;
     use axum::routing::IntoMakeService;
     use axum::routing::get;
     use axum::serve;
+    use pretty_assertions::assert_str_eq;
     use std::future::pending;
 
     async fn get_ping() -> &'static str {
@@ -109,7 +117,6 @@ mod test_into_mock_transport_layer {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_run_with_mock_http() {
         // Build an application with a route.
         let app: IntoMakeService<Router> = Router::new()
@@ -119,7 +126,12 @@ mod test_into_mock_transport_layer {
         let application = serve(port, app).with_graceful_shutdown(pending());
 
         // Run the server.
-        TestServer::builder().mock_transport().build(application);
+        let message = catch_panic_error_message(|| {
+            TestServer::builder().mock_transport().build(application);
+        });
+        assert_str_eq!("Failed to build TestServer,
+    `WithGracefulShutdown` cannot be mocked, as it's underlying implementation requires a real connection. Do not set any transport on `TestServerConfig`.
+", message);
     }
 }
 
