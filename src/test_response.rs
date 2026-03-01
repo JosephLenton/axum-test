@@ -715,7 +715,7 @@ impl TestResponse {
 
         // Using the mock approach will just fail.
         if self.websockets.transport_type != TransportLayerType::Http {
-            unimplemented!(
+            panic!(
                 "WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`"
             );
         }
@@ -1090,6 +1090,7 @@ impl TestResponse {
         let debug_request_format = self.debug_request_format();
         let debug_body = DebugResponseBody(self);
 
+        // TODO, improve the formatting on these to match error_message
         assert!(
             200 <= status_code && status_code <= 299,
             "Expect status code within 2xx range, received {received_debug}, for request {debug_request_format}, with body {debug_body}"
@@ -1379,6 +1380,8 @@ fn version_str(version: Version) -> &'static str {
 #[cfg(test)]
 mod test_assert_header {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::http::HeaderMap;
     use axum::routing::get;
@@ -1402,35 +1405,47 @@ mod test_assert_header {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_contains_header_and_content_does_not_match() {
         let router = Router::new().route(&"/header", get(route_get_header));
-
         let server = TestServer::new(router);
 
-        server
-            .get(&"/header")
-            .await
-            .assert_header("x-my-custom-header", "different-content");
+        let response = server.get(&"/header").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_header("x-my-custom-header", "different-content");
+        });
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+<"different-content"
+>"content"
+
+"#,
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_not_contains_header() {
         let router = Router::new().route(&"/header", get(route_get_header));
-
         let server = TestServer::new(router);
 
-        server
-            .get(&"/header")
-            .await
-            .assert_header("x-custom-header-not-found", "content");
+        let response = server.get(&"/header").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_header("x-custom-header-not-found", "content");
+        });
+        assert_error_message(
+            "Expected header 'x-custom-header-not-found' to be present in response, header was not found, for request GET http://localhost/header",
+            message,
+        );
     }
 }
 
 #[cfg(test)]
 mod test_assert_contains_header {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::http::HeaderMap;
     use axum::routing::get;
@@ -1454,22 +1469,26 @@ mod test_assert_contains_header {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_not_contains_header() {
         let router = Router::new().route(&"/header", get(route_get_header));
-
         let server = TestServer::new(router);
 
-        server
-            .get(&"/header")
-            .await
-            .assert_contains_header("x-custom-header-not-found");
+        let response = server.get(&"/header").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_contains_header("x-custom-header-not-found");
+        });
+        assert_error_message(
+            "Expected header 'x-custom-header-not-found' to be present in response, header was not found, for request GET http://localhost/header",
+            message,
+        );
     }
 }
 
 #[cfg(test)]
 mod test_assert_success {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
     use http::StatusCode;
@@ -1496,23 +1515,29 @@ mod test_assert_success {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_not_200() {
         let router = Router::new()
             .route(&"/pass", get(route_get_pass))
             .route(&"/fail", get(route_get_fail));
 
         let server = TestServer::new(router);
-
         let response = server.get(&"/fail").expect_failure().await;
 
-        response.assert_status_success();
+        let message = catch_panic_error_message(|| {
+            response.assert_status_success();
+        });
+        assert_error_message(
+            "Expect status code within 2xx range, received 503 (Service Unavailable), for request GET http://localhost/fail, with body ''",
+            message,
+        );
     }
 }
 
 #[cfg(test)]
 mod test_assert_failure {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
     use http::StatusCode;
@@ -1538,7 +1563,6 @@ mod test_assert_failure {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_200() {
         let router = Router::new()
             .route(&"/pass", get(route_get_pass))
@@ -1547,13 +1571,21 @@ mod test_assert_failure {
         let server = TestServer::new(router);
         let response = server.get(&"/pass").await;
 
-        response.assert_status_failure();
+        let message = catch_panic_error_message(|| {
+            response.assert_status_failure();
+        });
+        assert_error_message(
+            "Expect status code outside 2xx range, received 200 (OK), for request GET http://localhost/pass, with body ''",
+            message,
+        );
     }
 }
 
 #[cfg(test)]
 mod test_assert_status {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
     use http::StatusCode;
@@ -1571,18 +1603,29 @@ mod test_assert_status {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_status_code_does_not_match() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
         let server = TestServer::new(router);
 
-        server.get(&"/ok").await.assert_status(StatusCode::ACCEPTED);
+        let response = server.get(&"/ok").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status(StatusCode::ACCEPTED);
+        });
+        assert_error_message("assertion failed: `(left == right)`: Expected status code to be 202 (Accepted), received 200 (OK), for request GET http://localhost/ok, with body ''
+
+Diff < left / right > :
+<202
+>200
+
+", message);
     }
 }
 
 #[cfg(test)]
 mod test_assert_not_status {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
     use http::StatusCode;
@@ -1603,18 +1646,28 @@ mod test_assert_not_status {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_status_code_matches() {
         let router = Router::new().route(&"/ok", get(route_get_ok));
         let server = TestServer::new(router);
 
-        server.get(&"/ok").await.assert_not_status(StatusCode::OK);
+        let response = server.get(&"/ok").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_not_status(StatusCode::OK);
+        });
+        assert_error_message("assertion failed: `(left != right)`: Expected status code to not be 200 (OK), received 200 (OK), for request GET http://localhost/ok, with body ''
+
+Both sides:
+200
+
+", message);
     }
 }
 
 #[cfg(test)]
 mod test_assert_status_in_range {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::routing::Router;
     use axum::routing::get;
     use http::StatusCode;
@@ -1647,31 +1700,37 @@ mod test_assert_status_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_outside_int_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_in_range(200..299);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_in_range(200..299);
+        });
+        assert_error_message(
+            "Expected status to be in range 200..299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_outside_status_code_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_in_range(StatusCode::OK..StatusCode::IM_USED);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_in_range(StatusCode::OK..StatusCode::IM_USED);
+        });
+        assert_error_message(
+            "Expected status to be in range 200..226, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1688,17 +1747,20 @@ mod test_assert_status_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_outside_inclusive_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_in_range(200..=299);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_in_range(200..=299);
+        });
+        assert_error_message(
+            "Expected status to be in range 200..=299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1715,17 +1777,20 @@ mod test_assert_status_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_outside_to_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_in_range(..299);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_in_range(..299);
+        });
+        assert_error_message(
+            "Expected status to be in range ..299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1742,17 +1807,20 @@ mod test_assert_status_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_outside_to_inclusive_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::INTERNAL_SERVER_ERROR }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_in_range(..=299);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_in_range(..=299);
+        });
+        assert_error_message(
+            "Expected status to be in range ..=299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1769,17 +1837,20 @@ mod test_assert_status_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_outside_from_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_in_range(500..);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_in_range(500..);
+        });
+        assert_error_message(
+            "Expected status to be in range 500.., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1799,37 +1870,45 @@ mod test_assert_status_in_range {
 #[cfg(test)]
 mod test_assert_status_not_in_range {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::routing::Router;
     use axum::routing::get;
     use http::StatusCode;
     use std::ops::RangeFull;
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_within_int_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_not_in_range(200..299);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_not_in_range(200..299);
+        });
+        assert_error_message(
+            "Expected status is not in range 200..299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_within_status_code_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_not_in_range(StatusCode::OK..StatusCode::IM_USED);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_not_in_range(StatusCode::OK..StatusCode::IM_USED);
+        });
+        assert_error_message(
+            "Expected status is not in range 200..226, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1859,17 +1938,20 @@ mod test_assert_status_not_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_within_inclusive_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_not_in_range(200..=299);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_not_in_range(200..=299);
+        });
+        assert_error_message(
+            "Expected status is not in range 200..=299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1886,17 +1968,20 @@ mod test_assert_status_not_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_within_to_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_not_in_range(..299);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_not_in_range(..299);
+        });
+        assert_error_message(
+            "Expected status is not in range ..299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1913,17 +1998,20 @@ mod test_assert_status_not_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_within_to_inclusive_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_not_in_range(..=299);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_not_in_range(..=299);
+        });
+        assert_error_message(
+            "Expected status is not in range ..=299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1940,17 +2028,20 @@ mod test_assert_status_not_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_when_within_from_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_not_in_range(200..);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_not_in_range(200..);
+        });
+        assert_error_message(
+            "Expected status is not in range 200.., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -1967,17 +2058,20 @@ mod test_assert_status_not_in_range {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_be_false_for_rull_range() {
         let app = Router::new().route(
             &"/status",
             get(|| async { StatusCode::NON_AUTHORITATIVE_INFORMATION }),
         );
 
-        TestServer::new(app)
-            .get(&"/status")
-            .await
-            .assert_status_not_in_range::<RangeFull, StatusCode>(..);
+        let response = TestServer::new(app).get(&"/status").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_status_not_in_range::<RangeFull, StatusCode>(..);
+        });
+        assert_error_message(
+            "Expected status is not in range .., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            message,
+        );
     }
 }
 
@@ -2096,7 +2190,6 @@ mod test_json {
     #[tokio::test]
     async fn it_should_deserialize_into_json() {
         let app = Router::new().route(&"/json", get(route_get_json));
-
         let server = TestServer::new(app);
 
         let response = server.get(&"/json").await.json::<ExampleResponse>();
@@ -2116,7 +2209,7 @@ mod test_json {
         let server = TestServer::new(app);
 
         let response = server.get(&"/fox").await;
-        let error_message = catch_panic_error_message(|| {
+        let message = catch_panic_error_message(|| {
             let _ = response.json::<Value>();
         });
 
@@ -2128,7 +2221,7 @@ mod test_json {
 received:
     🦊
 "#,
-            error_message
+            message
         );
     }
 }
@@ -2306,6 +2399,8 @@ mod test_from {
 #[cfg(test)]
 mod test_assert_text {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
 
@@ -2340,25 +2435,51 @@ mod test_assert_text {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_not_match_partial_text() {
         let server = new_test_server();
 
-        server.get(&"/text").await.assert_text("some example");
+        let response = server.get(&"/text").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_text("some example");
+        });
+        assert_error_message(
+            "assertion failed: `(left == right)`
+
+Diff < left / right > :
+<some example
+>This is some example text
+
+",
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_not_match_different_text() {
         let server = new_test_server();
 
-        server.get(&"/text").await.assert_text("🦊");
+        let response = server.get(&"/text").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_text("🦊");
+        });
+        assert_error_message(
+            "assertion failed: `(left == right)`
+
+Diff < left / right > :
+<🦊
+>This is some example text
+
+",
+            message,
+        );
     }
 }
 
 #[cfg(test)]
 mod test_assert_text_contains {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
 
@@ -2392,17 +2513,25 @@ mod test_assert_text_contains {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_not_match_different_text() {
         let server = new_test_server();
 
-        server.get(&"/text").await.assert_text_contains("🦊");
+        let response = server.get(&"/text").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_text_contains("🦊");
+        });
+        assert_error_message(
+            "Failed to find '🦊', received 'This is some example text'",
+            message,
+        );
     }
 }
 
 #[cfg(test)]
 mod test_assert_text_from_file {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::routing::Router;
     use axum::routing::get;
 
@@ -2418,15 +2547,24 @@ mod test_assert_text_from_file {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_not_match_the_file() {
         let app = Router::new().route(&"/text", get(|| async { "🦊" }));
         let server = TestServer::new(app);
 
-        server
-            .get(&"/text")
-            .await
-            .assert_text_from_file("files/example.txt");
+        let response = server.get(&"/text").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_text_from_file("files/example.txt");
+        });
+        assert_error_message(
+            "assertion failed: `(left == right)`
+
+Diff < left / right > :
+<hello!
+>🦊
+
+",
+            message,
+        );
     }
 }
 
@@ -2435,6 +2573,8 @@ mod test_assert_json {
     use super::*;
     use crate::TestServer;
     use crate::testing::ExpectStrMinLen;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Form;
     use axum::Json;
     use axum::Router;
@@ -2487,29 +2627,49 @@ mod test_assert_json {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/json", get(route_get_json));
-
         let server = TestServer::new(app);
 
-        server.get(&"/json").await.assert_json(&ExampleResponse {
-            name: "Julia".to_string(),
-            age: 25,
+        let response = server.get(&"/json").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_json(&ExampleResponse {
+                name: "Julia".to_string(),
+                age: 25,
+            });
         });
+        assert_error_message(
+            "
+Json integers at root.age are not equal:
+    expected 25
+    received 20
+",
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_response_is_form() {
         let app = Router::new().route(&"/form", get(route_get_form));
-
         let server = TestServer::new(app);
 
-        server.get(&"/form").await.assert_json(&ExampleResponse {
-            name: "Joe".to_string(),
-            age: 20,
+        let response = server.get(&"/form").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_json(&ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            });
         });
+        assert_error_message(
+            "Failed to deserialize Json response,
+    for request GET http://localhost/form
+    expected ident at line 1 column 2
+
+received:
+    name=Joe&age=20
+",
+            message,
+        );
     }
 
     #[tokio::test]
@@ -2524,21 +2684,26 @@ mod test_assert_json {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_custom_expect_op_fails() {
         let app = Router::new().route(&"/json", get(route_get_json));
         let server = TestServer::new(app);
 
-        server.get(&"/json").await.assert_json(&json!({
-            "name": ExpectStrMinLen { min: 10 },
-            "age": 20,
-        }));
+        let response = server.get(&"/json").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_json(&json!({
+                "name": ExpectStrMinLen { min: 10 },
+                "age": 20,
+            }));
+        });
+        assert_error_message("String is too short, received: Joe", message);
     }
 }
 
 #[cfg(test)]
 mod test_assert_json_contains {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Form;
     use axum::Json;
     use axum::Router;
@@ -2583,31 +2748,50 @@ mod test_assert_json_contains {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/json", get(route_get_json));
         let server = TestServer::new(app);
 
-        server
-            .get(&"/json")
-            .await
-            .assert_json_contains(&ExampleResponse {
+        let response = server.get(&"/json").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_json_contains(&ExampleResponse {
                 time: 1234,
                 name: "Julia".to_string(),
                 age: 25,
             });
+        });
+        assert_error_message(
+            "
+Json integers at root.age are not equal:
+    expected 25
+    received 20
+",
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_response_is_form() {
         let app = Router::new().route(&"/form", get(route_get_form));
         let server = TestServer::new(app);
 
-        server.get(&"/form").await.assert_json_contains(&json!({
-            "name": "Joe",
-            "age": 20,
-        }));
+        let response = server.get(&"/form").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_json_contains(&json!({
+                "name": "Joe",
+                "age": 20,
+            }));
+        });
+        assert_error_message(
+            "Failed to deserialize Json response,
+    for request GET http://localhost/form
+    expected ident at line 1 column 2
+
+received:
+    time=0&name=Joe&age=20
+",
+            message,
+        );
     }
 
     /// See: https://github.com/JosephLenton/axum-test/issues/151
@@ -2626,6 +2810,8 @@ mod test_assert_json_contains {
 #[cfg(test)]
 mod test_assert_json_from_file {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Form;
     use axum::Json;
     use axum::routing::Router;
@@ -2656,7 +2842,6 @@ mod test_assert_json_from_file {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_not_match_the_file() {
         let app = Router::new().route(
             &"/json",
@@ -2671,14 +2856,21 @@ mod test_assert_json_from_file {
         );
         let server = TestServer::new(app);
 
-        server
-            .get(&"/json")
-            .await
-            .assert_json_from_file("files/example.json");
+        let response = server.get(&"/json").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_json_from_file("files/example.json");
+        });
+        assert_error_message(
+            "
+Json integers at root.age are not equal:
+    expected 20
+    received 25
+",
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_content_type_does_not_match() {
         #[derive(Serialize, Deserialize, PartialEq, Debug)]
         struct ExampleResponse {
@@ -2697,10 +2889,20 @@ mod test_assert_json_from_file {
         );
         let server = TestServer::new(app);
 
-        server
-            .get(&"/form")
-            .await
-            .assert_json_from_file("files/example.json");
+        let response = server.get(&"/form").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_json_from_file("files/example.json");
+        });
+        assert_error_message(
+            "Failed to deserialize Json response,
+    for request GET http://localhost/form
+    expected ident at line 1 column 2
+
+received:
+    name=Joe&age=20
+",
+            message,
+        );
     }
 }
 
@@ -2708,6 +2910,8 @@ mod test_assert_json_from_file {
 #[cfg(test)]
 mod test_assert_yaml {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Form;
     use axum::Router;
     use axum::routing::get;
@@ -2738,7 +2942,6 @@ mod test_assert_yaml {
     #[tokio::test]
     async fn it_should_match_yaml_returned() {
         let app = Router::new().route(&"/yaml", get(route_get_yaml));
-
         let server = TestServer::new(app);
 
         server.get(&"/yaml").await.assert_yaml(&ExampleResponse {
@@ -2748,29 +2951,55 @@ mod test_assert_yaml {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/yaml", get(route_get_yaml));
-
         let server = TestServer::new(app);
 
-        server.get(&"/yaml").await.assert_yaml(&ExampleResponse {
-            name: "Julia".to_string(),
-            age: 25,
+        let response = server.get(&"/yaml").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_yaml(&ExampleResponse {
+                name: "Julia".to_string(),
+                age: 25,
+            });
         });
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+ ExampleResponse {
+<    name: "Julia",
+<    age: 25,
+>    name: "Joe",
+>    age: 20,
+ }
+
+"#,
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_response_is_form() {
         let app = Router::new().route(&"/form", get(route_get_form));
-
         let server = TestServer::new(app);
 
-        server.get(&"/form").await.assert_yaml(&ExampleResponse {
-            name: "Joe".to_string(),
-            age: 20,
+        let response = server.get(&"/form").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_yaml(&ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            });
         });
+        assert_error_message(
+            r#"Failed to deserialize Yaml response,
+    for request GET http://localhost/form
+    invalid type: string "name=Joe&age=20", expected struct ExampleResponse
+
+received:
+    name=Joe&age=20
+"#,
+            message,
+        );
     }
 }
 
@@ -2778,6 +3007,8 @@ mod test_assert_yaml {
 #[cfg(test)]
 mod test_assert_yaml_from_file {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Form;
     use axum::routing::Router;
     use axum::routing::get;
@@ -2808,7 +3039,6 @@ mod test_assert_yaml_from_file {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_not_match_the_file() {
         let app = Router::new().route(
             &"/yaml",
@@ -2823,14 +3053,27 @@ mod test_assert_yaml_from_file {
         );
         let server = TestServer::new(app);
 
-        server
-            .get(&"/yaml")
-            .await
-            .assert_yaml_from_file("files/example.yaml");
+        let response = server.get(&"/yaml").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_yaml_from_file("files/example.yaml");
+        });
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+ Mapping {
+<    "name": String("Joe"),
+<    "age": Number(20),
+>    "age": Number(25),
+>    "name": String("Julia"),
+ }
+
+"#,
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_when_content_type_does_not_match() {
         #[derive(Serialize, Deserialize, PartialEq, Debug)]
         struct ExampleResponse {
@@ -2849,16 +3092,31 @@ mod test_assert_yaml_from_file {
         );
         let server = TestServer::new(app);
 
-        server
-            .get(&"/form")
-            .await
-            .assert_yaml_from_file("files/example.yaml");
+        let response = server.get(&"/form").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_yaml_from_file("files/example.yaml");
+        });
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+<Mapping {
+<    "name": String("Joe"),
+<    "age": Number(20),
+<}
+>String("name=Joe&age=20")
+
+"#,
+            message,
+        );
     }
 }
 
 #[cfg(test)]
 mod test_assert_form {
     use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
     use axum::Form;
     use axum::Json;
     use axum::Router;
@@ -2899,29 +3157,56 @@ mod test_assert_form {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_response_is_different() {
         let app = Router::new().route(&"/form", get(route_get_form));
-
         let server = TestServer::new(app);
 
-        server.get(&"/form").await.assert_form(&ExampleResponse {
-            name: "Julia".to_string(),
-            age: 25,
+        let response = server.get(&"/form").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_form(&ExampleResponse {
+                name: "Julia".to_string(),
+                age: 25,
+            });
         });
+
+        assert_error_message(
+            r#"assertion failed: `(left == right)`
+
+Diff < left / right > :
+ ExampleResponse {
+<    name: "Julia",
+<    age: 25,
+>    name: "Joe",
+>    age: 20,
+ }
+
+"#,
+            message,
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_response_is_json() {
         let app = Router::new().route(&"/json", get(route_get_json));
-
         let server = TestServer::new(app);
 
-        server.get(&"/json").await.assert_form(&ExampleResponse {
-            name: "Joe".to_string(),
-            age: 20,
+        let response = server.get(&"/json").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_form(&ExampleResponse {
+                name: "Joe".to_string(),
+                age: 20,
+            });
         });
+        assert_error_message(
+            r#"Failed to deserialize Form response,
+    for request GET http://localhost/json
+    missing field `name`
+
+received:
+    {"name":"Joe","age":20}
+"#,
+            message,
+        );
     }
 }
 
@@ -2951,7 +3236,8 @@ mod test_text {
 #[cfg(test)]
 mod test_into_websocket {
     use crate::TestServer;
-
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::WebSocket;
@@ -2985,12 +3271,19 @@ mod test_into_websocket {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_fail_to_upgrade_on_mock_transport() {
         let router = new_test_router();
         let server = TestServer::builder().mock_transport().build(router);
 
-        let _ = server.get_websocket(&"/ws").await.into_websocket().await;
+        let response = server.get_websocket(&"/ws").await;
+        let message = catch_panic_error_message_async(async {
+            let _ = response.into_websocket().await;
+        })
+        .await;
+        assert_error_message(
+            "WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`",
+            message,
+        );
     }
 }
 
