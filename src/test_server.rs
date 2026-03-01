@@ -270,7 +270,7 @@ impl TestServer {
             transport,
             expected_state,
             default_content_type: config.default_content_type,
-            is_http_path_restricted: config.restrict_requests_with_http_schema,
+            is_http_path_restricted: config.restrict_requests_with_http_scheme,
 
             #[cfg(feature = "reqwest")]
             maybe_reqwest_client: Default::default(),
@@ -856,9 +856,9 @@ fn build_url(
     // If there is a scheme, then this is an absolute path.
     if let Some(scheme) = path_uri.scheme_str() {
         if is_http_restricted {
-            if has_different_schema(&url, &path_uri) || has_different_authority(&url, &path_uri) {
+            if has_different_scheme(&url, &path_uri) || has_different_authority(&url, &path_uri) {
                 return Err(anyhow!(
-                    "Request disallowed for path '{path}', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this."
+                    "Request disallowed for path '{path}', requests are only allowed to local server. Turn off 'restrict_requests_with_http_scheme' to change this."
                 ));
             }
         } else {
@@ -916,7 +916,7 @@ fn is_absolute_uri(path_uri: &Uri) -> bool {
     path_uri.scheme_str().is_some()
 }
 
-fn has_different_schema(base_url: &Url, path_uri: &Uri) -> bool {
+fn has_different_scheme(base_url: &Url, path_uri: &Uri) -> bool {
     if let Some(scheme) = path_uri.scheme_str() {
         return scheme != base_url.scheme();
     }
@@ -1231,7 +1231,7 @@ mod test_get {
         // Run the server.
         let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
-            .restrict_requests_with_http_schema() // Key part of the test!
+            .restrict_requests_with_http_scheme() // Key part of the test!
             .try_build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
@@ -1258,7 +1258,7 @@ mod test_get {
         // Run the server.
         let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
-            .restrict_requests_with_http_schema() // Key part of the test!
+            .restrict_requests_with_http_scheme() // Key part of the test!
             .try_build(app)
             .with_context(|| format!("Should create test server with address {}:{}", ip, port))
             .unwrap();
@@ -1272,7 +1272,7 @@ mod test_get {
         });
 
         let expected = format!("Failed to build request, for GET http://{ip}:{port}/ping,
-    Request disallowed for path 'http://{ip}:{port}/ping', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this.
+    Request disallowed for path 'http://{ip}:{port}/ping', requests are only allowed to local server. Turn off 'restrict_requests_with_http_scheme' to change this.
 ");
         assert_str_eq!(expected, message);
     }
