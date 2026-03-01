@@ -715,7 +715,7 @@ impl TestResponse {
 
         // Using the mock approach will just fail.
         if self.websockets.transport_type != TransportLayerType::Http {
-            unimplemented!(
+            panic!(
                 "WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`"
             );
         }
@@ -3237,7 +3237,7 @@ mod test_text {
 mod test_into_websocket {
     use crate::TestServer;
     use crate::testing::assert_error_message;
-    use crate::testing::catch_panic_error_message;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::extract::WebSocketUpgrade;
     use axum::extract::ws::WebSocket;
@@ -3276,10 +3276,14 @@ mod test_into_websocket {
         let server = TestServer::builder().mock_transport().build(router);
 
         let response = server.get_websocket(&"/ws").await;
-        let message = catch_panic_error_message(|| {
-            response.into_websocket();
-        });
-        assert_error_message("", message);
+        let message = catch_panic_error_message_async(async {
+            let _ = response.into_websocket().await;
+        })
+        .await;
+        assert_error_message(
+            "WebSocket requires a HTTP based transport layer, see `TestServerConfig::transport`",
+            message,
+        );
     }
 }
 

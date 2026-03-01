@@ -19,11 +19,18 @@ where
     Fut: IntoFuture<Output = T>,
     T: Debug,
 {
-    AssertUnwindSafe(fut.into_future())
+    let error = AssertUnwindSafe(fut.into_future())
         .catch_unwind()
         .await
-        .unwrap_err()
-        .downcast_ref::<String>()
-        .unwrap()
-        .to_owned()
+        .unwrap_err();
+
+    if let Some(error_message) = error.downcast_ref::<String>() {
+        return error_message.to_owned();
+    }
+
+    if let Some(error_message) = error.downcast_ref::<&str>() {
+        return error_message.to_string();
+    }
+
+    panic!("Unknown value for error message returned");
 }
