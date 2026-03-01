@@ -1,4 +1,5 @@
 use crate::internals::QueryParamsStore;
+use anyhow::Error as AnyhowError;
 use anyhow::Result;
 use http::Error as UriError;
 use http::Uri;
@@ -85,19 +86,15 @@ impl Uri2 {
         self.query.clear();
     }
 
-    /*
-    pub fn push(&mut self, other: Self) {
-        if other.scheme.is_some() {
-            self.scheme = other.scheme;
-        }
-
-        if other.host.is_some() {
-            self.host = other.host;
-        }
-
-        self.path = other.path;
+    pub fn set_path_from_uri(&mut self, uri: &Uri) {
+        self.path = uri.path().to_string();
     }
-     */
+
+    pub fn add_query_from_uri(&mut self, uri: &Uri) {
+        if let Some(query) = uri.query() {
+            self.query.add_raw(query.to_string());
+        }
+    }
 
     pub fn to_uri(&self) -> Result<Uri, UriError> {
         let mut uri_builder = Uri::builder();
@@ -132,6 +129,14 @@ impl Uri2 {
 
         uri_builder.build()
     }
+
+    pub fn to_url(&self) -> Result<Url> {
+        todo!()
+    }
+
+    pub fn into_url(self) -> Result<Url> {
+        todo!()
+    }
 }
 
 impl TryFrom<&Uri2> for Uri {
@@ -147,6 +152,22 @@ impl TryFrom<Uri2> for Uri {
 
     fn try_from(uri2: Uri2) -> Result<Self, Self::Error> {
         uri2.into_uri()
+    }
+}
+
+impl TryFrom<&Uri2> for Url {
+    type Error = AnyhowError;
+
+    fn try_from(uri2: &Uri2) -> Result<Self, Self::Error> {
+        uri2.to_url()
+    }
+}
+
+impl TryFrom<Uri2> for Url {
+    type Error = AnyhowError;
+
+    fn try_from(uri2: Uri2) -> Result<Self, Self::Error> {
+        uri2.into_url()
     }
 }
 
@@ -176,6 +197,16 @@ mod test_fmt {
 
     #[test]
     fn it_should_format_the_example_url() {
+        todo!()
+    }
+}
+
+#[cfg(test)]
+mod test_add_query_from_uri {
+    use super::*;
+
+    #[test]
+    fn todo() {
         todo!()
     }
 }

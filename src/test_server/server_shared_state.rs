@@ -13,9 +13,9 @@ pub(crate) struct ServerSharedState {
 }
 
 impl ServerSharedState {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(server_uri: Uri2) -> Self {
         Self {
-            server_uri: Default::default(),
+            server_uri,
             headers: Vec::new(),
         }
     }

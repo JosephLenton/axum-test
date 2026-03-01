@@ -10,6 +10,7 @@ use crate::internals::Uri2;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
+use crate::transport_layer::TransportLayerType;
 use anyhow::Result;
 use anyhow::anyhow;
 use cookie::Cookie;
@@ -38,7 +39,6 @@ use std::cell::OnceCell;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
-use crate::transport_layer::TransportLayerType;
 
 ///
 /// The `TestServer` runs your Axum application,
@@ -226,7 +226,6 @@ impl TestServer {
         C: Into<TestServerConfig>,
     {
         let config = config.into();
-        let state = ServerSharedState::new();
 
         let transport = match config.transport {
             None => {
@@ -254,6 +253,9 @@ impl TestServer {
             true => ExpectedState::Success,
             false => ExpectedState::None,
         };
+
+        let server_uri = Uri2::from_uri(transport.uri());
+        let state = ServerSharedState::new(server_uri);
 
         Ok(Self {
             state,
@@ -545,7 +547,16 @@ impl TestServer {
     ///
     /// This will return `None` when there is mock HTTP transport (the default).
     pub fn server_address(&self) -> Option<Url> {
-        self.url()
+        if self.transport.transport_layer_type() == TransportLayerType::Mock {
+            return None;
+        }
+
+        self.state
+            .uri()
+            .clone()
+            .into_url()
+            .error_message("Failed to internally parse the hTTP server URL for `server_address`")
+            .into()
     }
 
     /// This turns a relative path, into an absolute path to the server.
@@ -595,10 +606,10 @@ impl TestServer {
         }
 
         let mut server_url = self.state.uri().clone();
-        server_url.set_path_from_uri(uri);
-        server_url.add_query_from_uri(uri);
+        server_url.set_path_from_uri(&path_uri);
+        server_url.add_query_from_uri(&path_uri);
 
-        Ok(server_url.into_url())
+        server_url.into_url()
     }
 
     /// Adds a single cookie to be included on *all* future requests.
@@ -729,8 +740,8 @@ impl TestServer {
         method: Method,
         path: &str,
     ) -> Result<TestRequestConfig> {
-        let url = self.url();
-        let headers = self.headers.clone();
+        let url = self.state.uri().clone();
+        let headers = self.state.headers().clone();
         let request_uri = build_url(url, path, self.is_http_path_restricted)?;
 
         Ok(TestRequestConfig {
@@ -861,7 +872,10 @@ mod test_build_url {
         let path = "/users?path=bbb&path-flag";
         let result = build_url(base_url, &path, &mut query_params, true).unwrap();
 
-        assert_eq!("http://example.com/users?base=aaa&path=bbb&path-flag", result.as_str());
+        assert_eq!(
+            "http://example.com/users?base=aaa&path=bbb&path-flag",
+            result.as_str()
+        );
     }
 
     #[test]
@@ -915,7 +929,10 @@ mod test_build_url {
         let path = "/users?path=bbb&path-flag";
         let result = build_url(base_url, &path, &mut query_params, false).unwrap();
 
-        assert_eq!("http://example.com/users?base=aaa&path=bbb&path-flag", result.as_str());
+        assert_eq!(
+            "http://example.com/users?base=aaa&path=bbb&path-flag",
+            result.as_str()
+        );
     }
 
     #[test]
