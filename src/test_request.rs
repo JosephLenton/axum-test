@@ -1721,9 +1721,11 @@ mod test_text_from_file {
 #[cfg(test)]
 mod test_expect_success {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::routing::get;
     use http::StatusCode;
+    use pretty_assertions::assert_str_eq;
 
     #[tokio::test]
     async fn it_should_not_panic_if_success_is_returned() {
@@ -1758,7 +1760,6 @@ mod test_expect_success {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_on_404() {
         // Build an application with a route.
         let app = Router::new();
@@ -1767,7 +1768,13 @@ mod test_expect_success {
         let server = TestServer::new(app);
 
         // Get the request.
-        server.get(&"/some_unknown_route").expect_success().await;
+        let message =
+            catch_panic_error_message_async(server.get(&"/some_unknown_route").expect_success())
+                .await;
+        assert_str_eq!(
+            "Expect status code within 2xx range, received 404 (Not Found), for request GET http://localhost/some_unknown_route, with body ''",
+            message
+        );
     }
 
     #[tokio::test]
@@ -1791,9 +1798,11 @@ mod test_expect_success {
 #[cfg(test)]
 mod test_expect_failure {
     use crate::TestServer;
+    use crate::testing::catch_panic_error_message_async;
     use axum::Router;
     use axum::routing::get;
     use http::StatusCode;
+    use pretty_assertions::assert_str_eq;
 
     #[tokio::test]
     async fn it_should_not_panic_if_expect_failure_on_404() {
@@ -1808,7 +1817,6 @@ mod test_expect_failure {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_if_success_is_returned() {
         async fn get_ping() -> &'static str {
             "pong!"
@@ -1821,11 +1829,14 @@ mod test_expect_failure {
         let server = TestServer::new(app);
 
         // Get the request.
-        server.get(&"/ping").expect_failure().await;
+        let message = catch_panic_error_message_async(server.get(&"/ping").expect_failure()).await;
+        assert_str_eq!(
+            "Expect status code outside 2xx range, received 200 (OK), for request GET http://localhost/ping, with body 'pong!'",
+            message
+        );
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_panic_on_other_2xx_status_code() {
         async fn get_accepted() -> StatusCode {
             StatusCode::ACCEPTED
@@ -1838,7 +1849,12 @@ mod test_expect_failure {
         let server = TestServer::new(app);
 
         // Get the request.
-        server.get(&"/accepted").expect_failure().await;
+        let message =
+            catch_panic_error_message_async(server.get(&"/accepted").expect_failure()).await;
+        assert_str_eq!(
+            "Expect status code outside 2xx range, received 202 (Accepted), for request GET http://localhost/accepted, with body ''",
+            message
+        );
     }
 
     #[tokio::test]

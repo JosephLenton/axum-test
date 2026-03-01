@@ -304,10 +304,9 @@ impl TestServer {
 
     /// Creates a HTTP request, to the method and path provided.
     pub fn method(&self, method: Method, path: &str) -> TestRequest {
-        let maybe_config = self.build_test_request_config(method.clone(), path);
-        let config = maybe_config
-            .with_context(|| format!("Failed to build, for request {method} {path}"))
-            .unwrap();
+        let config = self
+            .build_test_request_config(method.clone(), path)
+            .error_message_fn(|| format!("Failed to build request, for {method} {path}"));
 
         TestRequest::new(self.transport.clone(), config)
     }
@@ -1165,8 +1164,10 @@ mod test_new {
 #[cfg(test)]
 mod test_get {
     use super::*;
+    use crate::testing::catch_panic_error_message;
     use axum::Router;
     use axum::routing::get;
+    use pretty_assertions::assert_str_eq;
     use reserve_port::ReservedSocketAddr;
 
     async fn get_ping() -> &'static str {
@@ -1245,7 +1246,6 @@ mod test_get {
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn it_should_not_get_using_absolute_path_if_restricted_and_different_port() {
         // Build an application with a route.
         let app = Router::new().route("/ping", get(get_ping));
@@ -1266,7 +1266,14 @@ mod test_get {
         // Get the request.
         port += 1; // << Change the port to be off by one and not match the server
         let absolute_url = format!("http://{ip}:{port}/ping");
-        server.get(&absolute_url).await;
+
+        let message = catch_panic_error_message(|| {
+            let _ = server.get(&absolute_url);
+        });
+
+        assert_str_eq!("Failed to build request, for GET http://127.0.0.1:8001/ping,
+    Request disallowed for path 'http://127.0.0.1:8001/ping', requests are only allowed to local server. Turn off 'restrict_requests_with_http_schema' to change this.
+", message);
     }
 
     #[tokio::test]

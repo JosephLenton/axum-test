@@ -16,10 +16,10 @@ where
 
 pub async fn catch_panic_error_message_async<Fut, T>(fut: Fut) -> String
 where
-    Fut: Future<Output = T>,
+    Fut: IntoFuture<Output = T>,
     T: Debug,
 {
-    AssertUnwindSafe(fut)
+    AssertUnwindSafe(fut.into_future())
         .catch_unwind()
         .await
         .unwrap_err()
