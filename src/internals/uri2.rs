@@ -1,6 +1,10 @@
 use crate::internals::QueryParamsStore;
+use crate::util::uri::has_different_authority;
+use crate::util::uri::has_different_scheme;
+use crate::util::uri::is_absolute_uri;
 use anyhow::Error as AnyhowError;
 use anyhow::Result;
+use anyhow::anyhow;
 use http::Error as UriError;
 use http::Uri;
 use http::uri::Authority;
@@ -9,6 +13,7 @@ use serde::Serialize;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
+use url::Host;
 use url::Url;
 
 /// This exists as an alternative to the pains and restrictions of `url::Url`, and `http::Uri`.
@@ -96,6 +101,10 @@ impl Uri2 {
         }
     }
 
+    pub fn set_authority(&mut self, authority: Authority) {
+        self.authority = Some(authority);
+    }
+
     pub fn to_uri(&self) -> Result<Uri, UriError> {
         let mut uri_builder = Uri::builder();
 
@@ -136,6 +145,65 @@ impl Uri2 {
 
     pub fn into_url(self) -> Result<Url> {
         todo!()
+    }
+
+    /// This is a large function that allows overriding the existing URI with 'something' given by the user.
+    /// What happens depends on a bunch of custom logic.
+    pub fn set_uri_str(&mut self, other: &str, is_http_restricted: bool) -> Result<()> {
+        let other_uri = other.parse::<Uri>()?;
+
+        //
+        // Why does this exist?
+        //
+        // This exists to allow `server.get("/users")` and `server.get("users")` (without a slash)
+        // to go to the same place.
+        //
+        // It does this by saying ...
+        //  - if there is a scheme, it's a full uri.
+        //  - if no scheme, it must be a path
+        //
+        // If there is a scheme, then this is an absolute path.
+        if let Some(scheme) = other_uri.scheme_str() {
+            if is_http_restricted {
+                if has_different_scheme(&url, &other_uri)
+                    || has_different_authority(&url, &other_uri)
+                {
+                    return Err(anyhow!(
+                        "Request disallowed for path '{other}', requests are only allowed to local server. Turn off 'restrict_requests_with_http_scheme' to change this."
+                    ));
+                }
+            } else {
+                self.set_scheme(scheme).map_err(|_| {
+                    anyhow!("Failed to set scheme for request, with path '{other}'")
+                })?;
+
+                // We only set the host/port if the scheme is also present.
+                if let Some(authority) = other_uri.authority() {
+                    self.set_authority(authority.clone());
+                }
+            }
+
+            self.set_path(other_uri.path());
+
+            // In this path we are replacing, so drop any query params on the original url.
+            self.clear_query_params();
+        } else {
+            // Grab everything up until the query parameters, or everything after that
+            let calculated_path = other.split('?').next().unwrap_or(other);
+            self.set_path(calculated_path);
+
+            // Move any query parameters from the url to the query params store.
+            if let Some(url_query) = self.query() {
+                query_params.add_raw(url_query.to_string());
+                self.set_query(None);
+            }
+        }
+
+        if let Some(path_query) = other_uri.query() {
+            self.add_raw_query_param(path_query);
+        }
+
+        Ok(())
     }
 }
 
@@ -208,5 +276,190 @@ mod test_add_query_from_uri {
     #[test]
     fn todo() {
         todo!()
+    }
+}
+
+#[cfg(test)]
+mod test_set_uri_str {
+    use super::*;
+
+    #[test]
+    fn it_should_copy_path_to_url_returned_when_restricted() {
+        let mut base_url = Uri2::from_str("http://example.com");
+        let path = "/users";
+        base_url.set_uri_str(&path, true).unwrap();
+
+        assert_eq!("http://example.com/users", base_url.to_string());
+    }
+
+    #[test]
+    fn it_should_copy_all_query_params_to_store_when_restricted() {
+        let mut base_url = Uri2::from_str("http://example.com?base=aaa");
+        let path = "/users?path=bbb&path-flag";
+        base_url.set_uri_str(&path, true).unwrap();
+
+        assert_eq!(
+            "http://example.com/users?base=aaa&path=bbb&path-flag",
+            base_url.to_string()
+        );
+    }
+
+    #[test]
+    fn it_should_not_replace_url_when_restricted_with_different_scheme() {
+        let mut base_url = Uri2::from_str("http://example.com?base=666");
+        let path = "ftp://google.com:123/users.csv?limit=456";
+        let result = base_url.set_uri_str(&path, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_not_replace_url_when_restricted_with_same_scheme() {
+        let mut base_url = Uri2::from_str("http://example.com?base=666");
+        let path = "http://google.com:123/users.csv?limit=456";
+        let result = base_url.set_uri_str(&path, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_block_url_when_restricted_with_same_scheme() {
+        let mut base_url = Uri2::from_str("http://example.com?base=666");
+        let path = "http://google.com";
+        let result = base_url.set_uri_str(&path, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_block_url_when_restricted_and_same_domain_with_different_scheme() {
+        let mut base_url = Uri2::from_str("http://example.com?base=666");
+        let path = "ftp://example.com/users";
+        let result = base_url.set_uri_str(&path, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_copy_path_to_url_returned_when_unrestricted() {
+        let mut base_url = Uri2::from_str("http://example.com");
+        let path = "/users";
+        base_url.set_uri_str(&path, false).unwrap();
+
+        assert_eq!("http://example.com/users", base_url.to_string());
+    }
+
+    #[test]
+    fn it_should_copy_all_query_params_to_store_when_unrestricted() {
+        let mut base_url = Uri2::from_str("http://example.com?base=aaa");
+        let path = "/users?path=bbb&path-flag";
+        base_url.set_uri_str(&path, false).unwrap();
+
+        assert_eq!(
+            "http://example.com/users?base=aaa&path=bbb&path-flag",
+            base_url.to_string()
+        );
+    }
+
+    #[test]
+    fn it_should_copy_host_like_a_path_when_unrestricted() {
+        let mut base_url = Uri2::from_str("http://example.com");
+        let path = "google.com";
+        base_url.set_uri_str(&path, false).unwrap();
+
+        assert_eq!("http://example.com/google.com", base_url.to_string());
+    }
+
+    #[test]
+    fn it_should_copy_host_like_a_path_when_restricted() {
+        let mut base_url = Uri2::from_str("http://example.com");
+        let path = "google.com";
+        base_url.set_uri_str(&path, true).unwrap();
+
+        assert_eq!("http://example.com/google.com", base_url.to_string());
+    }
+
+    #[test]
+    fn it_should_replace_url_when_unrestricted() {
+        let mut base_url = Uri2::from_str("http://example.com?base=666");
+        let path = "ftp://google.com:123/users.csv?limit=456";
+        base_url.set_uri_str(&path, false).unwrap();
+
+        assert_eq!(
+            "ftp://google.com:123/users.csv?limit=456",
+            base_url.to_string()
+        );
+    }
+
+    #[test]
+    fn it_should_allow_different_scheme_when_unrestricted() {
+        let mut base_url = Uri2::from_str("http://example.com");
+        let path = "ftp://example.com";
+        base_url.set_uri_str(&path, false).unwrap();
+
+        assert_eq!("ftp://example.com/", base_url.to_string());
+    }
+
+    #[test]
+    fn it_should_allow_different_host_when_unrestricted() {
+        let mut base_url = Uri2::from_str("http://example.com");
+        let path = "http://google.com";
+        base_url.set_uri_str(&path, false).unwrap();
+
+        assert_eq!("http://google.com/", base_url.to_string());
+    }
+
+    #[test]
+    fn it_should_allow_different_port_when_unrestricted() {
+        let mut base_url = Uri2::from_str("http://example.com:123");
+        let path = "http://example.com:456";
+        base_url.set_uri_str(&path, false).unwrap();
+
+        assert_eq!("http://example.com:456/", base_url.to_string());
+    }
+
+    #[test]
+    fn it_should_allow_same_host_port_when_unrestricted() {
+        let mut base_url = Uri2::from_str("http://example.com:123");
+        let path = "http://example.com:123";
+        base_url.set_uri_str(&path, false).unwrap();
+
+        assert_eq!("http://example.com:123/", base_url.to_string());
+    }
+
+    #[test]
+    fn it_should_not_allow_different_scheme_when_restricted() {
+        let mut base_url = Uri2::from_str("http://example.com");
+        let path = "ftp://example.com";
+        let result = base_url.set_uri_str(&path, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_not_allow_different_host_when_restricted() {
+        let mut base_url = Uri2::from_str("http://example.com");
+        let path = "http://google.com";
+        let result = base_url.set_uri_str(&path, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_not_allow_different_port_when_restricted() {
+        let mut base_url = Uri2::from_str("http://example.com:123");
+        let path = "http://example.com:456";
+        let result = base_url.set_uri_str(&path, true);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn it_should_allow_same_host_port_when_restricted() {
+        let mut base_url = Uri2::from_str("http://example.com:123");
+        let path = "http://example.com:123";
+        base_url.set_uri_str(&path, true).unwrap();
+
+        assert_eq!("http://example.com:123/", base_url.to_string());
     }
 }
