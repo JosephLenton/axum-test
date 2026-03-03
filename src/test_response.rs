@@ -1434,7 +1434,7 @@ Diff < left / right > :
             response.assert_header("x-custom-header-not-found", "content");
         });
         assert_error_message(
-            "Expected header 'x-custom-header-not-found' to be present in response, header was not found, for request GET http://localhost/header",
+            "Expected header 'x-custom-header-not-found' to be present in response, header was not found, for request GET /header",
             message,
         );
     }
@@ -1477,7 +1477,7 @@ mod test_assert_contains_header {
             response.assert_contains_header("x-custom-header-not-found");
         });
         assert_error_message(
-            "Expected header 'x-custom-header-not-found' to be present in response, header was not found, for request GET http://localhost/header",
+            "Expected header 'x-custom-header-not-found' to be present in response, header was not found, for request GET /header",
             message,
         );
     }
@@ -1526,7 +1526,7 @@ mod test_assert_success {
             response.assert_status_success();
         });
         assert_error_message(
-            "Expect status code within 2xx range, received 503 (Service Unavailable), for request GET http://localhost/fail, with body ''",
+            "Expect status code within 2xx range, received 503 (Service Unavailable), for request GET /fail, with body ''",
             message,
         );
     }
@@ -1574,7 +1574,7 @@ mod test_assert_failure {
             response.assert_status_failure();
         });
         assert_error_message(
-            "Expect status code outside 2xx range, received 200 (OK), for request GET http://localhost/pass, with body ''",
+            "Expect status code outside 2xx range, received 200 (OK), for request GET /pass, with body ''",
             message,
         );
     }
@@ -1610,7 +1610,7 @@ mod test_assert_status {
         let message = catch_panic_error_message(|| {
             response.assert_status(StatusCode::ACCEPTED);
         });
-        assert_error_message("assertion failed: `(left == right)`: Expected status code to be 202 (Accepted), received 200 (OK), for request GET http://localhost/ok, with body ''
+        assert_error_message("assertion failed: `(left == right)`: Expected status code to be 202 (Accepted), received 200 (OK), for request GET /ok, with body ''
 
 Diff < left / right > :
 <202
@@ -1653,7 +1653,7 @@ mod test_assert_not_status {
         let message = catch_panic_error_message(|| {
             response.assert_not_status(StatusCode::OK);
         });
-        assert_error_message("assertion failed: `(left != right)`: Expected status code to not be 200 (OK), received 200 (OK), for request GET http://localhost/ok, with body ''
+        assert_error_message("assertion failed: `(left != right)`: Expected status code to not be 200 (OK), received 200 (OK), for request GET /ok, with body ''
 
 Both sides:
 200
@@ -1710,7 +1710,7 @@ mod test_assert_status_in_range {
             response.assert_status_in_range(200..299);
         });
         assert_error_message(
-            "Expected status to be in range 200..299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            "Expected status to be in range 200..299, received 500 Internal Server Error, for request GET /status, with body ''",
             message,
         );
     }
@@ -1727,7 +1727,7 @@ mod test_assert_status_in_range {
             response.assert_status_in_range(StatusCode::OK..StatusCode::IM_USED);
         });
         assert_error_message(
-            "Expected status to be in range 200..226, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            "Expected status to be in range 200..226, received 500 Internal Server Error, for request GET /status, with body ''",
             message,
         );
     }
@@ -1757,7 +1757,7 @@ mod test_assert_status_in_range {
             response.assert_status_in_range(200..=299);
         });
         assert_error_message(
-            "Expected status to be in range 200..=299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            "Expected status to be in range 200..=299, received 500 Internal Server Error, for request GET /status, with body ''",
             message,
         );
     }
@@ -1787,7 +1787,7 @@ mod test_assert_status_in_range {
             response.assert_status_in_range(..299);
         });
         assert_error_message(
-            "Expected status to be in range ..299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            "Expected status to be in range ..299, received 500 Internal Server Error, for request GET /status, with body ''",
             message,
         );
     }
@@ -1817,7 +1817,7 @@ mod test_assert_status_in_range {
             response.assert_status_in_range(..=299);
         });
         assert_error_message(
-            "Expected status to be in range ..=299, received 500 Internal Server Error, for request GET http://localhost/status, with body ''",
+            "Expected status to be in range ..=299, received 500 Internal Server Error, for request GET /status, with body ''",
             message,
         );
     }
@@ -1847,7 +1847,7 @@ mod test_assert_status_in_range {
             response.assert_status_in_range(500..);
         });
         assert_error_message(
-            "Expected status to be in range 500.., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            "Expected status to be in range 500.., received 203 Non Authoritative Information, for request GET /status, with body ''",
             message,
         );
     }
@@ -1888,7 +1888,7 @@ mod test_assert_status_not_in_range {
             response.assert_status_not_in_range(200..299);
         });
         assert_error_message(
-            "Expected status is not in range 200..299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            "Expected status is not in range 200..299, received 203 Non Authoritative Information, for request GET /status, with body ''",
             message,
         );
     }
@@ -1905,7 +1905,7 @@ mod test_assert_status_not_in_range {
             response.assert_status_not_in_range(StatusCode::OK..StatusCode::IM_USED);
         });
         assert_error_message(
-            "Expected status is not in range 200..226, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            "Expected status is not in range 200..226, received 203 Non Authoritative Information, for request GET /status, with body ''",
             message,
         );
     }
@@ -1948,7 +1948,7 @@ mod test_assert_status_not_in_range {
             response.assert_status_not_in_range(200..=299);
         });
         assert_error_message(
-            "Expected status is not in range 200..=299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            "Expected status is not in range 200..=299, received 203 Non Authoritative Information, for request GET /status, with body ''",
             message,
         );
     }
@@ -1978,7 +1978,7 @@ mod test_assert_status_not_in_range {
             response.assert_status_not_in_range(..299);
         });
         assert_error_message(
-            "Expected status is not in range ..299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            "Expected status is not in range ..299, received 203 Non Authoritative Information, for request GET /status, with body ''",
             message,
         );
     }
@@ -2008,7 +2008,7 @@ mod test_assert_status_not_in_range {
             response.assert_status_not_in_range(..=299);
         });
         assert_error_message(
-            "Expected status is not in range ..=299, received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            "Expected status is not in range ..=299, received 203 Non Authoritative Information, for request GET /status, with body ''",
             message,
         );
     }
@@ -2038,7 +2038,7 @@ mod test_assert_status_not_in_range {
             response.assert_status_not_in_range(200..);
         });
         assert_error_message(
-            "Expected status is not in range 200.., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            "Expected status is not in range 200.., received 203 Non Authoritative Information, for request GET /status, with body ''",
             message,
         );
     }
@@ -2068,7 +2068,7 @@ mod test_assert_status_not_in_range {
             response.assert_status_not_in_range::<RangeFull, StatusCode>(..);
         });
         assert_error_message(
-            "Expected status is not in range .., received 203 Non Authoritative Information, for request GET http://localhost/status, with body ''",
+            "Expected status is not in range .., received 203 Non Authoritative Information, for request GET /status, with body ''",
             message,
         );
     }
@@ -2214,7 +2214,7 @@ mod test_json {
 
         assert_str_eq!(
             r#"Failed to deserialize Json response,
-    for request GET http://localhost/fox
+    for request GET /fox
     expected value at line 1 column 1
 
 received:
@@ -2284,7 +2284,7 @@ mod test_yaml {
 
         assert_str_eq!(
             r#"Failed to deserialize Yaml response,
-    for request GET http://localhost/fox
+    for request GET /fox
     invalid type: string "🦊", expected struct ExampleResponse
 
 received:
@@ -2661,7 +2661,7 @@ Json integers at root.age are not equal:
         });
         assert_error_message(
             "Failed to deserialize Json response,
-    for request GET http://localhost/form
+    for request GET /form
     expected ident at line 1 column 2
 
 received:
@@ -2783,7 +2783,7 @@ Json integers at root.age are not equal:
         });
         assert_error_message(
             "Failed to deserialize Json response,
-    for request GET http://localhost/form
+    for request GET /form
     expected ident at line 1 column 2
 
 received:
@@ -2894,7 +2894,7 @@ Json integers at root.age are not equal:
         });
         assert_error_message(
             "Failed to deserialize Json response,
-    for request GET http://localhost/form
+    for request GET /form
     expected ident at line 1 column 2
 
 received:
@@ -2991,7 +2991,7 @@ Diff < left / right > :
         });
         assert_error_message(
             r#"Failed to deserialize Yaml response,
-    for request GET http://localhost/form
+    for request GET /form
     invalid type: string "name=Joe&age=20", expected struct ExampleResponse
 
 received:
@@ -3198,7 +3198,7 @@ Diff < left / right > :
         });
         assert_error_message(
             r#"Failed to deserialize Form response,
-    for request GET http://localhost/json
+    for request GET /json
     missing field `name`
 
 received:
@@ -3369,23 +3369,24 @@ mod test_request_uri {
     async fn it_should_include_domain_for_random_http_transport() {
         let server = TestServer::builder().http_transport().build(Router::new());
 
-        let url = server.get("/my-path").await.request_uri();
-        assert_str_eq!("/my-path", url.to_string());
+        let uri = server.get("/my-path").await.request_uri();
+        let expected = format!("http://127.0.0.1:{}/my-path", uri.port().unwrap());
+        assert_str_eq!(expected, uri.to_string());
     }
 
     #[tokio::test]
     async fn it_should_not_include_domain_for_mock_transport() {
         let server = TestServer::builder().mock_transport().build(Router::new());
 
-        let url = server.get("/my-path").await.request_uri();
-        assert_str_eq!("/my-path", url.to_string());
+        let uri = server.get("/my-path").await.request_uri();
+        assert_str_eq!("/my-path", uri.to_string());
     }
 
     #[tokio::test]
     async fn it_should_make_non_slash_path_into_slash_path_for_mock_transport() {
         let server = TestServer::builder().mock_transport().build(Router::new());
 
-        let url = server.get("my-path").await.request_uri();
-        assert_str_eq!("/my-path", url.to_string());
+        let uri = server.get("my-path").await.request_uri();
+        assert_str_eq!("/my-path", uri.to_string());
     }
 }

@@ -5,6 +5,7 @@ use anyhow::anyhow;
 use http::Error as UriError;
 use http::Uri;
 use http::uri::Authority;
+use http::uri::InvalidUri;
 use http::uri::Scheme;
 use serde::Serialize;
 use std::fmt::Debug;
@@ -66,9 +67,22 @@ impl Uri2 {
         Default::default()
     }
 
-    pub fn set_scheme(&mut self, scheme_str: &str) -> Result<()> {
-        let scheme = scheme_str.parse()?;
+    pub fn set_scheme<S>(&mut self, scheme_raw: S) -> Result<(), InvalidUri>
+    where
+        S: TryInto<Scheme, Error = InvalidUri>,
+    {
+        let scheme = scheme_raw.try_into()?;
         self.scheme = Some(scheme);
+
+        Ok(())
+    }
+
+    pub fn set_authority<A>(&mut self, authority_raw: A) -> Result<(), InvalidUri>
+    where
+        A: TryInto<Authority, Error = InvalidUri>,
+    {
+        let authority = authority_raw.try_into()?;
+        self.authority = Some(authority);
 
         Ok(())
     }
@@ -97,17 +111,12 @@ impl Uri2 {
         S: ToString,
     {
         self.path = path.to_string();
-        println!("set path to ... '{}'", self.path);
     }
 
     pub fn add_query_from_uri(&mut self, uri: &Uri) {
         if let Some(query) = uri.query() {
             self.query.add_raw(query.to_string());
         }
-    }
-
-    pub fn set_authority(&mut self, authority: Authority) {
-        self.authority = Some(authority);
     }
 
     pub fn to_uri(&self) -> Result<Uri, UriError> {
@@ -167,8 +176,6 @@ impl Uri2 {
     pub fn set_uri_str(&mut self, other: &str, is_http_restricted: bool) -> Result<()> {
         let other_uri = other.parse::<Uri>()?;
 
-        println!(" >> other '{other}'");
-
         //
         // Why does this exist?
         //
@@ -180,7 +187,7 @@ impl Uri2 {
         //  - if no scheme, it must be a path
         //
         // If there is a scheme, then this is an absolute path.
-        if let Some(scheme) = other_uri.scheme_str() {
+        if let Some(scheme) = other_uri.scheme() {
             println!(" ... has scheme");
             if is_http_restricted {
                 let has_different_scheme = other_uri
@@ -197,13 +204,11 @@ impl Uri2 {
                     ));
                 }
             } else {
-                self.set_scheme(scheme).map_err(|_| {
-                    anyhow!("Failed to set scheme for request, with path '{other}'")
-                })?;
+                self.scheme = Some(scheme.clone());
 
                 // We only set the host/port if the scheme is also present.
                 if let Some(authority) = other_uri.authority() {
-                    self.set_authority(authority.clone());
+                    self.authority = Some(authority.clone());
                 }
             }
 
@@ -212,10 +217,17 @@ impl Uri2 {
             // In this path we are replacing, so drop any query params on the original url.
             self.clear_query_params();
         } else {
-            println!(" ... no scheme");
             // Grab everything up until the query parameters, or everything after that
             let calculated_path = other.split('?').next().unwrap_or(other);
-            self.set_path(calculated_path);
+
+            // TODO: adding the slash should happen as late as possible, in the to_uri / into_uri methods.
+            let path = if calculated_path.starts_with("/") {
+                calculated_path.to_string()
+            } else {
+                format!("/{calculated_path}")
+            };
+
+            self.set_path(path);
         }
 
         if let Some(path_query) = other_uri.query() {
@@ -260,7 +272,11 @@ impl TryFrom<Uri2> for Url {
 
 impl Display for Uri2 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        self.to_uri().fmt(f)
+        let uri = self
+            .to_uri()
+            .expect("The Uri2 should always turn into a Uri");
+
+        Display::fmt(&uri, f)
     }
 }
 
@@ -269,8 +285,13 @@ mod test_fmt {
     use super::*;
 
     #[test]
-    fn it_should_format_the_example_url() {
-        todo!()
+    fn it_should_format_the_example_http_domain() {
+        let mut uri2 = Uri2::new();
+        uri2.set_scheme("http").unwrap();
+        uri2.set_authority("example.com").unwrap();
+
+        let output = uri2.to_string();
+        assert_eq!(output, "http://example.com/");
     }
 }
 

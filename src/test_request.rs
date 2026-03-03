@@ -1748,7 +1748,7 @@ mod test_expect_success {
             catch_panic_error_message_async(server.get(&"/some_unknown_route").expect_success())
                 .await;
         assert_str_eq!(
-            "Expect status code within 2xx range, received 404 (Not Found), for request GET http://localhost/some_unknown_route, with body ''",
+            "Expect status code within 2xx range, received 404 (Not Found), for request GET /some_unknown_route, with body ''",
             message
         );
     }
@@ -1807,7 +1807,7 @@ mod test_expect_failure {
         // Get the request.
         let message = catch_panic_error_message_async(server.get(&"/ping").expect_failure()).await;
         assert_str_eq!(
-            "Expect status code outside 2xx range, received 200 (OK), for request GET http://localhost/ping, with body 'pong!'",
+            "Expect status code outside 2xx range, received 200 (OK), for request GET /ping, with body 'pong!'",
             message
         );
     }
@@ -1828,7 +1828,7 @@ mod test_expect_failure {
         let message =
             catch_panic_error_message_async(server.get(&"/accepted").expect_failure()).await;
         assert_str_eq!(
-            "Expect status code outside 2xx range, received 202 (Accepted), for request GET http://localhost/accepted, with body ''",
+            "Expect status code outside 2xx range, received 202 (Accepted), for request GET /accepted, with body ''",
             message
         );
     }
