@@ -1,7 +1,4 @@
 use crate::internals::QueryParamsStore;
-use crate::util::uri::has_different_authority;
-use crate::util::uri::has_different_scheme;
-use crate::util::uri::is_absolute_uri;
 use anyhow::Error as AnyhowError;
 use anyhow::Result;
 use anyhow::anyhow;
@@ -10,10 +7,10 @@ use http::Uri;
 use http::uri::Authority;
 use http::uri::Scheme;
 use serde::Serialize;
+use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
-use url::Host;
 use url::Url;
 
 /// This exists as an alternative to the pains and restrictions of `url::Url`, and `http::Uri`.
@@ -92,7 +89,15 @@ impl Uri2 {
     }
 
     pub fn set_path_from_uri(&mut self, uri: &Uri) {
-        self.path = uri.path().to_string();
+        self.set_path(uri.path());
+    }
+
+    pub fn set_path<S>(&mut self, path: S)
+    where
+        S: ToString,
+    {
+        self.path = path.to_string();
+        println!("set path to ... '{}'", self.path);
     }
 
     pub fn add_query_from_uri(&mut self, uri: &Uri) {
@@ -108,6 +113,8 @@ impl Uri2 {
     pub fn to_uri(&self) -> Result<Uri, UriError> {
         let mut uri_builder = Uri::builder();
 
+        let path_and_query = self.to_path_and_query();
+
         if let Some(scheme) = &self.scheme {
             uri_builder = uri_builder.scheme(scheme.clone());
         }
@@ -116,7 +123,6 @@ impl Uri2 {
             uri_builder = uri_builder.authority(authority.clone());
         }
 
-        let path_and_query = format!("{}?{}", self.path, self.query);
         uri_builder = uri_builder.path_and_query(path_and_query);
 
         uri_builder.build()
@@ -124,6 +130,8 @@ impl Uri2 {
 
     pub fn into_uri(self) -> Result<Uri, UriError> {
         let mut uri_builder = Uri::builder();
+
+        let path_and_query = self.to_path_and_query();
 
         if let Some(scheme) = self.scheme {
             uri_builder = uri_builder.scheme(scheme);
@@ -133,10 +141,17 @@ impl Uri2 {
             uri_builder = uri_builder.authority(authority);
         }
 
-        let path_and_query = format!("{}?{}", self.path, self.query);
         uri_builder = uri_builder.path_and_query(path_and_query);
 
         uri_builder.build()
+    }
+
+    fn to_path_and_query(&self) -> String {
+        if self.query.is_empty() {
+            return self.path.to_string();
+        }
+
+        return format!("{}?{}", self.path, self.query);
     }
 
     pub fn to_url(&self) -> Result<Url> {
@@ -152,6 +167,8 @@ impl Uri2 {
     pub fn set_uri_str(&mut self, other: &str, is_http_restricted: bool) -> Result<()> {
         let other_uri = other.parse::<Uri>()?;
 
+        println!(" >> other '{other}'");
+
         //
         // Why does this exist?
         //
@@ -164,10 +181,17 @@ impl Uri2 {
         //
         // If there is a scheme, then this is an absolute path.
         if let Some(scheme) = other_uri.scheme_str() {
+            println!(" ... has scheme");
             if is_http_restricted {
-                if has_different_scheme(&url, &other_uri)
-                    || has_different_authority(&url, &other_uri)
-                {
+                let has_different_scheme = other_uri
+                    .scheme()
+                    .is_some_and(|other_scheme| Some(other_scheme) != self.scheme.as_ref());
+                let has_different_authority =
+                    other_uri.authority().is_some_and(|other_authority| {
+                        Some(other_authority) != self.authority.as_ref()
+                    });
+
+                if has_different_scheme || has_different_authority {
                     return Err(anyhow!(
                         "Request disallowed for path '{other}', requests are only allowed to local server. Turn off 'restrict_requests_with_http_scheme' to change this."
                     ));
@@ -188,15 +212,10 @@ impl Uri2 {
             // In this path we are replacing, so drop any query params on the original url.
             self.clear_query_params();
         } else {
+            println!(" ... no scheme");
             // Grab everything up until the query parameters, or everything after that
             let calculated_path = other.split('?').next().unwrap_or(other);
             self.set_path(calculated_path);
-
-            // Move any query parameters from the url to the query params store.
-            if let Some(url_query) = self.query() {
-                query_params.add_raw(url_query.to_string());
-                self.set_query(None);
-            }
         }
 
         if let Some(path_query) = other_uri.query() {
@@ -241,21 +260,7 @@ impl TryFrom<Uri2> for Url {
 
 impl Display for Uri2 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        if let Some(scheme) = &self.scheme {
-            write!(f, "{scheme}:")?;
-        }
-
-        if let Some(authority) = &self.authority {
-            write!(f, "{authority}:")?;
-        }
-
-        write!(f, "{}", self.path)?;
-
-        if self.query.has_content() {
-            write!(f, "?{}", self.query)?;
-        }
-
-        Ok(())
+        self.to_uri().fmt(f)
     }
 }
 

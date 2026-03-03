@@ -816,8 +816,12 @@ mod test_get {
         let app = Router::new().route("/ping", get(get_ping));
         let server = TestServer::new(app);
 
-        // Get the request _with_ slash
-        server.get(&"/ping").await.assert_text(&"pong!");
+        server
+            // Get the request _with_ slash
+            .get(&"/ping")
+            .await
+            .assert_status_ok()
+            .assert_text(&"pong!");
     }
 
     #[tokio::test]
@@ -825,8 +829,12 @@ mod test_get {
         let app = Router::new().route("/ping", get(get_ping));
         let server = TestServer::new(app);
 
-        // Get the request _without_ slash
-        server.get(&"ping").await.assert_text(&"pong!");
+        server
+            // Get the request _without_ slash
+            .get(&"ping")
+            .await
+            .assert_status_ok()
+            .assert_text(&"pong!");
     }
 
     #[tokio::test]
