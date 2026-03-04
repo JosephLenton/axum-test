@@ -632,13 +632,15 @@ impl TestRequest {
         let full_request_url = self
             .config
             .request_uri
-            .to_uri()
+            .clone()
+            .into_uri()
             .error_request("Failed to turn request into a Uri", &self);
         let method = self.config.method;
         let expected_state = self.expected_state;
         let save_cookies = self.config.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
 
+        println!(" send ... {}", full_request_url);
         let request = Self::build_request(
             method.clone(),
             self.config.request_uri,

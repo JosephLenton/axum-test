@@ -87,6 +87,10 @@ impl Uri2 {
         Ok(())
     }
 
+    pub fn has_authority(&self) -> bool {
+        self.authority.is_some()
+    }
+
     pub fn add_query_params<V>(&mut self, query_params: V) -> Result<()>
     where
         V: Serialize,
@@ -103,7 +107,17 @@ impl Uri2 {
     }
 
     pub fn set_path_from_uri(&mut self, uri: &Uri) {
-        self.set_path(uri.path());
+        match (uri.authority(), uri.path()) {
+            (Some(authority), "") => {
+                self.set_path(authority);
+            }
+            (None, path) => {
+                self.set_path(path);
+            }
+            _ => {
+                panic!("Cannot decipher path given, expected a relative url like '/todo'")
+            }
+        }
     }
 
     pub fn set_path<S>(&mut self, path: S)
@@ -117,58 +131,6 @@ impl Uri2 {
         if let Some(query) = uri.query() {
             self.query.add_raw(query.to_string());
         }
-    }
-
-    pub fn to_uri(&self) -> Result<Uri, UriError> {
-        let mut uri_builder = Uri::builder();
-
-        let path_and_query = self.to_path_and_query();
-
-        if let Some(scheme) = &self.scheme {
-            uri_builder = uri_builder.scheme(scheme.clone());
-        }
-
-        if let Some(authority) = &self.authority {
-            uri_builder = uri_builder.authority(authority.clone());
-        }
-
-        uri_builder = uri_builder.path_and_query(path_and_query);
-
-        uri_builder.build()
-    }
-
-    pub fn into_uri(self) -> Result<Uri, UriError> {
-        let mut uri_builder = Uri::builder();
-
-        let path_and_query = self.to_path_and_query();
-
-        if let Some(scheme) = self.scheme {
-            uri_builder = uri_builder.scheme(scheme);
-        }
-
-        if let Some(authority) = self.authority {
-            uri_builder = uri_builder.authority(authority);
-        }
-
-        uri_builder = uri_builder.path_and_query(path_and_query);
-
-        uri_builder.build()
-    }
-
-    fn to_path_and_query(&self) -> String {
-        if self.query.is_empty() {
-            return self.path.to_string();
-        }
-
-        return format!("{}?{}", self.path, self.query);
-    }
-
-    pub fn to_url(&self) -> Result<Url> {
-        todo!()
-    }
-
-    pub fn into_url(self) -> Result<Url> {
-        todo!()
     }
 
     /// This is a large function that allows overriding the existing URI with 'something' given by the user.
@@ -235,6 +197,55 @@ impl Uri2 {
         }
 
         Ok(())
+    }
+
+    pub fn to_uri(&self) -> Result<Uri, UriError> {
+        self.clone().into_uri()
+    }
+
+    pub fn into_uri(self) -> Result<Uri, UriError> {
+        let mut uri_builder = Uri::builder();
+
+        let path_and_query = self.to_path_and_query();
+        let has_scheme = self.scheme.is_some();
+        let has_authority = self.authority.is_some();
+
+        if let Some(scheme) = self.scheme {
+            uri_builder = uri_builder.scheme(scheme);
+
+            if !has_authority {
+                let localhost_authority = Authority::from_static("localhost");
+                uri_builder = uri_builder.authority(localhost_authority);
+            }
+        }
+
+        if let Some(authority) = self.authority {
+            uri_builder = uri_builder.authority(authority);
+
+            if !has_scheme {
+                uri_builder = uri_builder.scheme(Scheme::HTTP);
+            }
+        }
+
+        uri_builder = uri_builder.path_and_query(path_and_query);
+
+        uri_builder.build()
+    }
+
+    pub fn to_url(&self) -> Result<Url> {
+        self.clone().into_url()
+    }
+
+    pub fn into_url(self) -> Result<Url> {
+        self.to_string().parse().map_err(Into::into)
+    }
+
+    fn to_path_and_query(&self) -> String {
+        if self.query.is_empty() {
+            return self.path.to_string();
+        }
+
+        return format!("{}?{}", self.path, self.query);
     }
 }
 

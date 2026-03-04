@@ -607,6 +607,7 @@ impl TestServer {
         }
 
         let mut server_url = self.state.uri().clone();
+
         server_url.set_path_from_uri(&path_uri);
         server_url.add_query_from_uri(&path_uri);
 
@@ -1237,7 +1238,7 @@ mod test_server_url {
     }
 
     #[tokio::test]
-    async fn it_should_work_for_paths_with_leading_slash() {
+    async fn it_should_work_for_paths_without_leading_slash() {
         let reserved_port = ReservedPort::random().unwrap();
         let ip = Ipv4Addr::LOCALHOST.into();
         let port = reserved_port.port();
