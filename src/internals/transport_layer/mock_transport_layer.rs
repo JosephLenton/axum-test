@@ -1,3 +1,5 @@
+use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerType;
 use anyhow::Error as AnyhowError;
 use anyhow::Result;
 use axum::body::Body;
@@ -5,14 +7,12 @@ use axum::response::Response as AxumResponse;
 use bytes::Bytes;
 use http::Request;
 use http::Response;
+use http::Uri;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use tower::Service;
 use tower::util::ServiceExt;
-
-use crate::transport_layer::TransportLayer;
-use crate::transport_layer::TransportLayerType;
 
 pub struct MockTransportLayer<S> {
     service: S,
@@ -41,7 +41,7 @@ where
 {
     fn send<'a>(
         &'a self,
-        request: Request<Body>,
+        mut request: Request<Body>,
     ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>> + Send>> {
         Box::pin(async {
             let body: Body = Bytes::new().into();
@@ -51,6 +51,10 @@ where
 
             let service = self.service.clone();
             let router = service.oneshot(empty_request).await?;
+
+            if let Some(cleaned_uri) = clean_uri(request.uri()) {
+                *request.uri_mut() = cleaned_uri;
+            }
 
             let response = router.oneshot(request).await?;
             Ok(response)
@@ -72,4 +76,25 @@ impl<S> Debug for MockTransportLayer<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "MockTransportLayer {{ service: {{unknown}} }}")
     }
+}
+
+/// On mock transport, remove the scheme and authority from the URI.
+/// This is because in Axum, these are always missing in a normal server.
+///
+/// See: https://github.com/JosephLenton/axum-test/issues/175
+fn clean_uri(uri: &Uri) -> Option<Uri> {
+    if uri.scheme().is_none() && uri.authority().is_none() {
+        return None;
+    }
+
+    if let Some(path_and_query) = uri.path_and_query() {
+        return Some(
+            Uri::builder()
+                .path_and_query(path_and_query.to_owned())
+                .build()
+                .unwrap(),
+        );
+    }
+
+    Some(Uri::default())
 }
