@@ -173,9 +173,9 @@ mod test_scheme {
     use axum::Router;
     use axum::extract::Request;
     use axum::routing::get;
-
     use crate::TestServer;
     use crate::TestServerConfig;
+    use crate::Transport;
 
     async fn route_get_scheme(request: Request) -> String {
         request.uri().scheme_str().unwrap().to_string()
@@ -187,6 +187,7 @@ mod test_scheme {
 
         let config = TestServerConfig {
             default_scheme: Some("https".to_string()),
+            transport: Some(Transport::HttpRandomPort),
             ..Default::default()
         };
         let server = TestServer::try_new_with_config(router, config).unwrap();

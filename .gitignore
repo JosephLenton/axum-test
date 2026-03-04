@@ -12,6 +12,7 @@ Cargo.lock
 # Local todo file
 /todo.txt
 /todo.md
+/todo
 
 # MacOS
 .DS_Store
