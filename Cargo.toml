@@ -104,7 +104,3 @@ regex = "1.12.3"
 serde-email = { version = "3.2.0", features = ["serde"] }
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "sync", "time", "macros"] }
 tower-http = { version = "0.6.8", features = ["normalize-path"] }
-# axum-login = "0.18.0"
-axum-login = { path = "../axum-login/axum-login" }
-
-tower-sessions = { version = "0.14.0", features = ["memory-store"] }
