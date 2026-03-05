@@ -1,11 +1,13 @@
 use http::StatusCode;
-use std::fmt;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result as FmtResult;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct StatusCodeFormatter(pub StatusCode);
 
-impl fmt::Display for StatusCodeFormatter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for StatusCodeFormatter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let code = self.0.as_u16();
         let reason = self.0.canonical_reason().unwrap_or("unknown status code");
 

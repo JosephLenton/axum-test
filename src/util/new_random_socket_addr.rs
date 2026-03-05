@@ -1,9 +1,8 @@
+use crate::util::new_random_port;
 use anyhow::Result;
 use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;
-
-use crate::util::new_random_port;
 
 pub(crate) const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 

@@ -12,6 +12,8 @@ use http::Response;
 use http::Uri;
 use http::header;
 use std::fmt::Debug;
+use std::fmt::Formatter;
+use std::fmt::Result as FmtResult;
 use std::future::Future;
 use std::pin::Pin;
 use tower::Service;
@@ -74,7 +76,7 @@ where
 }
 
 impl<S> Debug for MockTransportLayer<S> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "MockTransportLayer {{ service: {{unknown}} }}")
     }
 }
