@@ -38,7 +38,6 @@ impl QueryParamsStore {
         }
     }
 
-    #[must_use]
     pub fn add<V>(&mut self, query_params: V) -> Result<()>
     where
         V: Serialize,
@@ -59,10 +58,6 @@ impl QueryParamsStore {
 
     pub fn is_empty(&self) -> bool {
         self.query_params.is_empty()
-    }
-
-    pub fn has_content(&self) -> bool {
-        !self.is_empty()
     }
 }
 

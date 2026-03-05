@@ -671,7 +671,7 @@ impl TestServer {
         V: Serialize,
     {
         self.state
-            .add_query_params(&[(key, value)]);
+            .add_query_params(&[(key, value)])
             .error_message("Failed to add query parameter");
     }
 
@@ -733,10 +733,6 @@ impl TestServer {
         self.state.clear_headers();
     }
 
-    pub(crate) fn url(&self) -> Option<Url> {
-        self.transport.url().cloned()
-    }
-
     pub(crate) fn build_test_request_config(
         &self,
         method: Method,
@@ -757,7 +753,7 @@ impl TestServer {
             content_type: self.default_content_type.clone(),
             method,
 
-            request_uri: request_uri,
+            request_uri,
             headers: self.state.headers().clone(),
         })
     }

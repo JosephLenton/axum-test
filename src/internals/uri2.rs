@@ -245,7 +245,7 @@ impl Uri2 {
             return self.path.to_string();
         }
 
-        return format!("{}?{}", self.path, self.query);
+        format!("{}?{}", self.path, self.query)
     }
 }
 

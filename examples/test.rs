@@ -1,15 +1,12 @@
-use axum::{
-    extract::Request,
-    extract::OriginalUri,
-    response::IntoResponse,
-    routing::get,
-    Router,
-};
+use axum::{Router, extract::OriginalUri, extract::Request, response::IntoResponse, routing::get};
 
 async fn handler(request: Request) -> impl IntoResponse {
     println!("{request:#?}");
     let (parts, _) = request.into_parts();
-    let scheme = parts.uri.scheme_str().unwrap_or(" ... unknown from uri.parts ... ");
+    let scheme = parts
+        .uri
+        .scheme_str()
+        .unwrap_or(" ... unknown from uri.parts ... ");
     scheme.to_string()
 }
 
