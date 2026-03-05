@@ -1,7 +1,6 @@
 use crate::TestResponse;
 use crate::internals::ErrorMessage;
 use crate::internals::ExpectedState;
-use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
 use crate::multipart::MultipartForm;
 use crate::transport_layer::TransportLayer;
@@ -31,10 +30,11 @@ use std::io::BufReader;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
-use url::Url;
 
 mod test_request_config;
 pub(crate) use self::test_request_config::*;
+use crate::internals::QueryParamsStore;
+use url::Url;
 
 ///
 /// A `TestRequest` is for building and executing a HTTP request to the [`TestServer`](crate::TestServer).
@@ -469,12 +469,7 @@ impl TestRequest {
         self.config
             .query_params
             .add(query_params)
-            .error_message_fn(|| {
-                format!(
-                    "It should serialize query parameters, for request {}",
-                    self.debug_request_format()
-                )
-            });
+            .error_request("It should serialize query parameters", &self);
 
         self
     }
@@ -513,6 +508,7 @@ impl TestRequest {
     /// including any that came from the [`TestServer`](crate::TestServer).
     pub fn clear_query_params(mut self) -> Self {
         self.config.query_params.clear();
+
         self
     }
 
@@ -641,12 +637,12 @@ impl TestRequest {
         let expected_state = self.expected_state;
         let save_cookies = self.config.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
-        let url =
+        let full_request_url =
             Self::build_url_query_params(self.config.full_request_url, &self.config.query_params);
 
         let request = Self::build_request(
             method.clone(),
-            &url,
+            &full_request_url,
             body,
             self.config.content_type,
             self.config.cookies,
@@ -671,11 +667,11 @@ impl TestRequest {
         };
 
         let version = http_response.version();
-        let (parts, response_body) = http_response.into_parts();
+        let (response_parts, response_body) = http_response.into_parts();
         let response_bytes = response_body.collect().await?.to_bytes();
 
         if save_cookies {
-            let cookie_headers = parts.headers.get_all(SET_COOKIE).into_iter();
+            let cookie_headers = response_parts.headers.get_all(SET_COOKIE).into_iter();
             self.config
                 .atomic_cookie_jar
                 .add_cookies_by_headers(cookie_headers)?;
@@ -684,8 +680,8 @@ impl TestRequest {
         let test_response = TestResponse::new(
             version,
             method,
-            url,
-            parts,
+            full_request_url,
+            response_parts,
             response_bytes,
             #[cfg(feature = "ws")]
             websockets,
@@ -760,7 +756,7 @@ impl TestRequest {
         Ok(request)
     }
 
-    fn debug_request_format(&self) -> RequestPathFormatter<'_> {
+    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_> {
         RequestPathFormatter::new(
             &self.config.method,
             self.config.full_request_url.as_str(),
@@ -3049,35 +3045,5 @@ mod test_multipart {
                     "header": "part_2_header",
                 },
             ]));
-    }
-}
-
-#[cfg(test)]
-mod test_request_method {
-    use super::*;
-    use crate::TestServer;
-    use axum::Router;
-
-    #[tokio::test]
-    async fn it_should_return_same_method_as_the_request() {
-        let server = TestServer::new(Router::new());
-
-        let method = server.get("/").await.request_method();
-        assert_eq!(Method::GET, method);
-
-        let method = server.post("/").await.request_method();
-        assert_eq!(Method::POST, method);
-
-        let method = server.put("/").await.request_method();
-        assert_eq!(Method::PUT, method);
-
-        let method = server.patch("/").await.request_method();
-        assert_eq!(Method::PATCH, method);
-
-        let method = server.delete("/").await.request_method();
-        assert_eq!(Method::DELETE, method);
-
-        let method = server.method(Method::OPTIONS, "/").await.request_method();
-        assert_eq!(Method::OPTIONS, method);
     }
 }

@@ -1,3 +1,4 @@
+use crate::TestRequest;
 use crate::TestResponse;
 use crate::internals::ErrorMessageFormatter;
 use bytes::Bytes;
@@ -13,6 +14,11 @@ pub trait ErrorMessage<V> {
         F: FnOnce() -> String;
 
     fn error_message_with_body(self, message: &str, bytes: &Bytes) -> V;
+
+    fn error_request(self, message: &str, response: &TestRequest) -> V;
+    fn error_request_fn<F>(self, message_func: F, response: &TestRequest) -> V
+    where
+        F: FnOnce() -> String;
 
     fn error_response(self, message: &str, response: &TestResponse) -> V;
     fn error_response_fn<F>(self, message_func: F, response: &TestResponse) -> V
@@ -48,6 +54,32 @@ where
     fn error_message_with_body(self, message: &str, bytes: &Bytes) -> V {
         self.unwrap_or_else(|err| {
             let err_message = ErrorMessageFormatter::new(message).body(bytes).error(err);
+
+            panic!("{err_message}")
+        })
+    }
+
+    fn error_request(self, message: &str, response: &TestRequest) -> V {
+        self.unwrap_or_else(|err| {
+            let debug_request_format = response.debug_request_format();
+            let err_message = ErrorMessageFormatter::new(message)
+                .request_path(debug_request_format)
+                .error(err);
+
+            panic!("{err_message}")
+        })
+    }
+
+    fn error_request_fn<F>(self, message_func: F, response: &TestRequest) -> V
+    where
+        F: FnOnce() -> String,
+    {
+        self.unwrap_or_else(|err| {
+            let message = message_func();
+            let debug_request_format = response.debug_request_format();
+            let err_message = ErrorMessageFormatter::new(&message)
+                .request_path(debug_request_format)
+                .error(err);
 
             panic!("{err_message}")
         })
@@ -117,6 +149,30 @@ impl<V> ErrorMessage<V> for Option<V> {
     fn error_message_with_body(self, message: &str, bytes: &Bytes) -> V {
         self.unwrap_or_else(|| {
             let err_message = ErrorMessageFormatter::new(message).body(bytes);
+
+            panic!("{err_message}")
+        })
+    }
+
+    fn error_request(self, message: &str, response: &TestRequest) -> V {
+        self.unwrap_or_else(|| {
+            let debug_request_format = response.debug_request_format();
+            let err_message =
+                ErrorMessageFormatter::new(message).request_path(debug_request_format);
+
+            panic!("{err_message}")
+        })
+    }
+
+    fn error_request_fn<F>(self, message_func: F, response: &TestRequest) -> V
+    where
+        F: FnOnce() -> String,
+    {
+        self.unwrap_or_else(|| {
+            let message = message_func();
+            let debug_request_format = response.debug_request_format();
+            let err_message =
+                ErrorMessageFormatter::new(&message).request_path(debug_request_format);
 
             panic!("{err_message}")
         })
