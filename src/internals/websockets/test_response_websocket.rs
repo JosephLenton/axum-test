@@ -1,6 +1,5 @@
-use hyper::upgrade::OnUpgrade;
-
 use crate::transport_layer::TransportLayerType;
+use hyper::upgrade::OnUpgrade;
 
 #[derive(Debug, Clone)]
 pub struct TestResponseWebSocket {

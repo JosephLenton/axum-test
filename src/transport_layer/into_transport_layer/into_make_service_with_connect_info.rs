@@ -12,7 +12,6 @@ use axum::serve::IncomingStream;
 use std::convert::Infallible;
 use tokio::net::TcpListener;
 use tower::Service;
-use url::Url;
 
 impl<S, C> IntoTransportLayer for IntoMakeServiceWithConnectInfo<S, C>
 where
@@ -29,7 +28,7 @@ where
 
         let serve_handle = spawn_serve(tcp_listener, self);
         let server_address = format!("http://{socket_addr}");
-        let server_url: Url = server_address.parse()?;
+        let server_url = server_address.parse()?;
 
         Ok(Box::new(HttpTransportLayer::new(
             serve_handle,

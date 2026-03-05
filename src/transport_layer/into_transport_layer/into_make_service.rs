@@ -1,17 +1,15 @@
-use anyhow::Result;
-use axum::extract::Request as AxumRequest;
-use axum::response::Response as AxumResponse;
-use axum::routing::IntoMakeService;
-use std::convert::Infallible;
-use tower::Service;
-use url::Url;
-
 use crate::internals::HttpTransportLayer;
 use crate::internals::MockTransportLayer;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 use crate::util::spawn_serve;
+use anyhow::Result;
+use axum::extract::Request as AxumRequest;
+use axum::response::Response as AxumResponse;
+use axum::routing::IntoMakeService;
+use std::convert::Infallible;
+use tower::Service;
 
 impl<S> IntoTransportLayer for IntoMakeService<S>
 where
@@ -31,7 +29,7 @@ where
 
         let serve_handle = spawn_serve(tcp_listener, self);
         let server_address = format!("http://{socket_addr}");
-        let server_url: Url = server_address.parse()?;
+        let server_url = server_address.parse()?;
 
         Ok(Box::new(HttpTransportLayer::new(
             serve_handle,

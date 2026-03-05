@@ -15,7 +15,6 @@ use std::future::Future;
 use tokio::net::TcpListener;
 use tokio::spawn;
 use tower::Service;
-use url::Url;
 
 impl<M, S, F> IntoTransportLayer for WithGracefulShutdown<TcpListener, M, S, F>
 where
@@ -55,7 +54,7 @@ where
         });
 
         let server_address = format!("http://{socket_addr}");
-        let server_url: Url = server_address.parse()?;
+        let server_url = server_address.parse()?;
 
         Ok(Box::new(HttpTransportLayer::new(
             ServeHandle::new(join_handle),

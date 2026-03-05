@@ -1,13 +1,12 @@
+use crate::internals::AtomicCrossCookieJar;
+use crate::internals::ExpectedState;
+use crate::internals::QueryParamsStore;
 use cookie::CookieJar;
 use http::HeaderName;
 use http::HeaderValue;
 use http::Method;
-use url::Url;
-
-use crate::internals::AtomicCrossCookieJar;
-use crate::internals::ExpectedState;
-use crate::internals::QueryParamsStore;
 use std::sync::Arc;
+use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct TestRequestConfig {

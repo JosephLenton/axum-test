@@ -1,16 +1,16 @@
+use crate::transport_layer::TransportLayer;
+use crate::transport_layer::TransportLayerType;
+use crate::util::ServeHandle;
 use anyhow::Result;
 use axum::body::Body;
 use http::Request;
 use http::Response;
 use hyper_util::client::legacy::Client;
+use hyper_util::rt::TokioExecutor;
 use reserve_port::ReservedPort;
 use std::future::Future;
 use std::pin::Pin;
 use url::Url;
-
-use crate::transport_layer::TransportLayer;
-use crate::transport_layer::TransportLayerType;
-use crate::util::ServeHandle;
 
 #[derive(Debug)]
 pub struct HttpTransportLayer {
@@ -43,7 +43,7 @@ impl TransportLayer for HttpTransportLayer {
         request: Request<Body>,
     ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>> + Send>> {
         Box::pin(async {
-            let client = Client::builder(hyper_util::rt::TokioExecutor::new()).build_http();
+            let client = Client::builder(TokioExecutor::new()).build_http();
             let hyper_response = client.request(request).await?;
 
             let (parts, response_body) = hyper_response.into_parts();

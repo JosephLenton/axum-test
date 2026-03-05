@@ -14,7 +14,6 @@ use std::convert::Infallible;
 use tokio::net::TcpListener;
 use tokio::spawn;
 use tower::Service;
-use url::Url;
 
 impl<M, S> IntoTransportLayer for Serve<TcpListener, M, S>
 where
@@ -53,7 +52,7 @@ where
         });
 
         let server_address = format!("http://{socket_addr}");
-        let server_url: Url = server_address.parse()?;
+        let server_url = server_address.parse()?;
 
         Ok(Box::new(HttpTransportLayer::new(
             ServeHandle::new(join_handle),
