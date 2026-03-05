@@ -1,6 +1,7 @@
 use crate::TestResponse;
 use crate::internals::ErrorMessage;
 use crate::internals::ExpectedState;
+use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
 use crate::multipart::MultipartForm;
 use crate::transport_layer::TransportLayer;
@@ -30,11 +31,10 @@ use std::io::BufReader;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
+use url::Url;
 
 mod test_request_config;
 pub(crate) use self::test_request_config::*;
-use crate::internals::QueryParamsStore;
-use url::Url;
 
 ///
 /// A `TestRequest` is for building and executing a HTTP request to the [`TestServer`](crate::TestServer).
@@ -756,10 +756,10 @@ impl TestRequest {
         Ok(request)
     }
 
-    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_> {
+    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_, Url> {
         RequestPathFormatter::new(
             &self.config.method,
-            self.config.full_request_url.as_str(),
+            &self.config.full_request_url,
             Some(&self.config.query_params),
         )
     }

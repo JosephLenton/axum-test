@@ -1,21 +1,22 @@
-use http::Method;
-use std::fmt;
-
 use crate::internals::QueryParamsStore;
+use http::Method;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result as FmtResult;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct RequestPathFormatter<'a> {
+pub struct RequestPathFormatter<'a, U> {
     method: &'a Method,
 
     /// This is the path that the user requested.
-    user_requested_path: &'a str,
+    user_requested_path: &'a U,
     query_params: Option<&'a QueryParamsStore>,
 }
 
-impl<'a> RequestPathFormatter<'a> {
+impl<'a, U> RequestPathFormatter<'a, U> {
     pub fn new(
         method: &'a Method,
-        user_requested_path: &'a str,
+        user_requested_path: &'a U,
         query_params: Option<&'a QueryParamsStore>,
     ) -> Self {
         Self {
@@ -26,8 +27,11 @@ impl<'a> RequestPathFormatter<'a> {
     }
 }
 
-impl fmt::Display for RequestPathFormatter<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<U> Display for RequestPathFormatter<'_, U>
+where
+    U: Display,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let method = &self.method;
         let user_requested_path = &self.user_requested_path;
 

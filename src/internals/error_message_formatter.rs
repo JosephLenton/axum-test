@@ -5,9 +5,9 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 
-pub struct ErrorMessageFormatter<'a, E = Infallible> {
+pub struct ErrorMessageFormatter<'a, U = String, E = Infallible> {
     message: &'a str,
-    maybe_request_path: Option<RequestPathFormatter<'a>>,
+    maybe_request_path: Option<RequestPathFormatter<'a, U>>,
     maybe_error: Option<E>,
     maybe_body_bytes: Option<&'a Bytes>,
 }
@@ -23,17 +23,24 @@ impl<'a> ErrorMessageFormatter<'a> {
     }
 }
 
-impl<'a, E> ErrorMessageFormatter<'a, E> {
-    pub fn request_path(mut self, path: RequestPathFormatter<'a>) -> Self {
-        self.maybe_request_path = Some(path);
-        self
+impl<'a, U, E> ErrorMessageFormatter<'a, U, E> {
+    pub fn request_path<U2>(
+        self,
+        path: RequestPathFormatter<'a, U2>,
+    ) -> ErrorMessageFormatter<'a, U2, E> {
+        ErrorMessageFormatter {
+            maybe_error: self.maybe_error,
+            message: self.message,
+            maybe_request_path: Some(path),
+            maybe_body_bytes: self.maybe_body_bytes,
+        }
     }
 
-    pub fn error<E2>(self, error: E2) -> ErrorMessageFormatter<'a, E2>
+    pub fn error<E2>(self, error: E2) -> ErrorMessageFormatter<'a, U, E2>
     where
         E2: Display,
     {
-        ErrorMessageFormatter::<'a, E2> {
+        ErrorMessageFormatter {
             maybe_error: Some(error),
 
             message: self.message,
@@ -48,8 +55,9 @@ impl<'a, E> ErrorMessageFormatter<'a, E> {
     }
 }
 
-impl<'a, E> Display for ErrorMessageFormatter<'a, E>
+impl<'a, U, E> Display for ErrorMessageFormatter<'a, U, E>
 where
+    U: Display,
     E: Display,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
@@ -62,7 +70,7 @@ where
             write!(f, ",")?;
         }
 
-        if let Some(request_path) = self.maybe_request_path {
+        if let Some(request_path) = self.maybe_request_path.as_ref() {
             writeln!(f)?;
             write!(f, "    for request {request_path}")?;
         }
