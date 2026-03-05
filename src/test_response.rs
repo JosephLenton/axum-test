@@ -1330,8 +1330,8 @@ impl TestResponse {
         self.assert_status(StatusCode::SERVICE_UNAVAILABLE)
     }
 
-    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_> {
-        RequestPathFormatter::new(&self.method, self.full_request_url.as_str(), None)
+    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_, Url> {
+        RequestPathFormatter::new(&self.method, &self.full_request_url, None)
     }
 }
 
