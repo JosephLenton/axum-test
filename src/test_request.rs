@@ -8,7 +8,6 @@ use crate::transport_layer::TransportLayer;
 use anyhow::Context;
 use anyhow::Error as AnyhowError;
 use anyhow::Result;
-use anyhow::anyhow;
 use axum::body::Body;
 use bytes::Bytes;
 use cookie::Cookie;
@@ -586,35 +585,6 @@ impl TestRequest {
     /// Clears all headers set.
     pub fn clear_headers(mut self) -> Self {
         self.config.headers = vec![];
-        self
-    }
-
-    /// Sets the scheme to use when making the request. i.e. http or https.
-    /// The default scheme is 'http'.
-    ///
-    /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
-    /// #
-    /// use axum::Router;
-    /// use axum_test::TestServer;
-    ///
-    /// let app = Router::new();
-    /// let server = TestServer::new(app);
-    ///
-    /// let response = server
-    ///     .get(&"/my-end-point")
-    ///     .scheme(&"https")
-    ///     .await;
-    /// #
-    /// # Ok(()) }
-    /// ```
-    ///
-    pub fn scheme(mut self, scheme: &str) -> Self {
-        self.config
-            .full_request_url
-            .set_scheme(scheme)
-            .map_err(|_| anyhow!("Scheme '{scheme}' cannot be set to request"))
-            .unwrap();
         self
     }
 
@@ -2898,64 +2868,6 @@ mod test_clear_query_params {
             })
             .await
             .assert_text(&"has first? true, has second? true");
-    }
-}
-
-#[cfg(test)]
-mod test_scheme {
-    use crate::TestServer;
-    use axum::Router;
-    use axum::extract::Request;
-    use axum::routing::get;
-
-    async fn route_get_scheme(request: Request) -> String {
-        request.uri().scheme_str().unwrap().to_string()
-    }
-
-    #[tokio::test]
-    async fn it_should_return_http_by_default() {
-        let router = Router::new().route("/scheme", get(route_get_scheme));
-        let server = TestServer::builder().build(router);
-
-        server.get("/scheme").await.assert_text("http");
-    }
-
-    #[tokio::test]
-    async fn it_should_return_http_when_set() {
-        let router = Router::new().route("/scheme", get(route_get_scheme));
-        let server = TestServer::builder().build(router);
-
-        server
-            .get("/scheme")
-            .scheme(&"http")
-            .await
-            .assert_text("http");
-    }
-
-    #[tokio::test]
-    async fn it_should_return_https_when_set() {
-        let router = Router::new().route("/scheme", get(route_get_scheme));
-        let server = TestServer::builder().build(router);
-
-        server
-            .get("/scheme")
-            .scheme(&"https")
-            .await
-            .assert_text("https");
-    }
-
-    #[tokio::test]
-    async fn it_should_override_test_server_when_set() {
-        let router = Router::new().route("/scheme", get(route_get_scheme));
-
-        let mut server = TestServer::builder().build(router);
-        server.scheme(&"https");
-
-        server
-            .get("/scheme")
-            .scheme(&"http") // set it back to http
-            .await
-            .assert_text("http");
     }
 }
 
