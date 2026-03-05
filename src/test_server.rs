@@ -10,7 +10,6 @@ use crate::internals::QueryParamsStore;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
-use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
 use cookie::Cookie;
@@ -22,7 +21,6 @@ use http::Uri;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::sync::Arc;
-use std::sync::Mutex;
 use url::Url;
 
 #[cfg(feature = "typed-routing")]
@@ -142,7 +140,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 ///
 #[derive(Debug)]
 pub struct TestServer {
-    state: Arc<Mutex<ServerSharedState>>,
+    state: ServerSharedState,
     cookie_jar: Arc<AtomicCrossCookieJar>,
     transport: Arc<Box<dyn TransportLayer>>,
     expected_state: ExpectedState,
@@ -228,10 +226,7 @@ impl TestServer {
         C: Into<TestServerConfig>,
     {
         let config = config.into();
-        let shared_state = ServerSharedState::new();
-
-        let shared_state_mutex = Mutex::new(shared_state);
-        let state = Arc::new(shared_state_mutex);
+        let state = ServerSharedState::new();
 
         let transport = match config.transport {
             None => {
@@ -600,10 +595,7 @@ impl TestServer {
                 )
             )?;
 
-        let server_locked = self.state.as_ref().lock().map_err(|err| {
-            anyhow!("Failed to lock InternalTestServer, for building server_url, received {err:?}",)
-        })?;
-        let mut query_params = server_locked.query_params().clone();
+        let mut query_params = self.state.query_params().clone();
         let mut full_server_url = build_url(
             server_url,
             path,
@@ -675,9 +667,9 @@ impl TestServer {
     where
         V: Serialize,
     {
-        ServerSharedState::add_query_param(&self.state, key, value)
-            .context("Trying to call add_query_param")
-            .unwrap()
+        self.state
+            .add_query_param(key, value)
+            .error_message("Failed to add query parameter");
     }
 
     /// Adds query parameters to be sent on *all* future requests.
@@ -685,24 +677,20 @@ impl TestServer {
     where
         V: Serialize,
     {
-        ServerSharedState::add_query_params(&self.state, query_params)
-            .context("Trying to call add_query_params")
-            .unwrap()
+        self.state
+            .add_query_params(query_params)
+            .error_message("Failed to add query parameters");
     }
 
     /// Adds a raw query param, with no urlencoding of any kind,
     /// to be send on *all* future requests.
     pub fn add_raw_query_param(&mut self, raw_query_param: &str) {
-        ServerSharedState::add_raw_query_param(&self.state, raw_query_param)
-            .context("Trying to call add_raw_query_param")
-            .unwrap()
+        self.state.add_raw_query_param(raw_query_param);
     }
 
     /// Clears all query params set.
     pub fn clear_query_params(&mut self) {
-        ServerSharedState::clear_query_params(&self.state)
-            .context("Trying to call clear_query_params")
-            .unwrap()
+        self.state.clear_query_params();
     }
 
     /// Adds a header to be sent with all future requests built from this `TestServer`.
@@ -739,16 +727,12 @@ impl TestServer {
             .try_into()
             .expect("Failed to convert header vlue to HeaderValue");
 
-        ServerSharedState::add_header(&self.state, header_name, header_value)
-            .context("Trying to call add_header")
-            .unwrap()
+        self.state.add_header(header_name, header_value);
     }
 
     /// Clears all headers set so far.
     pub fn clear_headers(&mut self) {
-        ServerSharedState::clear_headers(&self.state)
-            .context("Trying to call clear_headers")
-            .unwrap()
+        self.state.clear_headers();
     }
 
     pub(crate) fn url(&self) -> Option<Url> {
@@ -764,18 +748,10 @@ impl TestServer {
             .url()
             .unwrap_or_else(|| DEFAULT_URL_ADDRESS.parse().unwrap());
 
-        let server_locked = self.state.as_ref().lock().map_err(|err| {
-            anyhow!(
-                "Failed to lock InternalTestServer, for request {method} {path}, received {err:?}",
-            )
-        })?;
-
-        let mut query_params = server_locked.query_params().clone();
-        let headers = server_locked.headers().clone();
+        let mut query_params = self.state.query_params().clone();
+        let headers = self.state.headers().clone();
         let full_request_url =
             build_url(url, path, &mut query_params, self.is_http_path_restricted)?;
-
-        ::std::mem::drop(server_locked);
 
         Ok(TestRequestConfig {
             atomic_cookie_jar: self.cookie_jar.clone(),
@@ -1166,8 +1142,7 @@ mod test_get {
         let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         // Get the request.
         let absolute_url = format!("http://{ip}:{port}/ping");
@@ -1193,8 +1168,7 @@ mod test_get {
             .http_transport_with_ip_port(Some(ip), Some(port))
             .restrict_requests_with_http_scheme() // Key part of the test!
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         // Get the request.
         let absolute_url = format!("http://{ip}:{port}/ping");
@@ -1220,8 +1194,7 @@ mod test_get {
             .http_transport_with_ip_port(Some(ip), Some(port))
             .restrict_requests_with_http_scheme() // Key part of the test!
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         // Get the request.
         port += 1; // << Change the port to be off by one and not match the server
@@ -1369,8 +1342,7 @@ mod test_server_address {
         let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         let expected_ip_port = format!("http://{}:{}/", ip, reserved_port.port());
         assert_eq!(
@@ -1418,8 +1390,7 @@ mod test_server_url {
         let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         let expected_ip_port_url = format!("http://{}:{}/users", ip, reserved_port.port());
         let absolute_url = server.server_url("/users").unwrap().to_string();
@@ -1463,8 +1434,7 @@ mod test_server_url {
         let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         let expected_url = format!(
             "http://{}:{}/users?filter=enabled",
@@ -1490,8 +1460,7 @@ mod test_server_url {
         let mut server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         server.add_query_param("filter", "enabled");
 
@@ -1516,8 +1485,7 @@ mod test_server_url {
         let mut server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         server.add_query_param("filter", "enabled");
 
@@ -1545,8 +1513,7 @@ mod test_server_url {
         let mut server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         server.add_query_param("query", "server");
 
@@ -1571,8 +1538,7 @@ mod test_server_url {
         let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         let expected_url = format!("http://{}:{}/users", ip, reserved_port.port());
         let received_url = server.server_url("users").unwrap().to_string();
@@ -1592,8 +1558,7 @@ mod test_server_url {
         let server = TestServer::builder()
             .http_transport_with_ip_port(Some(ip), Some(port))
             .try_build(app)
-            .with_context(|| format!("Should create test server with address {}:{}", ip, port))
-            .unwrap();
+            .error_message_fn(|| format!("Should create test server with address {}:{}", ip, port));
 
         // let expected_url = format!("http://{}:{}", ip, reserved_port.port());
         let error_message = server.server_url("").unwrap_err().to_string();

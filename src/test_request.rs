@@ -145,18 +145,16 @@ impl TestRequest {
     {
         let path_ref = path.as_ref();
         let file = File::open(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         let reader = BufReader::new(file);
-        let payload = serde_json::from_reader::<_, serde_json::Value>(reader)
-            .with_context(|| {
+        let payload =
+            serde_json::from_reader::<_, serde_json::Value>(reader).error_message_fn(|| {
                 format!(
                     "Failed to deserialize file '{}' as Json",
                     path_ref.display()
                 )
-            })
-            .unwrap();
+            });
 
         self.json(&payload)
     }
@@ -182,18 +180,16 @@ impl TestRequest {
     {
         let path_ref = path.as_ref();
         let file = File::open(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         let reader = BufReader::new(file);
-        let payload = serde_yaml::from_reader::<_, serde_yaml::Value>(reader)
-            .with_context(|| {
+        let payload =
+            serde_yaml::from_reader::<_, serde_yaml::Value>(reader).error_message_fn(|| {
                 format!(
                     "Failed to deserialize file '{}' as Yaml",
                     path_ref.display()
                 )
-            })
-            .unwrap();
+            });
 
         self.yaml(&payload)
     }
@@ -307,8 +303,7 @@ impl TestRequest {
     {
         let path_ref = path.as_ref();
         let payload = read_to_string(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         self.text(payload)
     }
@@ -332,8 +327,7 @@ impl TestRequest {
     {
         let path_ref = path.as_ref();
         let payload = read(path_ref)
-            .with_context(|| format!("Failed to read from file '{}'", path_ref.display()))
-            .unwrap();
+            .error_message_fn(|| format!("Failed to read from file '{}'", path_ref.display()));
 
         self.bytes(payload.into())
     }
@@ -475,13 +469,12 @@ impl TestRequest {
         self.config
             .query_params
             .add(query_params)
-            .with_context(|| {
+            .error_message_fn(|| {
                 format!(
                     "It should serialize query parameters, for request {}",
                     self.debug_request_format()
                 )
-            })
-            .unwrap();
+            });
 
         self
     }
