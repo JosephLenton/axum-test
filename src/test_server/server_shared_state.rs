@@ -9,7 +9,6 @@ use std::sync::Mutex;
 
 #[derive(Debug)]
 pub(crate) struct ServerSharedState {
-    scheme: Option<String>,
     query_params: QueryParamsStore,
     headers: Vec<(HeaderName, HeaderValue)>,
 }
@@ -17,14 +16,9 @@ pub(crate) struct ServerSharedState {
 impl ServerSharedState {
     pub(crate) fn new() -> Self {
         Self {
-            scheme: None,
             query_params: QueryParamsStore::new(),
             headers: Vec::new(),
         }
-    }
-
-    pub(crate) fn scheme(&self) -> Option<&str> {
-        self.scheme.as_deref()
     }
 
     pub(crate) fn query_params(&self) -> &QueryParamsStore {
@@ -73,13 +67,5 @@ impl ServerSharedState {
         value: HeaderValue,
     ) -> Result<()> {
         with_this_mut(this, "add_header", |this| this.headers.push((name, value)))
-    }
-
-    pub(crate) fn set_scheme(this: &Arc<Mutex<Self>>, scheme: String) -> Result<()> {
-        with_this_mut(this, "set_scheme", |this| this.scheme = Some(scheme))
-    }
-
-    pub(crate) fn set_scheme_unlocked(&mut self, scheme: String) {
-        self.scheme = Some(scheme);
     }
 }

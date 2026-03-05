@@ -7,7 +7,6 @@ use crate::internals::AtomicCrossCookieJar;
 use crate::internals::ErrorMessage;
 use crate::internals::ExpectedState;
 use crate::internals::QueryParamsStore;
-use crate::internals::RequestPathFormatter;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
@@ -229,10 +228,7 @@ impl TestServer {
         C: Into<TestServerConfig>,
     {
         let config = config.into();
-        let mut shared_state = ServerSharedState::new();
-        if let Some(scheme) = config.default_scheme {
-            shared_state.set_scheme_unlocked(scheme);
-        }
+        let shared_state = ServerSharedState::new();
 
         let shared_state_mutex = Mutex::new(shared_state);
         let state = Arc::new(shared_state_mutex);
@@ -755,35 +751,6 @@ impl TestServer {
             .unwrap()
     }
 
-    /// Sets the scheme to use when making _all_ requests from the `TestServer`.
-    /// i.e. http or https.
-    ///
-    /// The default scheme is 'http'.
-    ///
-    /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
-    /// #
-    /// use axum::Router;
-    /// use axum_test::TestServer;
-    ///
-    /// let app = Router::new();
-    /// let mut server = TestServer::new(app);
-    /// server
-    ///     .scheme(&"https");
-    ///
-    /// let response = server
-    ///     .get(&"/my-end-point")
-    ///     .await;
-    /// #
-    /// # Ok(()) }
-    /// ```
-    ///
-    pub fn scheme(&mut self, scheme: &str) {
-        ServerSharedState::set_scheme(&self.state, scheme.to_string())
-            .context("Trying to call set_scheme")
-            .unwrap()
-    }
-
     pub(crate) fn url(&self) -> Option<Url> {
         self.transport.url().cloned()
     }
@@ -805,15 +772,8 @@ impl TestServer {
 
         let mut query_params = server_locked.query_params().clone();
         let headers = server_locked.headers().clone();
-        let mut full_request_url =
+        let full_request_url =
             build_url(url, path, &mut query_params, self.is_http_path_restricted)?;
-
-        if let Some(scheme) = server_locked.scheme() {
-            full_request_url.set_scheme(scheme).map_err(|_| {
-                let debug_request_format = RequestPathFormatter::new(&method, full_request_url.as_str(), Some(&query_params));
-                anyhow!("Scheme '{scheme}' from TestServer cannot be set to request {debug_request_format}")
-            })?;
-        }
 
         ::std::mem::drop(server_locked);
 
@@ -2410,36 +2370,6 @@ mod test_expect_failure {
             "Expect status code outside 2xx range, received 202 (Accepted), for request GET http://localhost/accepted, with body ''",
             message
         );
-    }
-}
-
-#[cfg(test)]
-mod test_scheme {
-    use axum::Router;
-    use axum::extract::Request;
-    use axum::routing::get;
-
-    use crate::TestServer;
-
-    async fn route_get_scheme(request: Request) -> String {
-        request.uri().scheme_str().unwrap().to_string()
-    }
-
-    #[tokio::test]
-    async fn it_should_return_http_by_default() {
-        let router = Router::new().route("/scheme", get(route_get_scheme));
-        let server = TestServer::builder().build(router);
-
-        server.get("/scheme").await.assert_text("http");
-    }
-
-    #[tokio::test]
-    async fn it_should_return_https_across_multiple_requests_when_set() {
-        let router = Router::new().route("/scheme", get(route_get_scheme));
-        let mut server = TestServer::builder().build(router);
-        server.scheme(&"https");
-
-        server.get("/scheme").await.assert_text("https");
     }
 }
 

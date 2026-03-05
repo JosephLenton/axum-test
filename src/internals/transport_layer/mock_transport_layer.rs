@@ -1,3 +1,4 @@
+use crate::internals::ErrorMessage;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerType;
 use anyhow::Error as AnyhowError;
@@ -5,9 +6,11 @@ use anyhow::Result;
 use axum::body::Body;
 use axum::response::Response as AxumResponse;
 use bytes::Bytes;
+use http::HeaderValue;
 use http::Request;
 use http::Response;
 use http::Uri;
+use http::header;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
@@ -52,9 +55,7 @@ where
             let service = self.service.clone();
             let router = service.oneshot(empty_request).await?;
 
-            if let Some(cleaned_uri) = clean_uri(request.uri()) {
-                *request.uri_mut() = cleaned_uri;
-            }
+            clean_request_for_mock(&mut request);
 
             let response = router.oneshot(request).await?;
             Ok(response)
@@ -78,6 +79,25 @@ impl<S> Debug for MockTransportLayer<S> {
     }
 }
 
+fn clean_request_for_mock(request: &mut Request<Body>) {
+    if let Some(authority) = request.uri().authority() {
+        if !request.headers().contains_key(header::HOST) {
+            let host_header = HeaderValue::from_str(authority.as_str()).error_message_fn(|| {
+                format!(
+                    "Failed to build HOST header from authority '{}'",
+                    authority.as_str()
+                )
+            });
+
+            request.headers_mut().append(header::HOST, host_header);
+        }
+    }
+
+    if let Some(cleaned_uri) = clean_uri(request.uri()) {
+        *request.uri_mut() = cleaned_uri;
+    }
+}
+
 /// On mock transport, remove the scheme and authority from the URI.
 /// This is because in Axum, these are always missing in a normal server.
 ///
@@ -97,4 +117,75 @@ fn clean_uri(uri: &Uri) -> Option<Uri> {
     }
 
     Some(Uri::default())
+}
+
+#[cfg(test)]
+mod test_send {
+    use crate::TestServer;
+    use axum::Router;
+    use axum::extract::OriginalUri;
+    use axum::routing::get;
+    use http::HeaderMap;
+    use http::header;
+
+    async fn route_get_host_header(headers: HeaderMap) -> String {
+        headers
+            .get(header::HOST)
+            .map(|h| h.to_str().unwrap().to_string())
+            .unwrap_or_else(|| "".to_string())
+    }
+
+    async fn route_get_original_uri(original_uri: OriginalUri) -> String {
+        original_uri.0.to_string()
+    }
+
+    #[tokio::test]
+    async fn it_should_include_host_header_by_default() {
+        let router = Router::new().route("/test", get(route_get_host_header));
+        let server = TestServer::builder().mock_transport().build(router);
+
+        server.get("/test").await.assert_text("localhost");
+    }
+
+    #[tokio::test]
+    async fn it_should_not_include_scheme_or_authority_in_uri() {
+        let router = Router::new().route("/uri", get(route_get_original_uri));
+        let server = TestServer::builder().mock_transport().build(router);
+
+        server.get("/uri").await.assert_text("/uri");
+    }
+
+    #[tokio::test]
+    async fn it_should_have_host_header_that_matches_http_transport() {
+        let router = Router::new().route("/test", get(route_get_host_header));
+        let http_server = TestServer::builder().http_transport().build(router.clone());
+        let http_server_address = http_server
+            .server_address()
+            .unwrap()
+            .authority()
+            .to_string();
+        let expected = http_server.get("/test").await.assert_status_ok().text();
+
+        TestServer::builder()
+            .mock_transport()
+            .build(router)
+            .get(&format!("http://{http_server_address}/test"))
+            .await
+            .assert_text(expected);
+    }
+
+    #[tokio::test]
+    async fn it_should_have_original_uri_that_matches_http_transport() {
+        let router = Router::new().route("/uri", get(route_get_original_uri));
+        let expected = TestServer::builder()
+            .http_transport()
+            .build(router.clone())
+            .get("/uri")
+            .await
+            .assert_status_ok()
+            .text();
+
+        let server = TestServer::builder().mock_transport().build(router);
+        server.get("/uri").await.assert_text(expected);
+    }
 }
