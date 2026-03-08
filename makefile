@@ -4,7 +4,7 @@ fmt:
 	cargo fmt
 
 lint:
-	cargo +stable clippy
+	cargo +stable clippy --features=all
 
 test:
 	cargo +stable check
