@@ -9,8 +9,7 @@ mod websockets;
 #[cfg(feature = "ws")]
 pub use self::websockets::*;
 
-mod debug_response_body;
-pub use self::debug_response_body::*;
+pub mod body_fmt;
 
 mod error_message_formatter;
 pub use self::error_message_formatter::*;

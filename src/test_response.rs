@@ -1,9 +1,9 @@
-use crate::internals::DebugResponseBody;
 use crate::internals::ErrorMessage;
 use crate::internals::RequestPathFormatter;
 use crate::internals::StatusCodeFormatter;
 use crate::internals::StatusCodeRangeFormatter;
 use crate::internals::TryIntoRangeBounds;
+use crate::internals::body_fmt::BodyFmt;
 use bytes::Bytes;
 use cookie::Cookie;
 use cookie::CookieJar;
@@ -1055,7 +1055,7 @@ impl TestResponse {
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
         let debug_request_format = self.debug_request_format();
-        let debug_body = DebugResponseBody(self);
+        let debug_body = BodyFmt::from_test_response(self);
 
         assert_eq!(
             expected_status_code, self.status_code,
@@ -1071,7 +1071,7 @@ impl TestResponse {
         let received_debug = StatusCodeFormatter(self.status_code);
         let expected_debug = StatusCodeFormatter(expected_status_code);
         let debug_request_format = self.debug_request_format();
-        let debug_body = DebugResponseBody(self);
+        let debug_body = BodyFmt::from_test_response(self);
 
         assert_ne!(
             expected_status_code, self.status_code,
@@ -1088,7 +1088,7 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let debug_request_format = self.debug_request_format();
-        let debug_body = DebugResponseBody(self);
+        let debug_body = BodyFmt::from_test_response(self);
 
         // TODO, improve the formatting on these to match error_message
         assert!(
@@ -1106,7 +1106,7 @@ impl TestResponse {
         let status_code = self.status_code.as_u16();
         let received_debug = StatusCodeFormatter(self.status_code);
         let debug_request_format = self.debug_request_format();
-        let debug_body = DebugResponseBody(self);
+        let debug_body = BodyFmt::from_test_response(self);
 
         assert!(
             status_code < 200 || 299 < status_code,
@@ -1165,7 +1165,7 @@ impl TestResponse {
         let status_code = self.status_code();
         let is_in_range = range.contains(&status_code);
         let debug_request_format = self.debug_request_format();
-        let debug_body = DebugResponseBody(self);
+        let debug_body = BodyFmt::from_test_response(self);
 
         assert!(
             is_in_range,
@@ -1225,7 +1225,7 @@ impl TestResponse {
         let status_code = self.status_code();
         let is_not_in_range = !range.contains(&status_code);
         let debug_request_format = self.debug_request_format();
-        let debug_body = DebugResponseBody(self);
+        let debug_body = BodyFmt::from_test_response(self);
 
         assert!(
             is_not_in_range,
