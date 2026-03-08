@@ -8,7 +8,6 @@ use std::fmt::Result as FmtResult;
 pub struct BodyMsgpackFmt<'a>(pub &'a Bytes);
 
 impl<'a> Display for BodyMsgpackFmt<'a> {
-    #[cfg(not(feature = "yaml"))]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let len = self.0.len();
         write!(f, "<MsgPack, with len {}>", ByteSize(len as u64))

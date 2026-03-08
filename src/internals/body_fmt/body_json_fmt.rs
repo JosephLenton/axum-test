@@ -9,7 +9,6 @@ use std::fmt::Result as FmtResult;
 pub struct BodyJsonFmt<'a>(pub &'a Bytes);
 
 impl<'a> Display for BodyJsonFmt<'a> {
-    #[cfg(not(feature = "yaml"))]
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let result = serde_json::from_slice::<serde_json::Value>(self.0);
 
