@@ -22,6 +22,11 @@ path = "examples/actix-web-todo/main.rs"
 required-features = ["actix-web"]
 
 [[example]]
+name = "actix-web-websocket-ping-pong"
+path = "examples/actix-web-websocket-ping-pong/main.rs"
+required-features = ["actix-web", "ws"]
+
+[[example]]
 name = "snapshots"
 path = "examples/snapshots/main.rs"
 
@@ -110,6 +115,7 @@ futures-util = "0.3.32"
 insta = { version = "1.46.3", features = ["json"] }
 rand = "0.10.0"
 regex = "1.12.3"
+actix-ws = "0.3"
 serde-email = { version = "3.2.0", features = ["serde"] }
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "sync", "time", "macros"] }
 tower-http = { version = "0.6.8", features = ["normalize-path"] }
