@@ -43,4 +43,11 @@ where
     fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
         unimplemented!()
     }
+
+    fn into_default_transport(
+        self,
+        builder: TransportLayerBuilder,
+    ) -> Result<Box<dyn TransportLayer>> {
+        self.into_http_transport_layer(builder)
+    }
 }

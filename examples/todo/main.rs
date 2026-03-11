@@ -171,7 +171,6 @@ fn new_test_app() -> TestServer {
         // for the session cookie to work.
         .save_cookies()
         .expect_success_by_default()
-        .mock_transport()
         .build(app)
 }
 
@@ -193,6 +192,20 @@ mod test_post_login {
 
         let session_cookie = response.cookie(&USER_ID_COOKIE_NAME);
         assert_ne!(session_cookie.value(), "");
+    }
+
+    #[tokio::test]
+    async fn it_should_assert_session_cookie_exists_on_login() {
+        let server = new_test_app();
+
+        let response = server
+            .post(&"/login")
+            .json(&json!({
+                "user": "my-login@example.com",
+            }))
+            .await;
+
+        response.assert_cookie_exists(&USER_ID_COOKIE_NAME);
     }
 
     #[tokio::test]

@@ -641,6 +641,22 @@ impl TestResponse {
             .error_response_fn(|| format!("Cannot find cookie {cookie_name}"), self)
     }
 
+    /// Asserts that a cookie with the given name is present in the response.
+    ///
+    /// If the cookie is not present, then the assertion fails.
+    #[track_caller]
+    pub fn assert_contains_cookie(&self, cookie_name: &str) -> &Self {
+        let debug_request_format = self.debug_request_format();
+        let has_cookie = self.maybe_cookie(cookie_name).is_some();
+
+        assert!(
+            has_cookie,
+            "Assertion failed: cookie '{cookie_name}' not found in response, for request {debug_request_format}"
+        );
+
+        self
+    }
+
     /// Returns all of the cookies contained in the response,
     /// within a [`CookieJar`](::cookie::CookieJar) object.
     ///
@@ -3357,5 +3373,48 @@ mod test_request_method {
 
         let method = server.method(Method::OPTIONS, "/").await.request_method();
         assert_eq!(Method::OPTIONS, method);
+    }
+}
+
+#[cfg(test)]
+mod test_assert_contains_cookie {
+    use crate::TestServer;
+    use crate::testing::assert_error_message;
+    use crate::testing::catch_panic_error_message;
+    use axum::Router;
+    use axum::http::HeaderMap;
+    use axum::routing::get;
+    use http::header::SET_COOKIE;
+
+    async fn route_get_cookie() -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(SET_COOKIE, "my-cookie=my-value".parse().unwrap());
+        headers
+    }
+
+    #[tokio::test]
+    async fn it_should_not_panic_if_cookie_exists() {
+        let router = Router::new().route(&"/cookie", get(route_get_cookie));
+        let server = TestServer::new(router);
+
+        server
+            .get(&"/cookie")
+            .await
+            .assert_contains_cookie("my-cookie");
+    }
+
+    #[tokio::test]
+    async fn it_should_panic_if_cookie_does_not_exist() {
+        let router = Router::new().route(&"/cookie", get(route_get_cookie));
+        let server = TestServer::new(router);
+
+        let response = server.get(&"/cookie").await;
+        let message = catch_panic_error_message(|| {
+            response.assert_contains_cookie("cookie-not-found");
+        });
+        assert_error_message(
+            "Assertion failed: cookie 'cookie-not-found' not found in response, for request GET http://localhost/cookie",
+            message,
+        );
     }
 }

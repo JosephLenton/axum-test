@@ -22,8 +22,6 @@ use actix_web::dev::ServiceRequest;
 #[cfg(feature = "actix-web")]
 use actix_web::dev::ServiceResponse;
 #[cfg(feature = "actix-web")]
-use actix_web::rt::System as ActixRtSystem;
-#[cfg(feature = "actix-web")]
 use tokio::net::TcpListener;
 
 /// A wrapper around [`axum::serve()`] for tests,
@@ -69,18 +67,16 @@ where
     B: MessageBody + 'static,
 {
     let join_handle = spawn(async move {
-        ActixRtSystem::new().block_on(async move {
-            let std_tcp_listener = tcp_listener
-                .into_std()
-                .expect("Failed to turn tokio TcpListener into std TcpListener");
+        let std_tcp_listener = tcp_listener
+            .into_std()
+            .expect("Failed to turn tokio TcpListener into std TcpListener");
 
-            HttpServer::new(actix_web_app)
-                .listen(std_tcp_listener)
-                .expect("Failed to bind actix-web server to listener")
-                .run()
-                .await
-                .expect("Actix-web server encountered an error");
-        });
+        HttpServer::new(actix_web_app)
+            .listen(std_tcp_listener)
+            .expect("Failed to bind actix-web server to listener")
+            .run()
+            .await
+            .expect("Actix-web server encountered an error");
     });
 
     ServeHandle::new(join_handle)
