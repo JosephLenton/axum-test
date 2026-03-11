@@ -17,6 +17,11 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
+name = "actix-web-todo"
+path = "examples/actix-web-todo/main.rs"
+required-features = ["actix-web"]
+
+[[example]]
 name = "snapshots"
 path = "examples/snapshots/main.rs"
 
@@ -37,8 +42,9 @@ required-features = ["ws"]
 [features]
 default = ["pretty-assertions"]
 
-all = ["pretty-assertions", "yaml", "msgpack", "reqwest", "typed-routing", "ws"]
+all = ["pretty-assertions", "yaml", "msgpack", "reqwest", "typed-routing", "ws", "actix-web"]
 
+actix-web = ["dep:actix-web"]
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 msgpack = ["dep:rmp-serde"]
@@ -87,6 +93,9 @@ tokio-tungstenite = { version = "0.28.0", optional = true }
 
 # Reqwest
 reqwest = { version = "0.13.2", optional = true, features = ["cookies", "json", "stream", "multipart"] }
+
+# Actix Web
+actix-web = { version = "4", optional = true }
 
 # Old Json Diff
 assert-json-diff = { version = "2.0.2", optional = true }
