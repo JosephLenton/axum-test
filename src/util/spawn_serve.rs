@@ -72,6 +72,7 @@ where
             .expect("Failed to turn tokio TcpListener into std TcpListener");
 
         HttpServer::new(actix_web_app)
+            .workers(2)
             .listen(std_tcp_listener)
             .expect("Failed to bind actix-web server to listener")
             .run()
