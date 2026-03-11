@@ -48,7 +48,9 @@ const USER_ID_COOKIE_NAME: &'static str = &"todo-user-id";
 
 #[actix_web::main]
 async fn main() -> IoResult<()> {
-    HttpServer::new(new_app)
+    let state = new_app_state();
+
+    HttpServer::new(move || new_app(state.clone()))
         .bind(format!("0.0.0.0:{PORT}"))?
         .run()
         .await
@@ -135,7 +137,9 @@ pub async fn route_get_user_todos(req: HttpRequest, state: Data<SharedAppState>)
     HttpResponse::Ok().json(todos)
 }
 
-fn new_app() -> App<
+fn new_app(
+    state: SharedAppState,
+) -> App<
     impl ServiceFactory<
         ServiceRequest,
         Config = (),
@@ -144,8 +148,6 @@ fn new_app() -> App<
         InitError = (),
     >,
 > {
-    let state = new_app_state();
-
     App::new()
         .app_data(Data::new(state))
         .route("/login", post().to(route_post_user_login))
@@ -162,12 +164,14 @@ fn new_app_state() -> SharedAppState {
 
 #[cfg(test)]
 fn new_test_app() -> TestServer {
+    let state = new_app_state();
+
     TestServer::builder()
         // Preserve cookies across requests
         // for the session cookie to work.
         .save_cookies()
         .expect_success_by_default()
-        .build(new_app)
+        .build(move || new_app(state.clone()))
 }
 
 #[cfg(test)]
