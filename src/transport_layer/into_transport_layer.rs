@@ -5,6 +5,8 @@ use crate::transport_layer::TransportLayerBuilder;
 
 // mod into_make_service_tower;
 
+#[cfg(feature = "actix-web")]
+mod actix_web_app;
 mod into_make_service;
 mod into_make_service_with_connect_info;
 mod router;

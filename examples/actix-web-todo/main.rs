@@ -45,7 +45,7 @@ const USER_ID_COOKIE_NAME: &'static str = &"todo-user-id";
 
 #[actix_web::main]
 async fn main() -> IoResult<()> {
-    HttpServer::new(move || new_app())
+    HttpServer::new(new_app)
         .bind(format!("0.0.0.0:{PORT}"))?
         .run()
         .await

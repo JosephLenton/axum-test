@@ -1,5 +1,5 @@
+use crate::internals::AxumMockTransportLayer;
 use crate::internals::HttpTransportLayer;
-use crate::internals::MockTransportLayer;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
@@ -39,7 +39,7 @@ where
     }
 
     fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
-        let transport_layer = MockTransportLayer::new(self);
+        let transport_layer = AxumMockTransportLayer::new(self);
         Ok(Box::new(transport_layer))
     }
 }
