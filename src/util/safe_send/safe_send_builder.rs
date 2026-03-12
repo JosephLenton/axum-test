@@ -2,7 +2,10 @@ use crate::util::SafeSend;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::mpsc;
+use std::sync::mpsc::Sender;
+use std::sync::mpsc::sync_channel;
+use std::thread::spawn;
+use tokio::runtime::Builder;
 use tokio::task::LocalSet;
 
 #[derive(Debug)]
@@ -26,10 +29,10 @@ where
         In: Send + 'static,
         Out: Send + 'static,
     {
-        let (task_tx, task_rx) = mpsc::sync_channel::<(In, mpsc::Sender<Out>)>(0);
+        let (task_tx, task_rx) = sync_channel::<(In, Sender<Out>)>(0);
 
-        let thread = std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
+        let thread = spawn(move || {
+            let rt = Builder::new_current_thread()
                 .enable_all()
                 .build()
                 .expect("Failed to build tokio runtime for SafeSend");

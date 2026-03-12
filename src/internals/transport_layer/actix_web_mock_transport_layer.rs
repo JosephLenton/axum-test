@@ -55,6 +55,29 @@ impl ActixWebMockTransportLayer {
     }
 }
 
+impl TransportLayer for ActixWebMockTransportLayer {
+    fn send<'a>(
+        &'a self,
+        request: Request<Body>,
+    ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>> + Send>> {
+        Box::pin(async move { self.handle.send(request).await? })
+    }
+
+    fn transport_layer_type(&self) -> TransportLayerType {
+        TransportLayerType::Mock
+    }
+
+    fn is_running(&self) -> bool {
+        self.handle.is_running()
+    }
+}
+
+impl Debug for ActixWebMockTransportLayer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "ActixWebMockTransportLayer {{ service: {{unknown}} }}")
+    }
+}
+
 async fn to_test_request(request: Request<Body>) -> Result<actix_web::test::TestRequest> {
     let (parts, body) = request.into_parts();
 
@@ -104,27 +127,4 @@ async fn to_http_response(service_response: ServiceResponse<BoxBody>) -> Result<
     }
 
     Ok(builder.body(Body::from(body_bytes))?)
-}
-
-impl TransportLayer for ActixWebMockTransportLayer {
-    fn send<'a>(
-        &'a self,
-        request: Request<Body>,
-    ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>> + Send>> {
-        Box::pin(async move { self.handle.send(request).await? })
-    }
-
-    fn transport_layer_type(&self) -> TransportLayerType {
-        TransportLayerType::Mock
-    }
-
-    fn is_running(&self) -> bool {
-        self.handle.is_running()
-    }
-}
-
-impl Debug for ActixWebMockTransportLayer {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "ActixWebMockTransportLayer {{ service: {{unknown}} }}")
-    }
 }

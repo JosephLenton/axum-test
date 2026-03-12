@@ -1,9 +1,10 @@
 use anyhow::Result;
 use std::sync::Arc;
-use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::sync::mpsc::SyncSender;
+use std::sync::mpsc::channel;
 use std::thread::JoinHandle;
+use tokio::task::spawn_blocking;
 
 #[derive(Debug, Clone)]
 pub(crate) struct SafeSend<In, Out> {
@@ -37,8 +38,8 @@ where
     pub(crate) async fn send(&self, input: In) -> Result<Out> {
         let task_sender = self.task_sender.clone();
 
-        tokio::task::spawn_blocking(move || {
-            let (response_tx, response_rx) = mpsc::channel::<Out>();
+        spawn_blocking(move || {
+            let (response_tx, response_rx) = channel::<Out>();
 
             task_sender
                 .send((input, response_tx))
