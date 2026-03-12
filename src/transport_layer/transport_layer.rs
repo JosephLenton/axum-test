@@ -2,10 +2,10 @@ use anyhow::Result;
 use axum::body::Body;
 use http::Request;
 use http::Response;
+use http::Uri;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
-use url::Url;
 
 use crate::transport_layer::TransportLayerType;
 
@@ -15,9 +15,7 @@ pub trait TransportLayer: Debug + Send + Sync + 'static {
         request: Request<Body>,
     ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>> + Send>>;
 
-    fn url(&self) -> Option<&Url> {
-        None
-    }
+    fn uri(&self) -> &Uri;
 
     fn transport_layer_type(&self) -> TransportLayerType;
 

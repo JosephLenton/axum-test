@@ -5,12 +5,12 @@ use anyhow::Result;
 use axum::body::Body;
 use http::Request;
 use http::Response;
+use http::Uri;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 use reserve_port::ReservedPort;
 use std::future::Future;
 use std::pin::Pin;
-use url::Url;
 
 #[derive(Debug)]
 pub struct HttpTransportLayer {
@@ -20,14 +20,14 @@ pub struct HttpTransportLayer {
     #[allow(dead_code)]
     maybe_reserved_port: Option<ReservedPort>,
 
-    url: Url,
+    url: Uri,
 }
 
 impl HttpTransportLayer {
     pub(crate) fn new(
         serve_handle: ServeHandle,
         maybe_reserved_port: Option<ReservedPort>,
-        url: Url,
+        url: Uri,
     ) -> Self {
         Self {
             serve_handle,
@@ -54,8 +54,8 @@ impl TransportLayer for HttpTransportLayer {
         })
     }
 
-    fn url(&self) -> Option<&Url> {
-        Some(&self.url)
+    fn uri(&self) -> &Uri {
+        &self.url
     }
 
     fn transport_layer_type(&self) -> TransportLayerType {

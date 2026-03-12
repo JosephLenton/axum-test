@@ -1,15 +1,37 @@
 use anyhow::Result;
+use http::Uri;
 use serde::Serialize;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
+use url::Url;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct QueryParamsStore {
     query_params: Vec<String>,
 }
 
 impl QueryParamsStore {
+    pub fn from_uri(uri: &Uri) -> Self {
+        let mut this = Self::new();
+
+        if let Some(path_query) = uri.query() {
+            this.add_raw(path_query.to_string());
+        }
+
+        this
+    }
+
+    pub fn from_url(url: &Url) -> Self {
+        let mut this = Self::new();
+
+        if let Some(path_query) = url.query() {
+            this.add_raw(path_query.to_string());
+        }
+
+        this
+    }
+
     pub fn new() -> Self {
         Self {
             query_params: Vec::new(),
@@ -36,10 +58,6 @@ impl QueryParamsStore {
 
     pub fn is_empty(&self) -> bool {
         self.query_params.is_empty()
-    }
-
-    pub fn has_content(&self) -> bool {
-        !self.is_empty()
     }
 }
 

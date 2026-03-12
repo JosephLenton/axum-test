@@ -5,6 +5,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 
+#[derive(Debug, Clone)]
 pub struct ErrorMessageFormatter<'a, U = String, E = Infallible> {
     message: &'a str,
     maybe_request_path: Option<RequestPathFormatter<'a, U>>,
@@ -42,7 +43,6 @@ impl<'a, U, E> ErrorMessageFormatter<'a, U, E> {
     {
         ErrorMessageFormatter {
             maybe_error: Some(error),
-
             message: self.message,
             maybe_request_path: self.maybe_request_path,
             maybe_body_bytes: self.maybe_body_bytes,
@@ -106,7 +106,7 @@ where
 #[cfg(test)]
 mod test_fmt {
     use super::*;
-    use crate::internals::QueryParamsStore;
+    use crate::internals::Uri2;
     use anyhow::anyhow;
     use http::Method;
     use pretty_assertions::assert_str_eq;
@@ -140,8 +140,8 @@ mod test_fmt {
 
     #[test]
     fn it_should_format_error_message_with_request_path() {
-        let query_params = QueryParamsStore::new();
-        let path = RequestPathFormatter::new(&Method::GET, &"/donkeys", Some(&query_params));
+        let uri = Uri2::from_str("/donkeys");
+        let path = RequestPathFormatter::new(&Method::GET, &uri);
         let message = ErrorMessageFormatter::new("this is an error")
             .request_path(path)
             .to_string();
@@ -157,8 +157,8 @@ mod test_fmt {
     #[test]
     fn it_should_format_error_message_with_error_and_request_path() {
         let error = anyhow!("some internal error");
-        let query_params = QueryParamsStore::new();
-        let path = RequestPathFormatter::new(&Method::GET, &"/something", Some(&query_params));
+        let uri = Uri2::from_str("/something");
+        let path = RequestPathFormatter::new(&Method::GET, &uri);
         let message = ErrorMessageFormatter::new("this is an error")
             .error(error)
             .request_path(path)
@@ -175,8 +175,8 @@ mod test_fmt {
 
     #[test]
     fn it_should_format_error_message_with_request_path_and_json_body() {
-        let query_params = QueryParamsStore::new();
-        let path = RequestPathFormatter::new(&Method::GET, &"/json", Some(&query_params));
+        let uri = Uri2::from_str("/json");
+        let path = RequestPathFormatter::new(&Method::GET, &uri);
         let json_body = json!({
             "user_id": "abc123",
             "username": "MrUser",
@@ -203,8 +203,8 @@ received:
     #[cfg(feature = "yaml")]
     #[test]
     fn it_should_format_error_message_with_request_path_and_yaml_body() {
-        let query_params = QueryParamsStore::new();
-        let path = RequestPathFormatter::new(&Method::GET, &"/yaml", Some(&query_params));
+        let uri = Uri2::from_str("/yaml");
+        let path = RequestPathFormatter::new(&Method::GET, &uri);
         let yaml_body = serde_yaml::to_string(&json!({
             "user_id": "abc123",
             "username": "MrUser",
@@ -232,8 +232,8 @@ received:
 
     #[test]
     fn it_should_format_error_message_with_request_path_and_text_body() {
-        let query_params = QueryParamsStore::new();
-        let path = RequestPathFormatter::new(&Method::GET, &"/text", Some(&query_params));
+        let uri = Uri2::from_str("/text");
+        let path = RequestPathFormatter::new(&Method::GET, &uri);
         let text_body = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
 Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.

@@ -16,8 +16,14 @@ use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::LazyLock;
 use tower::Service;
 use tower::util::ServiceExt;
+
+static DEFAULT_MOCK_URI: LazyLock<Uri> = LazyLock::new(|| {
+    "/".parse()
+        .expect("Slash on it's own should be a valid URI")
+});
 
 pub struct MockTransportLayer<S> {
     service: S,
@@ -51,6 +57,7 @@ where
         Box::pin(async {
             let body: Body = Bytes::new().into();
             let empty_request = Request::builder()
+                .uri(request.uri())
                 .body(body)
                 .expect("should build empty request");
 
@@ -66,6 +73,10 @@ where
 
     fn transport_layer_type(&self) -> TransportLayerType {
         TransportLayerType::Mock
+    }
+
+    fn uri(&self) -> &Uri {
+        &DEFAULT_MOCK_URI
     }
 
     /// This will always return true.

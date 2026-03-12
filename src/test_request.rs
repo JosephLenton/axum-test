@@ -1,8 +1,8 @@
 use crate::TestResponse;
 use crate::internals::ErrorMessage;
 use crate::internals::ExpectedState;
-use crate::internals::QueryParamsStore;
 use crate::internals::RequestPathFormatter;
+use crate::internals::Uri2;
 use crate::multipart::MultipartForm;
 use crate::transport_layer::TransportLayer;
 use anyhow::Context;
@@ -31,7 +31,6 @@ use std::io::BufReader;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
-use url::Url;
 
 mod test_request_config;
 pub(crate) use self::test_request_config::*;
@@ -467,9 +466,9 @@ impl TestRequest {
         V: Serialize,
     {
         self.config
-            .query_params
-            .add(query_params)
-            .error_request("It should serialize query parameters", &self);
+            .request_uri
+            .add_query_params(query_params)
+            .error_message("Failed to add query parameters");
 
         self
     }
@@ -499,7 +498,7 @@ impl TestRequest {
     /// ```
     ///
     pub fn add_raw_query_param(mut self, query_param: &str) -> Self {
-        self.config.query_params.add_raw(query_param.to_string());
+        self.config.request_uri.add_raw_query_param(query_param);
 
         self
     }
@@ -507,7 +506,7 @@ impl TestRequest {
     /// Clears all query params set,
     /// including any that came from the [`TestServer`](crate::TestServer).
     pub fn clear_query_params(mut self) -> Self {
-        self.config.query_params.clear();
+        self.config.request_uri.clear_query_params();
 
         self
     }
@@ -633,16 +632,21 @@ impl TestRequest {
     async fn send(self) -> Result<TestResponse> {
         let debug_request_format = self.debug_request_format().to_string();
 
+        let full_request_url = self
+            .config
+            .request_uri
+            .clone()
+            .into_uri()
+            .error_request("Failed to turn request into a Uri", &self);
         let method = self.config.method;
         let expected_state = self.expected_state;
         let save_cookies = self.config.is_saving_cookies;
         let body = self.body.unwrap_or(Body::empty());
-        let full_request_url =
-            Self::build_url_query_params(self.config.full_request_url, &self.config.query_params);
 
+        println!(" send ... {}", full_request_url);
         let request = Self::build_request(
             method.clone(),
-            &full_request_url,
+            self.config.request_uri,
             body,
             self.config.content_type,
             self.config.cookies,
@@ -701,25 +705,16 @@ impl TestRequest {
         Ok(test_response)
     }
 
-    fn build_url_query_params(mut url: Url, query_params: &QueryParamsStore) -> Url {
-        // Add all the query params we have
-        if query_params.has_content() {
-            url.set_query(Some(&query_params.to_string()));
-        }
-
-        url
-    }
-
     fn build_request(
         method: Method,
-        url: &Url,
+        uri: Uri2,
         body: Body,
         content_type: Option<String>,
         cookies: CookieJar,
         headers: Vec<(HeaderName, HeaderValue)>,
         debug_request_format: &str,
     ) -> Result<Request<Body>> {
-        let mut request_builder = Request::builder().uri(url.as_str()).method(method);
+        let mut request_builder = Request::builder().uri(uri).method(method);
 
         // Add all the headers we have.
         if let Some(content_type) = content_type {
@@ -756,12 +751,8 @@ impl TestRequest {
         Ok(request)
     }
 
-    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_, Url> {
-        RequestPathFormatter::new(
-            &self.config.method,
-            &self.config.full_request_url,
-            Some(&self.config.query_params),
-        )
+    pub(crate) fn debug_request_format(&self) -> RequestPathFormatter<'_, Uri2> {
+        RequestPathFormatter::new(&self.config.method, &self.config.request_uri)
     }
 }
 
@@ -770,15 +761,11 @@ impl TryFrom<TestRequest> for Request<Body> {
 
     fn try_from(test_request: TestRequest) -> Result<Request<Body>> {
         let debug_request_format = test_request.debug_request_format().to_string();
-        let url = TestRequest::build_url_query_params(
-            test_request.config.full_request_url,
-            &test_request.config.query_params,
-        );
         let body = test_request.body.unwrap_or(Body::empty());
 
         TestRequest::build_request(
             test_request.config.method,
-            &url,
+            test_request.config.request_uri,
             body,
             test_request.config.content_type,
             test_request.config.cookies,
@@ -1766,7 +1753,7 @@ mod test_expect_success {
             catch_panic_error_message_async(server.get(&"/some_unknown_route").expect_success())
                 .await;
         assert_str_eq!(
-            "Expect status code within 2xx range, received 404 (Not Found), for request GET http://localhost/some_unknown_route, with body ''",
+            "Expect status code within 2xx range, received 404 (Not Found), for request GET /some_unknown_route, with body ''",
             message
         );
     }
@@ -1825,7 +1812,7 @@ mod test_expect_failure {
         // Get the request.
         let message = catch_panic_error_message_async(server.get(&"/ping").expect_failure()).await;
         assert_str_eq!(
-            "Expect status code outside 2xx range, received 200 (OK), for request GET http://localhost/ping, with body 'pong!'",
+            "Expect status code outside 2xx range, received 200 (OK), for request GET /ping, with body 'pong!'",
             message
         );
     }
@@ -1846,7 +1833,7 @@ mod test_expect_failure {
         let message =
             catch_panic_error_message_async(server.get(&"/accepted").expect_failure()).await;
         assert_str_eq!(
-            "Expect status code outside 2xx range, received 202 (Accepted), for request GET http://localhost/accepted, with body ''",
+            "Expect status code outside 2xx range, received 202 (Accepted), for request GET /accepted, with body ''",
             message
         );
     }
