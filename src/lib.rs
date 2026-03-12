@@ -12,7 +12,7 @@
 //! `TestServer` will pass http requests directly to the handler,
 //! or can be run on a random IP / Port address.
 //!
-//! ## Getting Started
+//! # Getting Started
 //!
 //! Create a [`TestServer`] running your Axum [`Router`](::axum::Router):
 //!
@@ -59,6 +59,44 @@
 //! # let server = TestServer::new(app);
 //! #
 //! let response = server.put("/users")
+//!     .json(&json!({
+//!         "username": "Terrance Pencilworth",
+//!     }))
+//!     .await;
+//! #
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Actix Web
+//!
+//! Actix Web is also supported. All of the code examples through the
+//! docs presume the use of Axum, however the Axum Test side is
+//! identical for Actix Web.
+//!
+//! ```rust
+//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! use actix_web::App;
+//! use actix_web::HttpResponse;
+//! use actix_web::web;
+//! use serde_json::Value;
+//! use serde_json::json;
+//!
+//! use axum_test::TestServer;
+//!
+//! async fn route_put_users(
+//!     body: web::Json<Value>,
+//! ) -> HttpResponse {
+//!     // ... todo ...
+//!
+//!     HttpResponse::Ok().json(json!("done!"))
+//! }
+//!
+//! let new_app = || App::new().route("/json", web::put().to(route_put_users));
+//! let server = TestServer::new(new_app);
+//!
+//! let response = server
+//!     .put("/users")
 //!     .json(&json!({
 //!         "username": "Terrance Pencilworth",
 //!     }))

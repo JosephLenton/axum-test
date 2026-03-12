@@ -189,6 +189,7 @@ impl TestServer {
     ///  - [`axum::extract::connect_info::IntoMakeServiceWithConnectInfo`]
     ///  - [`axum::serve::Serve`]
     ///  - [`axum::serve::WithGracefulShutdown`]
+    ///  - A function returning an [`actix_web::App`]
     ///
     pub fn new<A>(app: A) -> Self
     where
