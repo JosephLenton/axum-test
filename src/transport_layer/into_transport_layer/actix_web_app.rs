@@ -1,26 +1,26 @@
+use crate::internals::ActixWebMockTransportLayer;
 use crate::internals::HttpTransportLayer;
 use crate::transport_layer::IntoTransportLayer;
 use crate::transport_layer::TransportLayer;
 use crate::transport_layer::TransportLayerBuilder;
 use crate::util::spawn_actix_serve;
 use actix_web::App;
-use actix_web::body::MessageBody;
+use actix_web::body::BoxBody;
 use actix_web::dev::ServiceFactory;
 use actix_web::dev::ServiceRequest;
 use actix_web::dev::ServiceResponse;
 use anyhow::Result;
 
-impl<F, T, B> IntoTransportLayer for F
+impl<F, T> IntoTransportLayer for F
 where
     F: Fn() -> App<T> + Send + Clone + 'static,
     T: ServiceFactory<
             ServiceRequest,
             Config = (),
-            Response = ServiceResponse<B>,
+            Response = ServiceResponse<BoxBody>,
             Error = actix_web::Error,
             InitError = (),
         > + 'static,
-    B: MessageBody + 'static,
 {
     fn into_http_transport_layer(
         self,
@@ -41,13 +41,13 @@ where
     }
 
     fn into_mock_transport_layer(self) -> Result<Box<dyn TransportLayer>> {
-        unimplemented!()
+        Ok(Box::new(ActixWebMockTransportLayer::new(self)))
     }
 
     fn into_default_transport(
         self,
-        builder: TransportLayerBuilder,
+        _builder: TransportLayerBuilder,
     ) -> Result<Box<dyn TransportLayer>> {
-        self.into_http_transport_layer(builder)
+        self.into_mock_transport_layer()
     }
 }

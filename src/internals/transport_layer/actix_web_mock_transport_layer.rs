@@ -1,125 +1,130 @@
 use crate::transport_layer::TransportLayer;
-use crate::transport_layer::TransportLayerBuilder;
 use crate::transport_layer::TransportLayerType;
+use crate::util::SafeSend;
+use crate::util::SafeSendBuilder;
 use actix_web::App;
-use actix_web::HttpServer;
-use actix_web::body::MessageBody;
-use actix_web::dev::ServerHandle;
+use actix_web::Error as ActixWebError;
+use actix_web::body::BoxBody;
 use actix_web::dev::ServiceFactory;
 use actix_web::dev::ServiceRequest;
 use actix_web::dev::ServiceResponse;
-use anyhow::Context;
+use actix_web::http::Method as ActixMethod;
+use actix_web::http::header::HeaderName as ActixHeaderName;
+use actix_web::http::header::HeaderValue as ActixHeaderValue;
+use actix_web::test::call_service;
+use actix_web::test::init_service;
 use anyhow::Result;
 use axum::body::Body;
 use http::Request;
 use http::Response;
-use hyper_util::client::legacy::Client;
-use hyper_util::rt::TokioExecutor;
-use reserve_port::ReservedPort;
+use http_body_util::BodyExt;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
 use std::future::Future;
 use std::pin::Pin;
-use url::Url;
 
-pub struct ActixWebHttpTransportLayer {
-    server_handle: ServerHandle,
-    #[allow(dead_code)]
-    maybe_reserved_port: Option<ReservedPort>,
-    url: Url,
+pub struct ActixWebMockTransportLayer {
+    handle: SafeSend<Request<Body>, Result<Response<Body>>>,
 }
 
-impl ActixWebHttpTransportLayer {
-    pub(crate) fn new<F, T, B>(factory: F, builder: TransportLayerBuilder) -> Result<Self>
+impl ActixWebMockTransportLayer {
+    pub(crate) fn new<F, T>(factory: F) -> Self
     where
         F: Fn() -> App<T> + Send + Clone + 'static,
         T: ServiceFactory<
                 ServiceRequest,
                 Config = (),
-                Response = ServiceResponse<B>,
-                Error = actix_web::Error,
+                Response = ServiceResponse<BoxBody>,
+                Error = ActixWebError,
                 InitError = (),
             > + 'static,
-        B: MessageBody + 'static,
     {
-        let (socket_addr, tokio_listener, maybe_reserved_port) =
-            builder.tcp_listener_with_reserved_port()?;
+        let handle = SafeSendBuilder::new(async move || init_service(factory()).await).on_send(
+            |service, http_request| {
+                Box::pin(async move {
+                    let test_req = to_test_request(http_request).await?;
+                    let actix_req = test_req.to_request();
+                    let actix_response = call_service(service, actix_req).await;
+                    to_http_response(actix_response).await
+                })
+            },
+        );
 
-        let std_listener = tokio_listener
-            .into_std()
-            .context("Failed to convert tokio TcpListener to std TcpListener")?;
-
-        let (tx, rx) = std::sync::mpsc::channel::<ServerHandle>();
-
-        std::thread::spawn(move || {
-            actix_web::rt::System::new().block_on(async move {
-                let server = HttpServer::new(factory)
-                    .listen(std_listener)
-                    .expect("Failed to bind actix-web server to listener")
-                    .run();
-
-                tx.send(server.handle())
-                    .expect("Failed to send actix-web server handle");
-
-                server.await.expect("Actix-web server encountered an error");
-            });
-        });
-
-        let server_handle = rx
-            .recv()
-            .context("Failed to receive actix-web server handle")?;
-
-        let url = format!("http://{socket_addr}").parse()?;
-
-        Ok(Self {
-            server_handle,
-            maybe_reserved_port,
-            url,
-        })
+        Self { handle }
     }
 }
 
-impl TransportLayer for ActixWebHttpTransportLayer {
+async fn to_test_request(request: Request<Body>) -> Result<actix_web::test::TestRequest> {
+    let (parts, body) = request.into_parts();
+
+    let body_bytes = body
+        .collect()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to collect request body: {e}"))?
+        .to_bytes();
+
+    let actix_method = ActixMethod::from_bytes(parts.method.as_str().as_bytes())
+        .map_err(|e| anyhow::anyhow!("Invalid HTTP method: {e}"))?;
+
+    let mut test_req = actix_web::test::TestRequest::default()
+        .method(actix_method)
+        .uri(parts.uri.to_string().as_str())
+        .set_payload(body_bytes);
+
+    for (name, value) in &parts.headers {
+        let actix_name = ActixHeaderName::from_bytes(name.as_str().as_bytes())
+            .map_err(|e| anyhow::anyhow!("Invalid header name: {e}"))?;
+        let actix_value = ActixHeaderValue::from_bytes(value.as_bytes())
+            .map_err(|e| anyhow::anyhow!("Invalid header value: {e}"))?;
+        test_req = test_req.insert_header((actix_name, actix_value));
+    }
+
+    Ok(test_req)
+}
+
+async fn to_http_response(service_response: ServiceResponse<BoxBody>) -> Result<Response<Body>> {
+    let status_u16 = service_response.status().as_u16();
+    let headers: Vec<(String, Vec<u8>)> = service_response
+        .headers()
+        .iter()
+        .map(|(name, value)| (name.as_str().to_owned(), value.as_bytes().to_vec()))
+        .collect();
+
+    let body = service_response.into_body();
+    let body_bytes = actix_web::body::to_bytes(body)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to collect response body: {e}"))?;
+
+    let status = http::StatusCode::from_u16(status_u16)?;
+    let mut builder = Response::builder().status(status);
+
+    for (name, value) in &headers {
+        builder = builder.header(name.as_str(), value.as_slice());
+    }
+
+    Ok(builder.body(Body::from(body_bytes))?)
+}
+
+impl TransportLayer for ActixWebMockTransportLayer {
     fn send<'a>(
         &'a self,
         request: Request<Body>,
     ) -> Pin<Box<dyn 'a + Future<Output = Result<Response<Body>>> + Send>> {
-        Box::pin(async {
-            let client = Client::builder(TokioExecutor::new()).build_http();
-            let hyper_response = client.request(request).await?;
-
-            let (parts, response_body) = hyper_response.into_parts();
-            let returned_response: Response<Body> =
-                Response::from_parts(parts, Body::new(response_body));
-
-            Ok(returned_response)
-        })
-    }
-
-    fn url(&self) -> Option<&Url> {
-        Some(&self.url)
+        Box::pin(async move { self.handle.send(request).await? })
     }
 
     fn transport_layer_type(&self) -> TransportLayerType {
-        TransportLayerType::Http
+        TransportLayerType::Mock
     }
 
     fn is_running(&self) -> bool {
-        true
+        self.handle.is_running()
     }
 }
 
-impl Debug for ActixWebHttpTransportLayer {
+impl Debug for ActixWebMockTransportLayer {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "ActixWebHttpTransportLayer {{ url: {} }}", self.url)
-    }
-}
-
-impl Drop for ActixWebHttpTransportLayer {
-    fn drop(&mut self) {
-        let handle = self.server_handle.clone();
-        let _ = tokio::runtime::Handle::try_current()
-            .map(|rt| rt.spawn(async move { handle.stop(false).await }));
+        write!(f, "ActixWebMockTransportLayer {{ service: {{unknown}} }}")
     }
 }
