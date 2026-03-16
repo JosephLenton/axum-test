@@ -9,6 +9,7 @@ lint:
 test:
 	cargo +stable check
 	cargo +stable test --example=todo
+	cargo +stable test --example=server-side-events
 	cargo +stable test --example=snapshots --features yaml
 	cargo +stable test --example=websocket-ping-pong --features ws
 	cargo +stable test --example=websocket-chat --features ws

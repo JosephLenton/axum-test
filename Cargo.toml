@@ -17,6 +17,10 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
+name = "server-side-events"
+path = "examples/server-side-events/main.rs"
+
+[[example]]
 name = "snapshots"
 path = "examples/snapshots/main.rs"
 
@@ -87,9 +91,6 @@ tokio-tungstenite = { version = "0.28.0", optional = true }
 
 # Reqwest
 reqwest = { version = "0.13.2", optional = true, features = ["cookies", "json", "stream", "multipart"] }
-
-# Old Json Diff
-assert-json-diff = { version = "2.0.2", optional = true }
 
 [dev-dependencies]
 axum = { version = "0.8.8", features = ["multipart", "tokio", "ws"] }
