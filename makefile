@@ -12,8 +12,8 @@ test:
 	cargo +stable test --example=snapshots --features yaml
 	cargo +stable test --example=websocket-ping-pong --features ws
 	cargo +stable test --example=websocket-chat --features ws
-	cargo +stable test  --features all
-	cargo +stable test
+	cargo +stable test --features all
+	cargo +stable test --lib --bins --tests
 
 	# Check minimum version works
 	cargo +1.85 check --features "pretty-assertions,yaml,msgpack,reqwest,typed-routing,ws"
