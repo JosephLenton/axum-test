@@ -1,3 +1,4 @@
+use crate::transport_layer::TransportLayerType;
 use anyhow::Result;
 use axum::body::Body;
 use http::Request;
@@ -6,8 +7,6 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use url::Url;
-
-use crate::transport_layer::TransportLayerType;
 
 pub trait TransportLayer: Debug + Send + Sync + 'static {
     fn send<'a>(

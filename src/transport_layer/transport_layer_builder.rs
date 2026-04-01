@@ -4,7 +4,6 @@ use reserve_port::ReservedPort;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
-
 use crate::internals::StartingTcpSetup;
 
 #[derive(Debug, Clone)]
