@@ -10,6 +10,9 @@ pub use self::new_random_tcp_listener::*;
 mod new_random_tokio_tcp_listener;
 pub use self::new_random_tokio_tcp_listener::*;
 
+mod safe_send;
+pub(crate) use self::safe_send::*;
+
 mod spawn_serve;
 pub use self::spawn_serve::*;
 

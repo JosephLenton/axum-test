@@ -1,9 +1,9 @@
 //!
-//! This is an example Todo Application to show some simple tests.
+//! This is an example Todo Application using Actix Web to show some simple tests.
 //!
 //! ```bash
 //! # To run it's tests:
-//! cargo test --example=todo
+//! cargo test --example=actix-web-todo --features actix-web
 //! ```
 //!
 //! The app includes the end points for ...
@@ -15,29 +15,30 @@
 //! At the bottom of this file are a series of tests for these endpoints.
 //!
 
+use actix_web::App;
+use actix_web::Error as ActixWebError;
+use actix_web::HttpRequest;
+use actix_web::HttpResponse;
+use actix_web::HttpServer;
+use actix_web::body::BoxBody;
+use actix_web::cookie::Cookie;
+use actix_web::dev::ServiceFactory;
+use actix_web::dev::ServiceRequest;
+use actix_web::dev::ServiceResponse;
+use actix_web::web::Data;
+use actix_web::web::Json;
+use actix_web::web::get;
+use actix_web::web::post;
+use actix_web::web::put;
 use anyhow::Result;
 use anyhow::anyhow;
-use axum::Router;
-use axum::extract::Json;
-use axum::extract::State;
-use axum::routing::get;
-use axum::routing::post;
-use axum::routing::put;
-use axum::serve::serve;
-use axum_extra::extract::cookie::Cookie;
-use axum_extra::extract::cookie::CookieJar;
-use http::StatusCode;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_email::Email;
 use std::collections::HashMap;
-use std::net::IpAddr;
-use std::net::Ipv4Addr;
-use std::net::SocketAddr;
-use std::result::Result as StdResult;
+use std::io::Result as IoResult;
 use std::sync::Arc;
 use std::sync::RwLock;
-use tokio::net::TcpListener;
 
 #[cfg(test)]
 use axum_test::TestServer;
@@ -45,24 +46,14 @@ use axum_test::TestServer;
 const PORT: u16 = 8080;
 const USER_ID_COOKIE_NAME: &'static str = &"todo-user-id";
 
-#[tokio::main]
-async fn main() {
-    let result: Result<()> = {
-        let app = new_app();
+#[actix_web::main]
+async fn main() -> IoResult<()> {
+    let state = new_app_state();
 
-        // Start!
-        let ip_address = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
-        let address = SocketAddr::new(ip_address, PORT);
-        let listener = TcpListener::bind(address).await.unwrap();
-        serve(listener, app.into_make_service()).await.unwrap();
-
-        Ok(())
-    };
-
-    match &result {
-        Err(err) => eprintln!("{}", err),
-        _ => {}
-    };
+    HttpServer::new(move || new_app(state.clone()))
+        .bind(format!("0.0.0.0:{PORT}"))?
+        .run()
+        .await
 }
 
 type SharedAppState = Arc<RwLock<AppState>>;
@@ -84,94 +75,103 @@ pub struct LoginRequest {
     user: Email,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct AllTodos {
-    todos: Vec<Todo>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct NumTodos {
-    num: u32,
-}
-
 // Note you should never do something like this in a real application
 // for session cookies. It's really bad. Like _seriously_ bad.
 //
 // This is done like this here to keep the code shorter. That's all.
-fn get_user_id_from_cookie(cookies: &CookieJar) -> Result<u32> {
-    cookies
-        .get(&USER_ID_COOKIE_NAME)
-        .map(|c| c.value().to_string().parse::<u32>().ok())
-        .flatten()
+fn get_user_id_from_request(req: &HttpRequest) -> Result<u32> {
+    req.cookie(USER_ID_COOKIE_NAME)
+        .and_then(|c| c.value().parse::<u32>().ok())
         .ok_or_else(|| anyhow!("id not found"))
 }
 
 pub async fn route_post_user_login(
-    State(ref mut state): State<SharedAppState>,
-    mut cookies: CookieJar,
-    Json(_body): Json<LoginRequest>,
-) -> CookieJar {
+    state: Data<SharedAppState>,
+    _body: Json<LoginRequest>,
+) -> HttpResponse {
     let mut lock = state.write().unwrap();
-    let user_todos = &mut lock.user_todos;
-    let user_id = user_todos.len() as u32;
-    user_todos.insert(user_id, vec![]);
+    let user_id = lock.user_todos.len() as u32;
+    lock.user_todos.insert(user_id, vec![]);
 
-    let really_insecure_login_cookie = Cookie::new(USER_ID_COOKIE_NAME, user_id.to_string());
-    cookies = cookies.add(really_insecure_login_cookie);
+    let really_insecure_login_cookie =
+        Cookie::build(USER_ID_COOKIE_NAME, user_id.to_string()).finish();
 
-    cookies
+    HttpResponse::Ok()
+        .cookie(really_insecure_login_cookie)
+        .finish()
 }
 
 pub async fn route_put_user_todos(
-    State(ref mut state): State<SharedAppState>,
-    mut cookies: CookieJar,
-    Json(todo): Json<Todo>,
-) -> StdResult<Json<u32>, StatusCode> {
-    let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
+    req: HttpRequest,
+    state: Data<SharedAppState>,
+    body: Json<Todo>,
+) -> HttpResponse {
+    let user_id = match get_user_id_from_request(&req) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::Unauthorized().finish(),
+    };
 
     let mut lock = state.write().unwrap();
-    let todos = lock.user_todos.get_mut(&user_id).unwrap();
-
-    todos.push(todo);
+    let todos = match lock.user_todos.get_mut(&user_id) {
+        Some(todos) => todos,
+        None => return HttpResponse::Unauthorized().finish(),
+    };
+    todos.push(body.into_inner());
     let num_todos = todos.len() as u32;
 
-    Ok(Json(num_todos))
+    HttpResponse::Ok().json(num_todos)
 }
 
-pub async fn route_get_user_todos(
-    State(ref state): State<SharedAppState>,
-    mut cookies: CookieJar,
-) -> StdResult<Json<Vec<Todo>>, StatusCode> {
-    let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
+pub async fn route_get_user_todos(req: HttpRequest, state: Data<SharedAppState>) -> HttpResponse {
+    let user_id = match get_user_id_from_request(&req) {
+        Ok(id) => id,
+        Err(_) => return HttpResponse::Unauthorized().finish(),
+    };
 
     let lock = state.read().unwrap();
-    let todos = lock.user_todos[&user_id].clone();
+    let todos = match lock.user_todos.get(&user_id) {
+        Some(todos) => todos.clone(),
+        None => return HttpResponse::Unauthorized().finish(),
+    };
 
-    Ok(Json(todos))
+    HttpResponse::Ok().json(todos)
 }
 
-pub(crate) fn new_app() -> Router {
+fn new_app(
+    state: SharedAppState,
+) -> App<
+    impl ServiceFactory<
+        ServiceRequest,
+        Config = (),
+        Response = ServiceResponse<BoxBody>,
+        Error = ActixWebError,
+        InitError = (),
+    >,
+> {
+    App::new()
+        .app_data(Data::new(state))
+        .route("/login", post().to(route_post_user_login))
+        .route("/todo", get().to(route_get_user_todos))
+        .route("/todo", put().to(route_put_user_todos))
+}
+
+fn new_app_state() -> SharedAppState {
     let state = AppState {
         user_todos: HashMap::new(),
     };
-    let shared_state = Arc::new(RwLock::new(state));
-
-    Router::new()
-        .route(&"/login", post(route_post_user_login))
-        .route(&"/todo", get(route_get_user_todos))
-        .route(&"/todo", put(route_put_user_todos))
-        .with_state(shared_state)
+    Arc::new(RwLock::new(state))
 }
 
 #[cfg(test)]
 fn new_test_app() -> TestServer {
-    let app = new_app();
+    let state = new_app_state();
+
     TestServer::builder()
         // Preserve cookies across requests
         // for the session cookie to work.
         .save_cookies()
         .expect_success_by_default()
-        .build(app)
+        .build(move || new_app(state.clone()))
 }
 
 #[cfg(test)]
@@ -195,20 +195,6 @@ mod test_post_login {
     }
 
     #[tokio::test]
-    async fn it_should_assert_session_cookie_exists_on_login() {
-        let server = new_test_app();
-
-        let response = server
-            .post(&"/login")
-            .json(&json!({
-                "user": "my-login@example.com",
-            }))
-            .await;
-
-        response.assert_cookie_exists(&USER_ID_COOKIE_NAME);
-    }
-
-    #[tokio::test]
     async fn it_should_not_login_using_non_email() {
         let server = new_test_app();
 
@@ -229,6 +215,7 @@ mod test_post_login {
 #[cfg(test)]
 mod test_route_put_user_todos {
     use super::*;
+    use http::StatusCode;
     use serde_json::json;
 
     #[tokio::test]
@@ -256,7 +243,8 @@ mod test_route_put_user_todos {
             .json(&json!({
                 "user": "my-login@example.com",
             }))
-            .await;
+            .await
+            .assert_contains_cookie(&USER_ID_COOKIE_NAME);
 
         let num_todos = server
             .put(&"/todo")
@@ -283,6 +271,7 @@ mod test_route_put_user_todos {
 #[cfg(test)]
 mod test_route_get_user_todos {
     use super::*;
+    use http::StatusCode;
     use serde_json::json;
 
     #[tokio::test]

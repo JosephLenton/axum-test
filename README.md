@@ -4,7 +4,7 @@
   </h1>
 
   <h3>
-    Easy E2E testing for Axum<br/>
+    Easy E2E testing for Axum (and Actix Web)<br/>
     including REST, WebSockets, and more
   </h3>
 
@@ -55,6 +55,7 @@ In both cases allowing you to run multiple servers, across multiple tests, all i
 |---------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `all`               | _off_         | Turns on all non-deprecated features.                                                                                                                               |
 | `pretty-assertions` | **on**        | Uses the [pretty assertions crate](https://crates.io/crates/pretty_assertions) on response `assert_*` methods.                                       |
+| `actix-web`.        | _off_         | Enabled support for using Axum Test with Actix Web                                                                                                   |
 | `yaml`              | _off_         | Enables support for sending, receiving, and asserting, [yaml content](https://yaml.org/).                                                            |
 | `msgpack`           | _off_         | Enables support for sending, receiving, and asserting, [msgpack content](https://msgpack.org/index.html).                                            |
 | `typed-routing`     | _off_         | Enables support for using `TypedPath` in requests. See [axum-extra](https://crates.io/crates/axum-extra) for details.                                |
@@ -70,7 +71,8 @@ Here is a list of compatability with prior versions:
 
 | Axum Version    | Axum Test Version |
 |-----------------|-------------------|
-| 0.8.8+ (latest) | 19.0.0 (latest)   |
+| 0.8.8+ (latest) | 20.0.0 (latest)   |
+| 0.8.8+          | 19.0.0            |
 | 0.8.7           | 18.3.0            |
 | 0.8.4           | 18.0.0            |
 | 0.8.3           | 17.3              |
@@ -78,6 +80,18 @@ Here is a list of compatability with prior versions:
 | 0.7.6 to 0.7.9  | 16                |
 | 0.7.0 to 0.7.5  | 14, 15            |
 | 0.6             | 13.4.1            |
+
+
+## ⁉️ Actix Web Compatibility
+
+Yes. It works with Actix Web as well.
+The current version of Axum Test requires at least Actix Web v0.8.8.
+
+Here is a list of compatability with prior versions:
+
+| Actix Web Version | Axum Test Version |
+|-------------------|-------------------|
+| 4.13.0+ (latest)  | 20.0.0 (latest)   |
 
 
 ## 📺 Examples
@@ -89,6 +103,14 @@ These include tests for:
  * [a WebSocket ping pong application](/examples/websocket-ping-pong) which sends requests up and down
  * [a simple WebSocket chat application](/examples/websocket-chat)
  * [example snapshot tests](/examples/snapshots) using [Insta](https://crates.io/crates/insta)
+
+
+### Actix Web
+
+Versions of the examples for Actix Web are here:
+
+ * [a simple REST Todo application](/examples/actix-web-todo)
+ * [a WebSocket ping pong application](/examples/actix-web-websocket-ping-pong)
 
 
 ## 🚀 Request Building Features

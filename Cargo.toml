@@ -17,6 +17,16 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
+name = "actix-web-todo"
+path = "examples/actix-web-todo/main.rs"
+required-features = ["actix-web"]
+
+[[example]]
+name = "actix-web-websocket-ping-pong"
+path = "examples/actix-web-websocket-ping-pong/main.rs"
+required-features = ["actix-web", "ws"]
+
+[[example]]
 name = "snapshots"
 path = "examples/snapshots/main.rs"
 
@@ -37,8 +47,9 @@ required-features = ["ws"]
 [features]
 default = ["pretty-assertions"]
 
-all = ["pretty-assertions", "yaml", "msgpack", "reqwest", "typed-routing", "ws"]
+all = ["pretty-assertions", "yaml", "msgpack", "reqwest", "typed-routing", "ws", "actix-web"]
 
+actix-web = ["dep:actix-web"]
 pretty-assertions = ["dep:pretty_assertions"]
 yaml = ["dep:serde_yaml"]
 msgpack = ["dep:rmp-serde"]
@@ -88,6 +99,9 @@ tokio-tungstenite = { version = "0.28.0", optional = true }
 # Reqwest
 reqwest = { version = "0.13.2", optional = true, features = ["cookies", "json", "stream", "multipart"] }
 
+# Actix Web
+actix-web = { version = "4.13.0", optional = true }
+
 # Old Json Diff
 assert-json-diff = { version = "2.0.2", optional = true }
 
@@ -101,6 +115,7 @@ futures-util = "0.3.32"
 insta = { version = "1.46.3", features = ["json"] }
 rand = "0.10.0"
 regex = "1.12.3"
+actix-ws = "0.3"
 serde-email = { version = "3.2.0", features = ["serde"] }
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "sync", "time", "macros"] }
 tower-http = { version = "0.6.8", features = ["normalize-path"] }

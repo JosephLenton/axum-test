@@ -19,11 +19,11 @@ use std::pin::Pin;
 use tower::Service;
 use tower::util::ServiceExt;
 
-pub struct MockTransportLayer<S> {
+pub struct AxumMockTransportLayer<S> {
     service: S,
 }
 
-impl<S, RouterService> MockTransportLayer<S>
+impl<S, RouterService> AxumMockTransportLayer<S>
 where
     S: Service<Request<Body>, Response = RouterService> + Clone + Send + Sync,
     AnyhowError: From<S::Error>,
@@ -35,7 +35,7 @@ where
     }
 }
 
-impl<S, RouterService> TransportLayer for MockTransportLayer<S>
+impl<S, RouterService> TransportLayer for AxumMockTransportLayer<S>
 where
     S: Service<Request<Body>, Response = RouterService> + Clone + Send + Sync + 'static,
     AnyhowError: From<S::Error>,
@@ -75,9 +75,9 @@ where
     }
 }
 
-impl<S> Debug for MockTransportLayer<S> {
+impl<S> Debug for AxumMockTransportLayer<S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "MockTransportLayer {{ service: {{unknown}} }}")
+        write!(f, "AxumMockTransportLayer {{ service: {{unknown}} }}")
     }
 }
 

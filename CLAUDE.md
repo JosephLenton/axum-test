@@ -65,6 +65,8 @@ The existing features are `pretty-assertions` (default), `yaml`, `msgpack`, `typ
 - **Error handling** — use `anyhow::Result<T>`; add context with `.context()`
 - **Builder pattern** — used throughout for configuration structs
 - **No `unwrap()` in library code** — propagate errors properly
+- **Imports** — use full `use` imports at the top of the file; avoid inline path lookups (e.g. `some::Type`) in function bodies and signatures
+- **Aliased std results** — use `use std::io::Result as IoResult` and `use std::fmt::Result as FmtResult` rather than writing `std::io::Result` or `std::fmt::Result` inline
 - Doc comments on all public API items
 
 ## Testing Patterns

@@ -23,6 +23,7 @@ test:
 
 	# Check the various build variations work
 	cargo +stable check --no-default-features
+	cargo +stable check --features actix-web
 	cargo +stable check --features all
 	cargo +stable check --features pretty-assertions
 	cargo +stable check --features yaml
