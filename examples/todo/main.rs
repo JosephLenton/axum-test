@@ -205,7 +205,7 @@ mod test_post_login {
             }))
             .await;
 
-        response.assert_cookie_exists(&USER_ID_COOKIE_NAME);
+        response.assert_contains_cookie(&USER_ID_COOKIE_NAME);
     }
 
     #[tokio::test]
