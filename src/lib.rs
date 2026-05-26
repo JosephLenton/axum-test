@@ -108,6 +108,7 @@
 //!
 
 #![allow(clippy::module_inception)]
+#![allow(clippy::collapsible_if)]
 #![allow(clippy::derivable_impls)]
 #![allow(clippy::manual_range_contains)]
 #![forbid(unsafe_code)]

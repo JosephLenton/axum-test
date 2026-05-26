@@ -5,7 +5,7 @@ use rust_multipart_rfc7578_2::client::multipart::Form;
 use std::fmt::Display;
 use std::io::Cursor;
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct MultipartForm {
     inner: Form<'static>,
 }
@@ -47,14 +47,6 @@ impl MultipartForm {
     /// Returns the content type this form will use when it is sent.
     pub fn content_type(&self) -> String {
         self.inner.content_type()
-    }
-}
-
-impl Default for MultipartForm {
-    fn default() -> Self {
-        Self {
-            inner: Default::default(),
-        }
     }
 }
 
