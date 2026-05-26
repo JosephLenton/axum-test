@@ -16,7 +16,7 @@ test:
 	cargo +stable test --lib --bins --tests
 
 	# Check minimum version works
-	cargo +1.85 check --features "pretty-assertions,yaml,msgpack,reqwest,typed-routing,ws"
+	cargo +1.85 check --features "all"
 
 	# Check nightly also works, see https://github.com/JosephLenton/axum-test/issues/133
 	cargo +nightly check --features all
