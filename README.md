@@ -71,8 +71,9 @@ Here is a list of compatability with prior versions:
 
 | Axum Version    | Axum Test Version |
 |-----------------|-------------------|
-| 0.8.8+ (latest) | 20.0.0 (latest)   |
-| 0.8.8+          | 19.0.0            |
+| 0.8.9+ (latest) | 20.1.0 (latest)   |
+| 0.8.8.          | 20.0.0            |
+| 0.8.8           | 19.0.0            |
 | 0.8.7           | 18.3.0            |
 | 0.8.4           | 18.0.0            |
 | 0.8.3           | 17.3              |
@@ -91,7 +92,8 @@ Here is a list of compatability with prior versions:
 
 | Actix Web Version | Axum Test Version |
 |-------------------|-------------------|
-| 4.13.0+ (latest)  | 20.0.0 (latest)   |
+| 4.13.0+ (latest)  | 20.1.0 (latest)   |
+| 4.13.0.           | 20.0.0            |
 
 
 ## 📺 Examples
