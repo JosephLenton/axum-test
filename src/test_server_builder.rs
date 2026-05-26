@@ -29,7 +29,7 @@ use std::net::IpAddr;
 /// # }
 /// ```
 ///
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct TestServerBuilder {
     config: TestServerConfig,
 }
@@ -145,14 +145,6 @@ impl TestServerBuilder {
     /// ```
     pub fn into_config(self) -> TestServerConfig {
         self.config
-    }
-}
-
-impl Default for TestServerBuilder {
-    fn default() -> Self {
-        Self {
-            config: TestServerConfig::default(),
-        }
     }
 }
 

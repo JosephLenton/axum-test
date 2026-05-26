@@ -2,12 +2,13 @@ use std::net::IpAddr;
 
 /// Transport is for setting which transport mode for the `TestServer`
 /// to use when making requests.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Transport {
     /// With this transport mode, `TestRequest` will use a mock HTTP
     /// transport.
     ///
     /// This is the Default Transport type.
+    #[default]
     MockHttp,
 
     /// With this transport mode, a real web server will be spun up
@@ -31,10 +32,4 @@ pub enum Transport {
         /// **Defaults** to a _random_ port.
         port: Option<u16>,
     },
-}
-
-impl Default for Transport {
-    fn default() -> Self {
-        Self::MockHttp
-    }
 }
