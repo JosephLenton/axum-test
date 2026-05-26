@@ -45,7 +45,7 @@ async fn it_should_ping_pong() {
 ```
 
 A `TestServer` enables you to run an Axum service with a mocked network,
-or on a random port with real network reqeusts.
+or on a random port with real network requests.
 In both cases allowing you to run multiple servers, across multiple tests, all in parallel.
 
 
