@@ -16,7 +16,7 @@ test:
 	cargo +stable test --lib --bins --tests
 
 	# Check minimum version works
-	cargo +1.85 check --features "all"
+	cargo +1.88 check --features "all"
 
 	# Check nightly also works, see https://github.com/JosephLenton/axum-test/issues/133
 	cargo +nightly check --features all

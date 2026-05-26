@@ -2,7 +2,7 @@
 name = "axum-test"
 authors = ["Joseph Lenton <josephlenton@gmail.com>"]
 version = "20.1.0"
-rust-version = "1.85"
+rust-version = "1.88"
 edition = "2024"
 license = "MIT"
 description = "Easy E2E testing for Axum"
