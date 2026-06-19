@@ -16,7 +16,9 @@ impl Display for DebugResponseBody<'_> {
             Some(content_type) => {
                 match content_type.as_str() {
                     // Json
-                    "application/json" | "text/json" => write_json(f, self.0),
+                    "application/json" | "text/json" | "application/problem+json" => {
+                        write_json(f, self.0)
+                    }
 
                     // Msgpack
                     "application/msgpack" => write!(f, "<MsgPack>"),
