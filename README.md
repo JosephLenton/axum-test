@@ -4,8 +4,9 @@
   </h1>
 
   <h3>
-    Easy E2E testing for Axum (and Actix Web)<br/>
-    including REST, WebSockets, and more
+    Easy E2E testing for Axum<br/>
+    (and Actix Web),<br/>
+    REST, WebSockets, snapshots, and more
   </h3>
 
   [![crate](https://img.shields.io/crates/v/axum-test.svg)](https://crates.io/crates/axum-test)
@@ -71,8 +72,9 @@ Here is a list of compatability with prior versions:
 
 | Axum Version    | Axum Test Version |
 |-----------------|-------------------|
-| 0.8.9+ (latest) | 20.1.0 (latest)   |
-| 0.8.8.          | 20.0.0            |
+| 0.8.9+ (latest) | 21.0.0 (latest)   |
+| 0.8.9           | 20.1.0            |
+| 0.8.8           | 20.0.0            |
 | 0.8.8           | 19.0.0            |
 | 0.8.7           | 18.3.0            |
 | 0.8.4           | 18.0.0            |

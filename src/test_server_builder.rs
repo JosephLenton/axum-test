@@ -5,6 +5,7 @@ use crate::internals::ErrorMessage;
 use crate::transport_layer::IntoTransportLayer;
 use anyhow::Result;
 use std::net::IpAddr;
+use std::net::TcpListener as StdTcpListener;
 
 /// A builder for [`TestServer`]. Inside is a [`TestServerConfig`],
 /// configured by each method, and then turn into a server by [`TestServerBuilder::build`].
@@ -29,7 +30,7 @@ use std::net::IpAddr;
 /// # }
 /// ```
 ///
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct TestServerBuilder {
     config: TestServerConfig,
 }
@@ -50,6 +51,10 @@ impl TestServerBuilder {
 
     pub fn http_transport_with_ip_port(self, ip: Option<IpAddr>, port: Option<u16>) -> Self {
         self.transport(Transport::HttpIpPort { ip, port })
+    }
+
+    pub fn http_transport_with_tcp_listener(self, tcp_listener: StdTcpListener) -> Self {
+        self.transport(Transport::HttpTcpListner { tcp_listener })
     }
 
     pub fn mock_transport(self) -> Self {
