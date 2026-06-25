@@ -71,7 +71,7 @@ hyper-util = { version = "0.1.20", features = ["client", "http1", "client-legacy
 hyper = { version = "1.10.1", features = ["http1"] }
 mime = "0.3.17"
 rust-multipart-rfc7578_2 = "0.9.0"
-reserve-port = "2.4.0"
+reserve-port = "2.5.0"
 serde = "1.0.228"
 serde_json = "1.0.150"
 serde_urlencoded = "0.7.1"
