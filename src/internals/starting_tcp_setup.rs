@@ -17,7 +17,23 @@ pub struct StartingTcpSetup {
 }
 
 impl StartingTcpSetup {
-    pub fn new(maybe_ip: Option<IpAddr>, maybe_port: Option<u16>) -> Result<Self> {
+    pub fn from_tcp_listener(std_tcp_listener: StdTcpListener) -> Result<Self> {
+        let socket_addr = std_tcp_listener
+            .local_addr()
+            .expect("Failed to get underlying socket address for TcpListener");
+        ReservedPort::reserve_port(socket_addr.port())?;
+
+        std_tcp_listener.set_nonblocking(true)?;
+        let tokio_tcp_listener = TokioTcpListener::from_std(std_tcp_listener)?;
+
+        Ok(Self {
+            maybe_reserved_port: None,
+            socket_addr,
+            tcp_listener: tokio_tcp_listener,
+        })
+    }
+
+    pub fn from_ip_port(maybe_ip: Option<IpAddr>, maybe_port: Option<u16>) -> Result<Self> {
         let ip = maybe_ip.unwrap_or(DEFAULT_IP_ADDRESS);
 
         maybe_port
@@ -65,7 +81,7 @@ mod test_new {
         let ip = None;
         let port = None;
 
-        let setup = StartingTcpSetup::new(ip, port).unwrap();
+        let setup = StartingTcpSetup::from_ip_port(ip, port).unwrap();
         let addr = setup.socket_addr.to_string();
 
         let regex = Regex::new("^127\\.0\\.0\\.1:[0-9]+$").unwrap();
@@ -78,7 +94,7 @@ mod test_new {
         let ip = Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
         let port = None;
 
-        let setup = StartingTcpSetup::new(ip, port).unwrap();
+        let setup = StartingTcpSetup::from_ip_port(ip, port).unwrap();
         let addr = setup.socket_addr.to_string();
 
         let regex = Regex::new("^127\\.0\\.0\\.1:[0-9]+$").unwrap();
@@ -91,7 +107,7 @@ mod test_new {
         let ip = None;
         let port = Some(8123);
 
-        let setup = StartingTcpSetup::new(ip, port).unwrap();
+        let setup = StartingTcpSetup::from_ip_port(ip, port).unwrap();
         let addr = setup.socket_addr.to_string();
 
         assert_eq!(addr, "127.0.0.1:8123");
@@ -102,7 +118,7 @@ mod test_new {
         let ip = Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
         let port = Some(8124);
 
-        let setup = StartingTcpSetup::new(ip, port).unwrap();
+        let setup = StartingTcpSetup::from_ip_port(ip, port).unwrap();
         let addr = setup.socket_addr.to_string();
 
         assert_eq!(addr, "127.0.0.1:8124");

@@ -40,7 +40,7 @@ use anyhow::Result;
 /// # }
 /// ```
 ///
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TestServerConfig {
     /// Which transport mode to use to process requests.
     /// For setting if the server should use mocked http (which uses [`tower::util::Oneshot`](tower::util::Oneshot)),

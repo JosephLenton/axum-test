@@ -231,17 +231,22 @@ impl TestServer {
 
         let transport = match config.transport {
             None => {
-                let builder = TransportLayerBuilder::new(None, None);
+                let builder = TransportLayerBuilder::from_ip_port(None, None);
                 let transport = app.into_default_transport(builder)?;
                 Arc::new(transport)
             }
             Some(Transport::HttpRandomPort) => {
-                let builder = TransportLayerBuilder::new(None, None);
+                let builder = TransportLayerBuilder::from_ip_port(None, None);
                 let transport = app.into_http_transport_layer(builder)?;
                 Arc::new(transport)
             }
             Some(Transport::HttpIpPort { ip, port }) => {
-                let builder = TransportLayerBuilder::new(ip, port);
+                let builder = TransportLayerBuilder::from_ip_port(ip, port);
+                let transport = app.into_http_transport_layer(builder)?;
+                Arc::new(transport)
+            }
+            Some(Transport::HttpTcpListner { tcp_listener }) => {
+                let builder = TransportLayerBuilder::from_tcp_listener(tcp_listener);
                 let transport = app.into_http_transport_layer(builder)?;
                 Arc::new(transport)
             }
