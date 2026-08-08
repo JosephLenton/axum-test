@@ -229,7 +229,7 @@ impl TestWebSocket {
     }
 
     #[must_use]
-    pub async fn maybe_receive_message_within(&mut self, wait: Duration) -> Option<WsMessage> {
+    async fn maybe_receive_message_within(&mut self, wait: Duration) -> Option<WsMessage> {
         let maybe_message = timeout(wait, self.stream.next()).await.ok()??;
         let message =
             maybe_message.error_message("Failed to receive message from WebSocket stream");
@@ -240,6 +240,16 @@ impl TestWebSocket {
     pub async fn assert_receive_message(&mut self, expected: WsMessage) -> &mut Self {
         let received = self.receive_message().await;
         assert_eq!(expected, received);
+
+        self
+    }
+
+    pub async fn assert_receive_no_message(&mut self) -> &mut Self {
+        let maybe_received = self.maybe_receive_message().await;
+
+        if let Some(received) = maybe_received {
+            panic!("Expected no message to be received, received '{received:?}'");
+        }
 
         self
     }
