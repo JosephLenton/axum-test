@@ -53,7 +53,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 /// and pass in your application:
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum::routing::get;
@@ -79,7 +79,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 /// For example:
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum::routing::get;
@@ -112,7 +112,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 /// or **real http** networking for your service.
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum::routing::get;
@@ -167,7 +167,7 @@ impl TestServer {
     /// To catch the error use [`TestServer::try_new`].
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum::routing::get;
@@ -362,7 +362,7 @@ impl TestServer {
     /// This expects a relative url to the `TestServer`.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -404,7 +404,7 @@ impl TestServer {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -448,7 +448,7 @@ impl TestServer {
     /// Using a `TypedPath` you can write build and test a route like below:
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Json;
     /// use axum::Router;
@@ -568,7 +568,7 @@ impl TestServer {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -707,7 +707,7 @@ impl TestServer {
     /// Adds a header to be sent with all future requests built from this `TestServer`.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;

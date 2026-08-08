@@ -15,7 +15,7 @@ use std::net::TcpListener as StdTcpListener;
 /// # Creating a [`TestServer`]
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum_test::TestServer;
@@ -131,7 +131,7 @@ impl TestServerBuilder {
     /// with can be passed to [`TestServer::new_with_config`].
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;

@@ -20,7 +20,7 @@ use anyhow::Result;
 /// These can be passed to `TestServer::new_with_config`:
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum_test::TestServer;
@@ -106,7 +106,7 @@ impl TestServerConfig {
     /// with config passed in.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
