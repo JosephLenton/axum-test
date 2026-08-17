@@ -747,7 +747,7 @@ impl TestResponse {
             format!("Failed to upgrade connection for, for request {debug_request_format}")
         });
 
-        TestWebSocket::new(upgraded).await
+        TestWebSocket::new(upgraded, self.websockets.receive_timeout).await
     }
 
     /// This performs an assertion comparing the whole body of the response,

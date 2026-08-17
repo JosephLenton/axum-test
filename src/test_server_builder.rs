@@ -7,6 +7,9 @@ use anyhow::Result;
 use std::net::IpAddr;
 use std::net::TcpListener as StdTcpListener;
 
+#[cfg(feature = "ws")]
+use std::time::Duration;
+
 /// A builder for [`TestServer`]. Inside is a [`TestServerConfig`],
 /// configured by each method, and then turn into a server by [`TestServerBuilder::build`].
 ///
@@ -88,6 +91,12 @@ impl TestServerBuilder {
 
     pub fn restrict_requests_with_http_scheme(mut self) -> Self {
         self.config.restrict_requests_with_http_scheme = true;
+        self
+    }
+
+    #[cfg(feature = "ws")]
+    pub fn web_socket_receive_timeout(mut self, timeout: Duration) -> Self {
+        self.config.web_socket_receive_timeout = timeout;
         self
     }
 

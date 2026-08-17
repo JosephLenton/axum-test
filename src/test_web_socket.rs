@@ -22,8 +22,17 @@ use tokio_tungstenite::tungstenite::protocol::Role;
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
 
-const DEFAULT_RECEIVE_TIMEOUT: Duration = Duration::from_millis(30);
-
+/// The client for testing sending messages to and from a web server
+/// over a WebSocket.
+///
+/// # On timeouts for receiving messages
+///
+/// All of the receive methods are built to expect a message within a
+/// set timeout. This timeout is to prevent blocking forever when waiting
+/// for a message that never arrives.
+///
+/// The timeout can be changed by setting [`Self::set_receive_timeout`].
+/// The default value is 20 milliseconds.
 #[derive(Debug)]
 pub struct TestWebSocket {
     stream: WebSocketStream<TokioIo<Upgraded>>,
@@ -31,20 +40,18 @@ pub struct TestWebSocket {
 }
 
 impl TestWebSocket {
-    pub(crate) async fn new(upgraded: Upgraded) -> Self {
+    pub(crate) async fn new(upgraded: Upgraded, receive_timeout: Duration) -> Self {
         let upgraded_io = TokioIo::new(upgraded);
         let stream = WebSocketStream::from_raw_socket(upgraded_io, Role::Client, None).await;
 
         Self {
             stream,
-            receive_timeout: DEFAULT_RECEIVE_TIMEOUT,
+            receive_timeout,
         }
     }
 
-    pub fn receive_timeout(&self) -> Duration {
-        self.receive_timeout
-    }
-
+    /// Overrides the max timeout to wait to see if a WS message has
+    /// been received.
     pub fn set_receive_timeout(&mut self, receive_timeout: Duration) -> &mut Self {
         self.receive_timeout = receive_timeout;
 
@@ -244,8 +251,15 @@ impl TestWebSocket {
         self
     }
 
+    /// Asserts no message is received within a timeout.
     pub async fn assert_receive_no_message(&mut self) -> &mut Self {
-        let maybe_received = self.maybe_receive_message().await;
+        self.assert_receive_no_message_within(self.receive_timeout)
+            .await
+    }
+
+    /// Asserts no message is received within the given timeout.
+    pub async fn assert_receive_no_message_within(&mut self, timeout: Duration) -> &mut Self {
+        let maybe_received = self.maybe_receive_message_within(timeout).await;
 
         if let Some(received) = maybe_received {
             panic!("Expected no message to be received, received '{received:?}'");

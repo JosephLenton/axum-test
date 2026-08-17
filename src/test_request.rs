@@ -663,6 +663,7 @@ impl TestRequest {
             crate::internals::TestResponseWebSocket {
                 maybe_on_upgrade,
                 transport_type,
+                receive_timeout: self.config.ws_receive_timeout,
             }
         };
 
