@@ -3362,6 +3362,9 @@ mod test_request_method {
         let method = server.post("/").await.request_method();
         assert_eq!(Method::POST, method);
 
+        let method = server.query("/").await.request_method();
+        assert_eq!(Method::QUERY, method);
+
         let method = server.put("/").await.request_method();
         assert_eq!(Method::PUT, method);
 
