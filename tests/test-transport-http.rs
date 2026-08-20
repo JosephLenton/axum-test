@@ -1,8 +1,8 @@
 use axum::Router;
 use axum::routing::get;
+use axum_test::TestServer;
 use reserve_port::ReservedSocketAddr;
 use std::net::TcpListener;
-use axum_test::TestServer;
 
 #[tokio::test]
 async fn it_should_start_a_http_test_server_with_a_tcp_listener() {

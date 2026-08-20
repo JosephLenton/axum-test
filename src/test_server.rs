@@ -284,6 +284,11 @@ impl TestServer {
         self.method(Method::POST, path)
     }
 
+    /// Creates a HTTP QUERY request to the given path.
+    pub fn query(&self, path: &str) -> TestRequest {
+        self.method(Method::QUERY, path)
+    }
+
     /// Creates a HTTP PATCH request to the path.
     pub fn patch(&self, path: &str) -> TestRequest {
         self.method(Method::PATCH, path)
