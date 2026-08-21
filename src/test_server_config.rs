@@ -5,6 +5,12 @@ use crate::internals::ErrorMessage;
 use crate::transport_layer::IntoTransportLayer;
 use anyhow::Result;
 
+#[cfg(feature = "ws")]
+use std::time::Duration;
+
+#[cfg(feature = "ws")]
+const DEFAULT_WEB_SOCKET_RECEIVE_TIMEOUT: Duration = Duration::from_millis(20);
+
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
 /// It implements [`Default`] to ease building.
 ///
@@ -20,7 +26,7 @@ use anyhow::Result;
 /// These can be passed to `TestServer::new_with_config`:
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum_test::TestServer;
@@ -92,6 +98,11 @@ pub struct TestServerConfig {
     ///
     /// This overrides the default 'best efforts' approach of requests.
     pub default_content_type: Option<String>,
+
+    /// Sets the maximum amount of time to wait
+    /// when the [`crate::TestWebSocket`] needs to receive a message.
+    #[cfg(feature = "ws")]
+    pub web_socket_receive_timeout: Duration,
 }
 
 impl TestServerConfig {
@@ -106,7 +117,7 @@ impl TestServerConfig {
     /// with config passed in.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -152,6 +163,9 @@ impl Default for TestServerConfig {
             expect_success_by_default: false,
             restrict_requests_with_http_scheme: false,
             default_content_type: None,
+
+            #[cfg(feature = "ws")]
+            web_socket_receive_timeout: DEFAULT_WEB_SOCKET_RECEIVE_TIMEOUT,
         }
     }
 }

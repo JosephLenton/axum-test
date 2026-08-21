@@ -7,6 +7,9 @@ use anyhow::Result;
 use std::net::IpAddr;
 use std::net::TcpListener as StdTcpListener;
 
+#[cfg(feature = "ws")]
+use std::time::Duration;
+
 /// A builder for [`TestServer`]. Inside is a [`TestServerConfig`],
 /// configured by each method, and then turn into a server by [`TestServerBuilder::build`].
 ///
@@ -15,7 +18,7 @@ use std::net::TcpListener as StdTcpListener;
 /// # Creating a [`TestServer`]
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum_test::TestServer;
@@ -91,6 +94,12 @@ impl TestServerBuilder {
         self
     }
 
+    #[cfg(feature = "ws")]
+    pub fn web_socket_receive_timeout(mut self, timeout: Duration) -> Self {
+        self.config.web_socket_receive_timeout = timeout;
+        self
+    }
+
     /// Creates a new [`TestServer`], running the application given,
     /// and with all settings from this `TestServerBuilder` applied.
     ///
@@ -131,7 +140,7 @@ impl TestServerBuilder {
     /// with can be passed to [`TestServer::new_with_config`].
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;

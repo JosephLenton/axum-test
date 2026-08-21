@@ -7,7 +7,7 @@
 //! # Simple example
 //!
 //! ```rust
-//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 //! #
 //! use axum::Router;
 //! use axum_test::TestServer;
@@ -30,7 +30,7 @@
 //! # Sending byte parts
 //!
 //! ```rust
-//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 //! #
 //! use axum::Router;
 //! use axum_test::TestServer;

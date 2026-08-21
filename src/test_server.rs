@@ -37,6 +37,8 @@ use std::cell::OnceCell;
 
 mod server_shared_state;
 pub(crate) use self::server_shared_state::*;
+#[cfg(feature = "ws")]
+use std::time::Duration;
 
 const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 
@@ -53,7 +55,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 /// and pass in your application:
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum::routing::get;
@@ -79,7 +81,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 /// For example:
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum::routing::get;
@@ -112,7 +114,7 @@ const DEFAULT_URL_ADDRESS: &str = "http://localhost";
 /// or **real http** networking for your service.
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Router;
 /// use axum::routing::get;
@@ -149,6 +151,9 @@ pub struct TestServer {
 
     #[cfg(feature = "reqwest")]
     maybe_reqwest_client: OnceCell<Client>,
+
+    #[cfg(feature = "ws")]
+    ws_receive_timeout: Duration,
 }
 
 impl TestServer {
@@ -167,7 +172,7 @@ impl TestServer {
     /// To catch the error use [`TestServer::try_new`].
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum::routing::get;
@@ -271,6 +276,9 @@ impl TestServer {
 
             #[cfg(feature = "reqwest")]
             maybe_reqwest_client: Default::default(),
+
+            #[cfg(feature = "ws")]
+            ws_receive_timeout: config.web_socket_receive_timeout,
         })
     }
 
@@ -362,7 +370,7 @@ impl TestServer {
     /// This expects a relative url to the `TestServer`.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -404,7 +412,7 @@ impl TestServer {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -448,7 +456,7 @@ impl TestServer {
     /// Using a `TypedPath` you can write build and test a route like below:
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Json;
     /// use axum::Router;
@@ -568,7 +576,7 @@ impl TestServer {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -707,7 +715,7 @@ impl TestServer {
     /// Adds a header to be sent with all future requests built from this `TestServer`.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -779,6 +787,9 @@ impl TestServer {
             full_request_url,
             query_params,
             headers,
+
+            #[cfg(feature = "ws")]
+            ws_receive_timeout: self.ws_receive_timeout,
         })
     }
 

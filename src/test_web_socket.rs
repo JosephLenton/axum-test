@@ -14,23 +14,48 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::time::Duration;
+use tokio::time::timeout;
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::protocol::Role;
 
 #[cfg(feature = "pretty-assertions")]
 use pretty_assertions::assert_eq;
 
+/// The client for testing sending messages to and from a web server
+/// over a WebSocket.
+///
+/// # On timeouts for receiving messages
+///
+/// All of the receive methods are built to expect a message within a
+/// set timeout. This timeout is to prevent blocking forever when waiting
+/// for a message that never arrives.
+///
+/// The timeout can be changed by setting [`Self::set_receive_timeout`].
+/// The default value is 20 milliseconds.
 #[derive(Debug)]
 pub struct TestWebSocket {
     stream: WebSocketStream<TokioIo<Upgraded>>,
+    receive_timeout: Duration,
 }
 
 impl TestWebSocket {
-    pub(crate) async fn new(upgraded: Upgraded) -> Self {
+    pub(crate) async fn new(upgraded: Upgraded, receive_timeout: Duration) -> Self {
         let upgraded_io = TokioIo::new(upgraded);
         let stream = WebSocketStream::from_raw_socket(upgraded_io, Role::Client, None).await;
 
-        Self { stream }
+        Self {
+            stream,
+            receive_timeout,
+        }
+    }
+
+    /// Overrides the max timeout to wait to see if a WS message has
+    /// been received.
+    pub fn set_receive_timeout(&mut self, receive_timeout: Duration) -> &mut Self {
+        self.receive_timeout = receive_timeout;
+
+        self
     }
 
     pub async fn close(mut self) {
@@ -104,6 +129,15 @@ impl TestWebSocket {
     }
 
     #[must_use]
+    pub async fn maybe_receive_text(&mut self) -> Option<String> {
+        let maybe_message = self.maybe_receive_message().await;
+
+        maybe_message.map(|message| {
+            message_to_text(message).error_message("Failed to receive websocket response as text")
+        })
+    }
+
+    #[must_use]
     pub async fn receive_json<T>(&mut self) -> T
     where
         T: DeserializeOwned,
@@ -111,6 +145,18 @@ impl TestWebSocket {
         let bytes = self.receive_bytes().await;
         serde_json::from_slice::<T>(&bytes)
             .error_message_with_body("Failed to deserialize Json websocket response", &bytes)
+    }
+
+    #[must_use]
+    pub async fn maybe_receive_json<T>(&mut self) -> Option<T>
+    where
+        T: DeserializeOwned,
+    {
+        let bytes = self.maybe_receive_bytes().await?;
+        let value = serde_json::from_slice::<T>(&bytes)
+            .error_message_with_body("Failed to deserialize Json websocket response", &bytes);
+
+        Some(value)
     }
 
     #[cfg(feature = "yaml")]
@@ -124,6 +170,19 @@ impl TestWebSocket {
             .error_message_with_body("Failed to deserialize Yaml websocket response", &bytes)
     }
 
+    #[cfg(feature = "yaml")]
+    #[must_use]
+    pub async fn maybe_receive_yaml<T>(&mut self) -> Option<T>
+    where
+        T: DeserializeOwned,
+    {
+        let bytes = self.maybe_receive_bytes().await?;
+        let value = serde_yaml::from_slice::<T>(&bytes)
+            .error_message_with_body("Failed to deserialize Yaml websocket response", &bytes);
+
+        Some(value)
+    }
+
     #[cfg(feature = "msgpack")]
     #[must_use]
     pub async fn receive_msgpack<T>(&mut self) -> T
@@ -135,10 +194,32 @@ impl TestWebSocket {
             .error_message("Failed to deserialize MsgPack websocket response")
     }
 
+    #[cfg(feature = "msgpack")]
+    #[must_use]
+    pub async fn maybe_receive_msgpack<T>(&mut self) -> Option<T>
+    where
+        T: DeserializeOwned,
+    {
+        let received_bytes = self.maybe_receive_bytes().await?;
+        let value = rmp_serde::from_slice::<T>(&received_bytes)
+            .error_message("Failed to deserialize MsgPack websocket response");
+
+        Some(value)
+    }
+
     #[must_use]
     pub async fn receive_bytes(&mut self) -> Bytes {
         let message = self.receive_message().await;
         message_to_bytes(message).error_message("Failed to receive websocket response as bytes")
+    }
+
+    #[must_use]
+    pub async fn maybe_receive_bytes(&mut self) -> Option<Bytes> {
+        let message = self.maybe_receive_message().await?;
+        let bytes = message_to_bytes(message)
+            .error_message("Failed to receive websocket response as bytes");
+
+        Some(bytes)
     }
 
     #[must_use]
@@ -149,18 +230,42 @@ impl TestWebSocket {
     }
 
     #[must_use]
-    async fn maybe_receive_message(&mut self) -> Option<WsMessage> {
-        let maybe_message = self.stream.next().await;
+    pub async fn maybe_receive_message(&mut self) -> Option<WsMessage> {
+        self.maybe_receive_message_within(self.receive_timeout)
+            .await
+    }
 
-        match maybe_message {
-            None => None,
-            Some(message_result) => {
-                let message =
-                    message_result.error_message("Failed to receive message from WebSocket stream");
+    #[must_use]
+    async fn maybe_receive_message_within(&mut self, wait: Duration) -> Option<WsMessage> {
+        let maybe_message = timeout(wait, self.stream.next()).await.ok()??;
+        let message =
+            maybe_message.error_message("Failed to receive message from WebSocket stream");
 
-                Some(message)
-            }
+        Some(message)
+    }
+
+    pub async fn assert_receive_message(&mut self, expected: WsMessage) -> &mut Self {
+        let received = self.receive_message().await;
+        assert_eq!(expected, received);
+
+        self
+    }
+
+    /// Asserts no message is received within a timeout.
+    pub async fn assert_receive_no_message(&mut self) -> &mut Self {
+        self.assert_receive_no_message_within(self.receive_timeout)
+            .await
+    }
+
+    /// Asserts no message is received within the given timeout.
+    pub async fn assert_receive_no_message_within(&mut self, timeout: Duration) -> &mut Self {
+        let maybe_received = self.maybe_receive_message_within(timeout).await;
+
+        if let Some(received) = maybe_received {
+            panic!("Expected no message to be received, received '{received:?}'");
         }
+
+        self
     }
 
     pub async fn assert_receive_json<T>(&mut self, expected: &T) -> &mut Self
@@ -1026,6 +1131,195 @@ received:
     🦊
 "#,
             error_message
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_maybe_receive_message {
+    use super::*;
+    use crate::TestServer;
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::response::Response;
+    use axum::routing::get;
+    use pretty_assertions::assert_eq;
+    use std::time::Duration;
+    use tokio::time::sleep;
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket(ws: WebSocketUpgrade) -> Response {
+            async fn handle_messages(mut socket: WebSocket) {
+                while let Some(received_message) = socket.recv().await {
+                    let received = received_message.unwrap();
+                    let received_text = received.to_text().unwrap();
+
+                    if received_text == "send-message" {
+                        socket
+                            .send(Message::Text("this is a message".into()))
+                            .await
+                            .unwrap();
+                    }
+
+                    if received_text == "delayed-message" {
+                        sleep(Duration::from_millis(500)).await;
+
+                        socket
+                            .send(Message::Text("this is a delayed message".into()))
+                            .await
+                            .unwrap();
+                    }
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_messages(socket))
+        }
+
+        let app = Router::new().route(&"/ws", get(route_get_websocket));
+        TestServer::builder().http_transport().build(app)
+    }
+
+    #[tokio::test]
+    async fn it_should_return_a_message_when_it_is_received() {
+        let server = new_test_app();
+
+        let mut websocket = server.get_websocket(&"/ws").await.into_websocket().await;
+
+        websocket.send_text(&"send-message").await;
+
+        let maybe_message = websocket.maybe_receive_message().await;
+        assert_eq!(
+            Some(WsMessage::Text("this is a message".into())),
+            maybe_message
+        );
+    }
+
+    #[tokio::test]
+    async fn it_should_return_none_when_no_message() {
+        let server = new_test_app();
+
+        let mut websocket = server.get_websocket(&"/ws").await.into_websocket().await;
+
+        websocket.send_text(&"no-message").await;
+
+        let maybe_message = websocket.maybe_receive_message().await;
+        assert_eq!(None, maybe_message);
+    }
+
+    #[tokio::test]
+    async fn it_should_return_none_when_message_is_delayed() {
+        let server = new_test_app();
+
+        let mut websocket = server.get_websocket(&"/ws").await.into_websocket().await;
+
+        websocket.send_text(&"delayed-message").await;
+
+        let maybe_message = websocket.maybe_receive_message().await;
+        assert_eq!(None, maybe_message);
+
+        sleep(Duration::from_millis(500)).await;
+
+        let maybe_message = websocket.maybe_receive_message().await;
+        assert_eq!(
+            Some(WsMessage::Text("this is a delayed message".into())),
+            maybe_message
+        );
+    }
+}
+
+#[cfg(test)]
+mod test_maybe_receive_message_within {
+    use super::*;
+    use crate::TestServer;
+    use axum::Router;
+    use axum::extract::WebSocketUpgrade;
+    use axum::extract::ws::Message;
+    use axum::extract::ws::WebSocket;
+    use axum::response::Response;
+    use axum::routing::get;
+    use pretty_assertions::assert_eq;
+    use std::time::Duration;
+    use tokio::time::sleep;
+
+    fn new_test_app() -> TestServer {
+        pub async fn route_get_websocket(ws: WebSocketUpgrade) -> Response {
+            async fn handle_messages(mut socket: WebSocket) {
+                while let Some(received_message) = socket.recv().await {
+                    let received = received_message.unwrap();
+                    let received_text = received.to_text().unwrap();
+
+                    if received_text == "send-message" {
+                        socket
+                            .send(Message::Text("this is a message".into()))
+                            .await
+                            .unwrap();
+                    }
+
+                    if received_text == "delayed-message" {
+                        sleep(Duration::from_millis(500)).await;
+
+                        socket
+                            .send(Message::Text("this is a delayed message".into()))
+                            .await
+                            .unwrap();
+                    }
+                }
+            }
+
+            ws.on_upgrade(move |socket| handle_messages(socket))
+        }
+
+        let app = Router::new().route(&"/ws", get(route_get_websocket));
+        TestServer::builder().http_transport().build(app)
+    }
+
+    #[tokio::test]
+    async fn it_should_return_a_message_when_it_is_received() {
+        let server = new_test_app();
+
+        let mut websocket = server.get_websocket(&"/ws").await.into_websocket().await;
+
+        websocket.send_text(&"send-message").await;
+
+        let maybe_message = websocket
+            .maybe_receive_message_within(Duration::from_millis(50))
+            .await;
+        assert_eq!(
+            Some(WsMessage::Text("this is a message".into())),
+            maybe_message
+        );
+    }
+
+    #[tokio::test]
+    async fn it_should_return_none_when_no_message() {
+        let server = new_test_app();
+
+        let mut websocket = server.get_websocket(&"/ws").await.into_websocket().await;
+
+        websocket.send_text(&"no-message").await;
+
+        let maybe_message = websocket
+            .maybe_receive_message_within(Duration::from_millis(50))
+            .await;
+        assert_eq!(None, maybe_message);
+    }
+
+    #[tokio::test]
+    async fn it_should_return_some_message_from_delayed_message() {
+        let server = new_test_app();
+
+        let mut websocket = server.get_websocket(&"/ws").await.into_websocket().await;
+
+        websocket.send_text(&"delayed-message").await;
+
+        let maybe_message = websocket
+            .maybe_receive_message_within(Duration::from_secs(1))
+            .await;
+        assert_eq!(
+            Some(WsMessage::Text("this is a delayed message".into())),
+            maybe_message
         );
     }
 }

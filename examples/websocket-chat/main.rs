@@ -30,7 +30,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
+use tokio::spawn;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
 
 #[cfg(test)]
 use axum_test::TestServer;
@@ -110,12 +112,12 @@ async fn handle_chat(socket: WebSocket, username: String, state: SharedAppState)
                 }
             }
 
-            ::tokio::time::sleep(Duration::from_millis(10)).await;
+            sleep(Duration::from_millis(10)).await;
         }
     });
 
     // This second task will receive messages from client and print them on server console
-    let mut recv_task = tokio::spawn(async move {
+    let mut recv_task = spawn(async move {
         while let Some(Ok(message)) = receiver.next().await {
             let raw_text = message
                 .into_text()
