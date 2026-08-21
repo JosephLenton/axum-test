@@ -73,25 +73,25 @@ pub struct AppState {
     user_todos: HashMap<u32, Vec<Todo>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Todo {
     name: String,
     content: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct LoginRequest {
     user: Email,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AllTodos {
     todos: Vec<Todo>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct NumTodos {
-    num: u32,
+    num: usize,
 }
 
 // Note you should never do something like this in a real application
@@ -126,28 +126,27 @@ pub async fn route_put_user_todos(
     State(ref mut state): State<SharedAppState>,
     mut cookies: CookieJar,
     Json(todo): Json<Todo>,
-) -> StdResult<Json<u32>, StatusCode> {
+) -> StdResult<Json<NumTodos>, StatusCode> {
     let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let mut lock = state.write().unwrap();
     let todos = lock.user_todos.get_mut(&user_id).unwrap();
 
     todos.push(todo);
-    let num_todos = todos.len() as u32;
 
-    Ok(Json(num_todos))
+    Ok(Json(NumTodos { num: todos.len() }))
 }
 
 pub async fn route_get_user_todos(
     State(ref state): State<SharedAppState>,
     mut cookies: CookieJar,
-) -> StdResult<Json<Vec<Todo>>, StatusCode> {
+) -> StdResult<Json<AllTodos>, StatusCode> {
     let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let lock = state.read().unwrap();
     let todos = lock.user_todos[&user_id].clone();
 
-    Ok(Json(todos))
+    Ok(Json(AllTodos { todos }))
 }
 
 pub(crate) fn new_app() -> Router {
@@ -191,7 +190,7 @@ mod test_post_login {
             .await;
 
         let session_cookie = response.cookie(&USER_ID_COOKIE_NAME);
-        assert_ne!(session_cookie.value(), "");
+        assert_ne!("", session_cookie.value());
     }
 
     #[tokio::test]
@@ -244,7 +243,7 @@ mod test_route_put_user_todos {
             .expect_failure()
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+        response.assert_status_unauthorized();
     }
 
     #[tokio::test]
@@ -265,8 +264,8 @@ mod test_route_put_user_todos {
                 "content": "buy eggs",
             }))
             .await
-            .json::<u32>();
-        assert_eq!(num_todos, 1);
+            .json::<NumTodos>();
+        assert_eq!(NumTodos { num: 1 }, num_todos);
 
         let num_todos = server
             .put(&"/todo")
@@ -275,8 +274,8 @@ mod test_route_put_user_todos {
                 "content": "buy shoes",
             }))
             .await
-            .json::<u32>();
-        assert_eq!(num_todos, 2);
+            .json::<NumTodos>();
+        assert_eq!(NumTodos { num: 2 }, num_todos);
     }
 }
 
@@ -298,7 +297,7 @@ mod test_route_get_user_todos {
             .expect_failure()
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+        response.assert_status_unauthorized();
     }
 
     #[tokio::test]
@@ -329,18 +328,20 @@ mod test_route_get_user_todos {
             .await;
 
         // Get all todos out from the server.
-        let todos = server.get(&"/todo").await.json::<Vec<Todo>>();
+        let todos = server.get(&"/todo").await.json::<AllTodos>();
 
-        let expected_todos: Vec<Todo> = vec![
-            Todo {
-                name: "shopping".to_string(),
-                content: "buy eggs".to_string(),
-            },
-            Todo {
-                name: "afternoon".to_string(),
-                content: "buy shoes".to_string(),
-            },
-        ];
-        assert_eq!(todos, expected_todos)
+        let expected_todos = AllTodos {
+            todos: vec![
+                Todo {
+                    name: "shopping".to_string(),
+                    content: "buy eggs".to_string(),
+                },
+                Todo {
+                    name: "afternoon".to_string(),
+                    content: "buy shoes".to_string(),
+                },
+            ],
+        };
+        assert_eq!(expected_todos, todos)
     }
 }
