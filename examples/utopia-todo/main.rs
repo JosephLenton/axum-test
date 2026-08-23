@@ -20,9 +20,6 @@ use anyhow::anyhow;
 use axum::Router;
 use axum::extract::Json;
 use axum::extract::State;
-use axum::routing::get;
-use axum::routing::post;
-use axum::routing::put;
 use axum::serve::serve;
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::cookie::CookieJar;
@@ -38,6 +35,10 @@ use std::result::Result as StdResult;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tokio::net::TcpListener;
+use utoipa::ToSchema;
+use utoipa::openapi::OpenApi;
+use utoipa_axum::router::OpenApiRouter;
+use utoipa_axum::routes;
 
 #[cfg(test)]
 use axum_test::TestServer;
@@ -73,25 +74,25 @@ pub struct AppState {
     user_todos: HashMap<u32, Vec<Todo>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, ToSchema)]
 pub struct Todo {
     name: String,
     content: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, ToSchema)]
 pub struct LoginRequest {
     user: Email,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, ToSchema)]
 pub struct AllTodos {
     todos: Vec<Todo>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, ToSchema)]
 pub struct NumTodos {
-    num: u32,
+    num: usize,
 }
 
 // Note you should never do something like this in a real application
@@ -106,6 +107,7 @@ fn get_user_id_from_cookie(cookies: &CookieJar) -> Result<u32> {
         .ok_or_else(|| anyhow!("id not found"))
 }
 
+#[utoipa::path(post, path = "/login", responses((status = OK, body = ())))]
 pub async fn route_post_user_login(
     State(ref mut state): State<SharedAppState>,
     mut cookies: CookieJar,
@@ -122,32 +124,33 @@ pub async fn route_post_user_login(
     cookies
 }
 
+#[utoipa::path(put, path = "/todo", responses((status = OK, body = NumTodos)))]
 pub async fn route_put_user_todos(
     State(ref mut state): State<SharedAppState>,
     mut cookies: CookieJar,
     Json(todo): Json<Todo>,
-) -> StdResult<Json<u32>, StatusCode> {
+) -> StdResult<Json<NumTodos>, StatusCode> {
     let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let mut lock = state.write().unwrap();
     let todos = lock.user_todos.get_mut(&user_id).unwrap();
 
     todos.push(todo);
-    let num_todos = todos.len() as u32;
 
-    Ok(Json(num_todos))
+    Ok(Json(NumTodos { num: todos.len() }))
 }
 
+#[utoipa::path(get, path = "/todo", responses((status = OK, body = AllTodos)))]
 pub async fn route_get_user_todos(
     State(ref state): State<SharedAppState>,
     mut cookies: CookieJar,
-) -> StdResult<Json<Vec<Todo>>, StatusCode> {
+) -> StdResult<Json<AllTodos>, StatusCode> {
     let user_id = get_user_id_from_cookie(&mut cookies).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let lock = state.read().unwrap();
     let todos = lock.user_todos[&user_id].clone();
 
-    Ok(Json(todos))
+    Ok(Json(AllTodos { todos }))
 }
 
 pub(crate) fn new_app() -> Router {
@@ -156,11 +159,14 @@ pub(crate) fn new_app() -> Router {
     };
     let shared_state = Arc::new(RwLock::new(state));
 
-    Router::new()
-        .route(&"/login", post(route_post_user_login))
-        .route(&"/todo", get(route_get_user_todos))
-        .route(&"/todo", put(route_put_user_todos))
+    let (router, _api): (Router, OpenApi) = OpenApiRouter::new()
+        .routes(routes!(route_post_user_login))
+        .routes(routes!(route_get_user_todos))
+        .routes(routes!(route_put_user_todos))
         .with_state(shared_state)
+        .split_for_parts();
+
+    router
 }
 
 #[cfg(test)]
@@ -191,7 +197,7 @@ mod test_post_login {
             .await;
 
         let session_cookie = response.cookie(&USER_ID_COOKIE_NAME);
-        assert_ne!(session_cookie.value(), "");
+        assert_ne!("", session_cookie.value());
     }
 
     #[tokio::test]
@@ -244,7 +250,7 @@ mod test_route_put_user_todos {
             .expect_failure()
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+        response.assert_status_unauthorized();
     }
 
     #[tokio::test]
@@ -265,8 +271,8 @@ mod test_route_put_user_todos {
                 "content": "buy eggs",
             }))
             .await
-            .json::<u32>();
-        assert_eq!(num_todos, 1);
+            .json::<NumTodos>();
+        assert_eq!(NumTodos { num: 1 }, num_todos);
 
         let num_todos = server
             .put(&"/todo")
@@ -275,8 +281,8 @@ mod test_route_put_user_todos {
                 "content": "buy shoes",
             }))
             .await
-            .json::<u32>();
-        assert_eq!(num_todos, 2);
+            .json::<NumTodos>();
+        assert_eq!(NumTodos { num: 2 }, num_todos);
     }
 }
 
@@ -298,7 +304,7 @@ mod test_route_get_user_todos {
             .expect_failure()
             .await;
 
-        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+        response.assert_status_unauthorized();
     }
 
     #[tokio::test]
@@ -329,18 +335,20 @@ mod test_route_get_user_todos {
             .await;
 
         // Get all todos out from the server.
-        let todos = server.get(&"/todo").await.json::<Vec<Todo>>();
+        let todos = server.get(&"/todo").await.json::<AllTodos>();
 
-        let expected_todos: Vec<Todo> = vec![
-            Todo {
-                name: "shopping".to_string(),
-                content: "buy eggs".to_string(),
-            },
-            Todo {
-                name: "afternoon".to_string(),
-                content: "buy shoes".to_string(),
-            },
-        ];
-        assert_eq!(todos, expected_todos)
+        let expected_todos = AllTodos {
+            todos: vec![
+                Todo {
+                    name: "shopping".to_string(),
+                    content: "buy eggs".to_string(),
+                },
+                Todo {
+                    name: "afternoon".to_string(),
+                    content: "buy shoes".to_string(),
+                },
+            ],
+        };
+        assert_eq!(expected_todos, todos)
     }
 }
