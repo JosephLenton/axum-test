@@ -44,6 +44,11 @@ name = "websocket-ping-pong"
 path = "examples/websocket-ping-pong/main.rs"
 required-features = ["ws"]
 
+[[example]]
+name = "ututoipaopia-todo"
+path = "examples/utoipa-todo/main.rs"
+required-features = ["utoipa"]
+
 [features]
 default = ["pretty-assertions"]
 
@@ -55,7 +60,7 @@ yaml = ["dep:serde_yaml"]
 msgpack = ["dep:rmp-serde"]
 reqwest = ["dep:reqwest"]
 typed-routing = ["dep:axum-extra"]
-utopia = ["dep:utoipa-axum", "dep:utoipa"]
+utoipa = ["dep:utoipa-axum", "dep:utoipa"]
 ws = ["axum/ws", "tokio/time", "dep:uuid", "dep:base64", "dep:tokio-tungstenite", "dep:futures-util"]
 
 [dependencies]
@@ -92,7 +97,7 @@ rmp-serde = { version = "1.3.1", optional = true }
 # Typed Routing
 axum-extra = { version = "0.12.6", optional = true, features = ["routing", "typed-routing"] }
 
-# Utopia Routing
+# Utoipa Routing
 utoipa-axum = { version = "0.2.0", optional = true }
 utoipa = { version = "5.5.0", optional = true }
 

@@ -3,7 +3,7 @@
 //!
 //! ```bash
 //! # To run it's tests:
-//! cargo test --example=utopia-todo --features utopia
+//! cargo test --example=utoipa-todo --features utoipa
 //! ```
 //!
 //! The app includes the end points for ...
