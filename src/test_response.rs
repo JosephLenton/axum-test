@@ -46,7 +46,7 @@ use crate::internals::TestResponseWebSocket;
 /// will produce the response.
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Json;
 /// use axum::Router;
@@ -72,7 +72,7 @@ use crate::internals::TestResponseWebSocket;
 /// allow you to extract the underlying response content in different formats.
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// # use axum::Json;
 /// # use axum::Router;
@@ -111,7 +111,7 @@ use crate::internals::TestResponseWebSocket;
 /// methods.
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// use axum::Json;
 /// use axum::Router;
@@ -136,7 +136,7 @@ use crate::internals::TestResponseWebSocket;
 /// These methods all return `&self` to allow chaining:
 ///
 /// ```rust
-/// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+/// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 /// #
 /// # use axum::*;
 /// # use axum_test::TestServer;
@@ -199,7 +199,7 @@ impl TestResponse {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Json;
     /// use axum::Router;
@@ -239,7 +239,7 @@ impl TestResponse {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Json;
     /// use axum::Router;
@@ -290,7 +290,7 @@ impl TestResponse {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum::routing::get;
@@ -341,7 +341,7 @@ impl TestResponse {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum::routing::get;
@@ -392,7 +392,7 @@ impl TestResponse {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Form;
     /// use axum::Router;
@@ -703,7 +703,7 @@ impl TestResponse {
     /// # Example
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;
@@ -747,7 +747,7 @@ impl TestResponse {
             format!("Failed to upgrade connection for, for request {debug_request_format}")
         });
 
-        TestWebSocket::new(upgraded).await
+        TestWebSocket::new(upgraded, self.websockets.receive_timeout).await
     }
 
     /// This performs an assertion comparing the whole body of the response,
@@ -803,7 +803,7 @@ impl TestResponse {
     /// then this will panic. Failing the assertion.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum::extract::Json;
@@ -835,7 +835,7 @@ impl TestResponse {
     /// See that module for more information.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// # use axum::Router;
     /// # use axum::extract::Json;
@@ -887,7 +887,7 @@ impl TestResponse {
     /// wish to ignore.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum::extract::Json;
@@ -945,7 +945,7 @@ impl TestResponse {
     /// Read json file from given path and assert it with json response.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Json;
     /// use axum::routing::get;
@@ -1135,7 +1135,7 @@ impl TestResponse {
     /// Assert the status code is within the range given.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Json;
     /// use axum::routing::get;
@@ -1195,7 +1195,7 @@ impl TestResponse {
     /// Assert the status code is not within the range given.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Json;
     /// use axum::routing::get;

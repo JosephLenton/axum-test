@@ -8,6 +8,9 @@ use http::Method;
 use std::sync::Arc;
 use url::Url;
 
+#[cfg(feature = "ws")]
+use std::time::Duration;
+
 #[derive(Debug, Clone)]
 pub struct TestRequestConfig {
     pub atomic_cookie_jar: Arc<AtomicCrossCookieJar>,
@@ -21,4 +24,7 @@ pub struct TestRequestConfig {
     pub cookies: CookieJar,
     pub query_params: QueryParamsStore,
     pub headers: Vec<(HeaderName, HeaderValue)>,
+
+    #[cfg(feature = "ws")]
+    pub ws_receive_timeout: Duration,
 }

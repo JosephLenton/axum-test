@@ -85,7 +85,7 @@ impl Part {
     /// Adds a header to be sent with the Part of this Multiform.
     ///
     /// ```rust
-    /// # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+    /// # async fn test() -> Result<(), Box<dyn std::error::Error>> {
     /// #
     /// use axum::Router;
     /// use axum_test::TestServer;

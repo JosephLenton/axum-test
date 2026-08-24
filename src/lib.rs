@@ -17,7 +17,7 @@
 //! Create a [`TestServer`] running your Axum [`Router`](::axum::Router):
 //!
 //! ```rust
-//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 //! #
 //! use axum::Router;
 //! use axum::extract::Json;
@@ -42,7 +42,7 @@
 //! Then make requests against it:
 //!
 //! ```rust
-//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 //! #
 //! # use axum::Router;
 //! # use axum::extract::Json;
@@ -75,7 +75,7 @@
 //! identical for Actix Web.
 //!
 //! ```rust
-//! # async fn test() -> Result<(), Box<dyn ::std::error::Error>> {
+//! # async fn test() -> Result<(), Box<dyn std::error::Error>> {
 //! use actix_web::App;
 //! use actix_web::HttpResponse;
 //! use actix_web::web;
