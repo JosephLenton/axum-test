@@ -9,7 +9,7 @@ use anyhow::Result;
 use std::time::Duration;
 
 #[cfg(feature = "ws")]
-const DEFAULT_WEB_SOCKET_RECEIVE_TIMEOUT: Duration = Duration::from_millis(20);
+const DEFAULT_WEB_SOCKET_RECEIVE_TIMEOUT: Duration = Duration::from_millis(30);
 
 /// This is for customising the [`TestServer`](crate::TestServer) on construction.
 /// It implements [`Default`] to ease building.

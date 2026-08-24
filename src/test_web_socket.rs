@@ -32,7 +32,7 @@ use pretty_assertions::assert_eq;
 /// for a message that never arrives.
 ///
 /// The timeout can be changed by setting [`Self::set_receive_timeout`].
-/// The default value is 20 milliseconds.
+/// The default value is 30 milliseconds.
 #[derive(Debug)]
 pub struct TestWebSocket {
     stream: WebSocketStream<TokioIo<Upgraded>>,
